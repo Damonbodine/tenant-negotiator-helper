@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Send, Mic, MicOff, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { agentService } from "@/utils/agentService";
+import { knowledgeBaseService } from "@/utils/knowledgeBase";
 
 type MessageType = "user" | "agent";
 
@@ -76,8 +76,8 @@ export const AgentChat = () => {
         return;
       }
       
-      // Simulate AI response for now
-      const response = await simulateResponse(input);
+      // Get response from knowledge base
+      let response = await getIntelligentResponse(input);
       
       const agentMessage: Message = {
         id: Date.now().toString(),
@@ -103,6 +103,18 @@ export const AgentChat = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+  
+  const getIntelligentResponse = async (userInput: string): Promise<string> => {
+    // First, check if the knowledge base has a relevant response
+    const knowledgeResponse = knowledgeBaseService.findResponseForQuery(userInput);
+    
+    if (knowledgeResponse) {
+      return knowledgeResponse;
+    }
+    
+    // Fall back to the simulated responses if no knowledge match
+    return simulateResponse(userInput);
   };
   
   const simulateResponse = (userInput: string): Promise<string> => {
