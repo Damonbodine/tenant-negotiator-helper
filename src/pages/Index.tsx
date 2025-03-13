@@ -1,12 +1,28 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import { useState } from "react";
+import { Header } from "@/components/Header";
+import { AgentChat } from "@/components/AgentChat";
+import { MarketData } from "@/components/MarketData";
+import { NegotiationTips } from "@/components/NegotiationTips";
 
 const Index = () => {
+  const [activeTab, setActiveTab] = useState("chat");
+  
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen flex flex-col">
+      <Header activeTab={activeTab} setActiveTab={setActiveTab} />
+      
+      <main className="flex-1 container py-6">
+        {activeTab === "chat" && (
+          <div className="h-[calc(100vh-9rem)]">
+            <AgentChat />
+          </div>
+        )}
+        
+        {activeTab === "market" && <MarketData />}
+        
+        {activeTab === "tips" && <NegotiationTips />}
+      </main>
     </div>
   );
 };
