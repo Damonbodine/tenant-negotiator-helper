@@ -42,8 +42,13 @@ export const SourceForm = ({ onSourceAdded }: SourceFormProps) => {
   const onSubmit = async (values: SourceFormValues) => {
     setIsSubmitting(true);
     try {
-      // Add the new source to our knowledge base
-      const newSource = knowledgeBaseService.addSource(values);
+      // Add the new source to our knowledge base - ensuring all required fields are present
+      const newSource = knowledgeBaseService.addSource({
+        name: values.name,
+        url: values.url,
+        type: values.type,
+        description: values.description || ""
+      });
       
       toast({
         title: "Source added",

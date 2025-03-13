@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { ExternalSource, knowledgeBaseService } from "@/utils/knowledgeBase";
 import { Button } from "@/components/ui/button";
@@ -74,7 +73,7 @@ export const SourceList = ({ sources, onRefresh }: SourceListProps) => {
   const getStatusBadge = (status: ExternalSource['status']) => {
     switch (status) {
       case 'active':
-        return <Badge variant="success" className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" /> Active</Badge>;
+        return <Badge variant="secondary" className="bg-green-500 text-white"><CheckCircle className="h-3 w-3 mr-1" /> Active</Badge>;
       case 'pending':
         return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300"><RefreshCw className="h-3 w-3 mr-1" /> Pending</Badge>;
       case 'error':

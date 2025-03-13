@@ -8,7 +8,7 @@ import { KnowledgeBase } from "@/components/KnowledgeBase";
 import { KnowledgeManagement } from "@/components/KnowledgeManagement";
 
 const Index = () => {
-  const [activeTab, setActiveTab] = useState("chat");
+  const [activeTab, setActiveTab] = useState("knowledge");
   
   return (
     <div className="min-h-screen flex flex-col">
