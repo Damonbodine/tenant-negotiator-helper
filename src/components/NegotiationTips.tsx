@@ -1,8 +1,7 @@
-
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { BadgeCheck, Clock, DollarSign, FileText, Calendar, Tool, Shield } from "lucide-react";
+import { BadgeCheck, Clock, DollarSign, FileText, Calendar, Wrench, Shield } from "lucide-react";
 
 export const NegotiationTips = () => {
   const negotiationTips = [
@@ -57,7 +56,7 @@ export const NegotiationTips = () => {
     {
       id: "improvements",
       title: "Request Improvements",
-      icon: <Tool className="h-5 w-5 text-negotiator-500" />,
+      icon: <Wrench className="h-5 w-5 text-negotiator-500" />,
       content: "If you notice issues with the property, you can negotiate to have them fixed before you move in or request upgrades as part of the deal. Document everything during your viewing.",
       steps: [
         "Take photos of issues during your viewing",
