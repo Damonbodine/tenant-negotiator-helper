@@ -5,6 +5,7 @@ import { AgentChat } from "@/components/AgentChat";
 import { MarketData } from "@/components/MarketData";
 import { NegotiationTips } from "@/components/NegotiationTips";
 import { KnowledgeBase } from "@/components/KnowledgeBase";
+import { KnowledgeManagement } from "@/components/KnowledgeManagement";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("chat");
@@ -25,8 +26,9 @@ const Index = () => {
         {activeTab === "tips" && <NegotiationTips />}
         
         {activeTab === "knowledge" && (
-          <div className="h-[calc(100vh-9rem)]">
+          <div className="h-[calc(100vh-9rem)] grid grid-cols-1 lg:grid-cols-2 gap-6">
             <KnowledgeBase />
+            <KnowledgeManagement />
           </div>
         )}
       </main>

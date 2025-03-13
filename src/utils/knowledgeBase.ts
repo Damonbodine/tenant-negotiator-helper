@@ -8,6 +8,17 @@ export interface KnowledgeItem {
   title: string;
   content: string;
   tags: string[];
+  source?: string; // Optional URL source
+}
+
+export interface ExternalSource {
+  id: string;
+  name: string;
+  url: string;
+  type: 'website' | 'marketData';
+  lastFetched?: string;
+  status: 'active' | 'pending' | 'error';
+  description?: string;
 }
 
 // Initial knowledge base with sample data
@@ -84,8 +95,31 @@ const knowledgeItems: KnowledgeItem[] = [
   },
 ];
 
+// Sample external sources
+const externalSources: ExternalSource[] = [
+  {
+    id: 'source-1',
+    name: 'Rent Data NYC',
+    url: 'https://www.rentdata.org/new-york-ny-hud-metro-area/2023',
+    type: 'marketData',
+    lastFetched: '2023-11-01',
+    status: 'active',
+    description: 'Official HUD Fair Market Rent data for New York'
+  },
+  {
+    id: 'source-2',
+    name: 'RentCafe Market Insights',
+    url: 'https://www.rentcafe.com/market-trends/',
+    type: 'marketData',
+    lastFetched: '2023-10-15',
+    status: 'active',
+    description: 'Current market trends and analysis for rental properties'
+  }
+];
+
 class KnowledgeBaseService {
   private items: KnowledgeItem[] = knowledgeItems;
+  private sources: ExternalSource[] = externalSources;
 
   // Get all knowledge items
   getAllItems(): KnowledgeItem[] {
@@ -115,6 +149,84 @@ class KnowledgeBaseService {
     };
     this.items.push(newItem);
     return newItem;
+  }
+
+  // Get all external sources
+  getAllSources(): ExternalSource[] {
+    return this.sources;
+  }
+
+  // Get sources by type
+  getSourcesByType(type: ExternalSource['type']): ExternalSource[] {
+    return this.sources.filter(source => source.type === type);
+  }
+
+  // Add a new external source
+  addSource(source: Omit<ExternalSource, 'id' | 'status'>): ExternalSource {
+    const newSource = {
+      ...source,
+      id: `source-${this.sources.length + 1}`,
+      status: 'pending' as const,
+      lastFetched: new Date().toISOString()
+    };
+    this.sources.push(newSource);
+    return newSource;
+  }
+
+  // Update source status
+  updateSourceStatus(id: string, status: ExternalSource['status']): ExternalSource | null {
+    const source = this.sources.find(s => s.id === id);
+    if (!source) return null;
+    
+    source.status = status;
+    if (status === 'active') {
+      source.lastFetched = new Date().toISOString();
+    }
+    
+    return source;
+  }
+
+  // Delete a source
+  deleteSource(id: string): boolean {
+    const initialLength = this.sources.length;
+    this.sources = this.sources.filter(source => source.id !== id);
+    return this.sources.length < initialLength;
+  }
+
+  // Simulate fetching data from a source
+  async fetchDataFromSource(id: string): Promise<boolean> {
+    // In a real implementation, this would actually fetch data from the URL
+    const source = this.sources.find(s => s.id === id);
+    if (!source) return false;
+    
+    // Simulate an async operation
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // Update the source status
+    source.status = 'active';
+    source.lastFetched = new Date().toISOString();
+    
+    // In a real implementation, we would parse the fetched data
+    // and add it to the knowledge base
+    // For now, we'll just simulate adding a new knowledge item
+    if (source.type === 'marketData') {
+      this.addItem({
+        category: 'marketData',
+        title: `Data from ${source.name}`,
+        content: `This data was automatically extracted from ${source.url} on ${new Date().toLocaleDateString()}.`,
+        tags: ['imported', 'market data', source.name.toLowerCase()]
+      });
+    } else {
+      this.addItem({
+        category: 'tactics',
+        title: `Tactic from ${source.name}`,
+        content: `This tactic was automatically extracted from ${source.url} on ${new Date().toLocaleDateString()}.`,
+        tags: ['imported', 'website', source.name.toLowerCase()],
+        source: source.url
+      });
+    }
+    
+    return true;
   }
 
   // Find knowledge response for user message
