@@ -51,28 +51,28 @@ const knowledgeItems: KnowledgeItem[] = [
     id: 'legal-2',
     category: 'legalRights',
     title: 'Security Deposit Limits',
-    content: 'Many states limit security deposits to 1-2 months' rent. Knowing this can prevent landlords from requiring excessive deposits.',
+    content: "Many states limit security deposits to 1-2 months' rent. Knowing this can prevent landlords from requiring excessive deposits.",
     tags: ['security deposit', 'regulations', 'tenant rights']
   },
   {
     id: 'script-1',
     category: 'scripts',
     title: 'Negotiating Rent Reduction',
-    content: 'I appreciate the property and would like to make it my home. I've researched similar units in this area that are going for [lower price]. Would you consider [specific amount] to match the market rate? I'm a reliable tenant with excellent references and would sign a 12-month lease immediately.',
+    content: "I appreciate the property and would like to make it my home. I've researched similar units in this area that are going for [lower price]. Would you consider [specific amount] to match the market rate? I'm a reliable tenant with excellent references and would sign a 12-month lease immediately.",
     tags: ['rent reduction', 'negotiation script', 'market comparison']
   },
   {
     id: 'script-2',
     category: 'scripts',
     title: 'Requesting Property Improvements',
-    content: 'I'm very interested in the apartment but noticed [specific issues]. If you're able to address these before move-in, I'd be happy to sign a lease at the asking price. Alternatively, I could handle these improvements myself for a rent reduction of [amount] per month.',
+    content: "I'm very interested in the apartment but noticed [specific issues]. If you're able to address these before move-in, I'd be happy to sign a lease at the asking price. Alternatively, I could handle these improvements myself for a rent reduction of [amount] per month.",
     tags: ['property improvements', 'negotiation script', 'value exchange']
   },
   {
     id: 'question-1',
     category: 'questions',
     title: 'Maintenance Responsibility',
-    content: 'Could you clarify the maintenance policy? Specifically, who is responsible for [specific maintenance issues] and what's the typical response time for repairs?',
+    content: "Could you clarify the maintenance policy? Specifically, who is responsible for [specific maintenance issues] and what's the typical response time for repairs?",
     tags: ['maintenance', 'important questions', 'responsibilities']
   },
   {
