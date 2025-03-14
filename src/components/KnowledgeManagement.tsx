@@ -4,14 +4,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { SourceForm } from "@/components/SourceForm";
 import { SourceList } from "@/components/SourceList";
+import { BulkSourceUpload } from "@/components/BulkSourceUpload";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ExternalSource, knowledgeBaseService } from "@/utils/knowledgeBase";
-import { PlusCircle, Database, Globe } from "lucide-react";
+import { PlusCircle, Database, Globe, Upload } from "lucide-react";
 
 export const KnowledgeManagement = () => {
   const [activeTab, setActiveTab] = useState<"all" | "marketData" | "website">("all");
   const [sources, setSources] = useState<ExternalSource[]>([]);
   const [isAddSourceOpen, setIsAddSourceOpen] = useState(false);
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
   
   const fetchSources = () => {
     if (activeTab === "all") {
@@ -30,6 +32,11 @@ export const KnowledgeManagement = () => {
     setIsAddSourceOpen(false);
   };
   
+  const handleBulkSourcesAdded = () => {
+    fetchSources();
+    setIsBulkUploadOpen(false);
+  };
+  
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
@@ -40,25 +47,50 @@ export const KnowledgeManagement = () => {
           </p>
         </div>
         
-        <Sheet open={isAddSourceOpen} onOpenChange={setIsAddSourceOpen}>
-          <SheetTrigger asChild>
-            <Button>
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Add Source
-            </Button>
-          </SheetTrigger>
-          <SheetContent>
-            <SheetHeader>
-              <SheetTitle>Add Knowledge Source</SheetTitle>
-              <SheetDescription>
-                Add a new website or market data source to your knowledge base
-              </SheetDescription>
-            </SheetHeader>
-            <div className="py-4">
-              <SourceForm onSourceAdded={handleSourceAdded} />
-            </div>
-          </SheetContent>
-        </Sheet>
+        <div className="flex gap-2">
+          <Sheet open={isBulkUploadOpen} onOpenChange={setIsBulkUploadOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline">
+                <Upload className="h-4 w-4 mr-2" />
+                Bulk Upload
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="sm:max-w-md">
+              <SheetHeader>
+                <SheetTitle>Bulk Upload Sources</SheetTitle>
+                <SheetDescription>
+                  Upload multiple sources from a CSV file to your knowledge base
+                </SheetDescription>
+              </SheetHeader>
+              <div className="py-4">
+                <BulkSourceUpload 
+                  onSourcesAdded={handleBulkSourcesAdded} 
+                  onCancel={() => setIsBulkUploadOpen(false)} 
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
+          
+          <Sheet open={isAddSourceOpen} onOpenChange={setIsAddSourceOpen}>
+            <SheetTrigger asChild>
+              <Button>
+                <PlusCircle className="h-4 w-4 mr-2" />
+                Add Source
+              </Button>
+            </SheetTrigger>
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>Add Knowledge Source</SheetTitle>
+                <SheetDescription>
+                  Add a new website or market data source to your knowledge base
+                </SheetDescription>
+              </SheetHeader>
+              <div className="py-4">
+                <SourceForm onSourceAdded={handleSourceAdded} />
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
       
       <Tabs defaultValue="all" value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
