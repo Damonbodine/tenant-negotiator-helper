@@ -99,26 +99,26 @@ const Index = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <button
                 onClick={() => setActiveJourney("market")}
-                className="journey-bubble flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 border-2 border-blue-200 dark:border-blue-800 rounded-full h-64 w-64 mx-auto transition-all hover:shadow-lg hover:scale-105"
+                className="journey-bubble flex flex-col items-center justify-center p-8 bg-[#FEF7CD] hover:bg-[#fcf4b8] border-2 border-[#f0e9b0] rounded-full h-64 w-64 mx-auto transition-all hover:shadow-lg hover:scale-105"
               >
-                <div className="text-blue-500 text-4xl font-bold mb-2">Market Tips</div>
-                <p className="text-slate-600 dark:text-slate-300 text-center">Get insights on rental prices and market trends</p>
+                <div className="text-black text-4xl font-bold mb-2">Market Tips</div>
+                <p className="text-black text-center">Get insights on rental prices and market trends</p>
               </button>
               
               <button
                 onClick={() => setActiveJourney("negotiation")}
-                className="journey-bubble flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 border-2 border-blue-200 dark:border-blue-800 rounded-full h-64 w-64 mx-auto transition-all hover:shadow-lg hover:scale-105"
+                className="journey-bubble flex flex-col items-center justify-center p-8 bg-[#FEF7CD] hover:bg-[#fcf4b8] border-2 border-[#f0e9b0] rounded-full h-64 w-64 mx-auto transition-all hover:shadow-lg hover:scale-105"
               >
-                <div className="text-blue-500 text-4xl font-bold mb-2">Should I negotiate</div>
-                <p className="text-slate-600 dark:text-slate-300 text-center">Learn effective rental negotiation strategies</p>
+                <div className="text-black text-4xl font-bold mb-2">Should I negotiate</div>
+                <p className="text-black text-center">Learn effective rental negotiation strategies</p>
               </button>
               
               <Link
                 to="/practice"
-                className="journey-bubble flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 border-2 border-blue-200 dark:border-blue-800 rounded-full h-64 w-64 mx-auto transition-all hover:shadow-lg hover:scale-105"
+                className="journey-bubble flex flex-col items-center justify-center p-8 bg-[#FEF7CD] hover:bg-[#fcf4b8] border-2 border-[#f0e9b0] rounded-full h-64 w-64 mx-auto transition-all hover:shadow-lg hover:scale-105"
               >
-                <div className="text-blue-500 text-4xl font-bold mb-2 text-center">Practice Call</div>
-                <p className="text-slate-600 dark:text-slate-300 text-center">Rehearse your negotiation with an AI landlord</p>
+                <div className="text-black text-4xl font-bold mb-2 text-center">Practice Call</div>
+                <p className="text-black text-center">Rehearse your negotiation with an AI landlord</p>
               </Link>
             </div>
             
