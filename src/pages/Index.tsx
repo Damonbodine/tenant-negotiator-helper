@@ -1,23 +1,58 @@
 
 import { useState } from "react";
-import { Header } from "@/components/Header";
 import { AgentChat } from "@/components/AgentChat";
 import { Link } from "react-router-dom";
-import { Building } from "lucide-react";
+import { Building, Download, Mail } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from "@/components/ui/use-toast";
 
 const Index = () => {
   const [activeJourney, setActiveJourney] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  
+  const handleEmailSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !email.includes('@')) {
+      toast({
+        title: "Invalid email",
+        description: "Please enter a valid email address",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    toast({
+      title: "Success!",
+      description: "Thank you for subscribing to our newsletter!",
+    });
+    setEmail("");
+  };
   
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-blue-100 dark:from-slate-900 dark:to-slate-800">
       <header className="w-full bg-background/80 backdrop-blur-md border-b border-border py-3">
         <div className="container flex items-center justify-between">
-          <div className="flex-1"></div>
-          <div className="flex items-center gap-2">
-            <Building className="h-6 w-6 text-blue-600" />
-            <h1 className="text-xl font-bold text-blue-600">RentCoach</h1>
+          <div className="flex-1 flex items-center gap-4">
+            <a 
+              href="/renters-playbook.pdf" 
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 transition-colors text-white"
+              download
+            >
+              <Download className="h-4 w-4" />
+              <span>THE RENTERS PLAYBOOK</span>
+            </a>
           </div>
-          <div className="flex-1"></div>
+          <div className="flex items-center gap-3">
+            <Building className="h-8 w-8 text-blue-600" />
+            <h1 className="text-2xl font-bold text-blue-600 uppercase tracking-wider">RENTCOACH</h1>
+          </div>
+          <div className="flex-1 flex justify-end">
+            <Button variant="outline" className="flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              <span>Contact Us</span>
+            </Button>
+          </div>
         </div>
       </header>
       
@@ -55,7 +90,7 @@ const Index = () => {
             )}
           </>
         ) : (
-          <div className="space-y-12 w-full max-w-4xl">
+          <div className="space-y-16 w-full max-w-4xl">
             <div className="text-center">
               <h2 className="text-3xl font-bold text-blue-600 mb-2">Start Your Rental Journey</h2>
               <p className="text-slate-600 dark:text-slate-300">Choose an option to get started</p>
@@ -85,6 +120,23 @@ const Index = () => {
                 <div className="text-blue-500 text-4xl font-bold mb-2">Practice Call</div>
                 <p className="text-slate-600 dark:text-slate-300 text-center">Rehearse your negotiation with an AI landlord</p>
               </Link>
+            </div>
+            
+            <div className="mx-auto max-w-md w-full">
+              <div className="text-center mb-4">
+                <h3 className="text-lg font-medium text-blue-600">Stay Updated</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-300">Get the latest rental tips and market updates</p>
+              </div>
+              <form onSubmit={handleEmailSubmit} className="flex gap-2">
+                <Input
+                  type="email"
+                  placeholder="Enter your email address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="flex-1"
+                />
+                <Button type="submit">Subscribe</Button>
+              </form>
             </div>
           </div>
         )}
