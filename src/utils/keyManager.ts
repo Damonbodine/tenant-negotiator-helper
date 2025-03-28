@@ -1,40 +1,11 @@
 
 /**
  * Key Manager utility for securely handling API keys
- * This provides a basic level of obfuscation, but a backend solution like Supabase
- * would be recommended for production applications
+ * Uses Supabase for secure storage instead of localStorage
  */
 
-// Simple encryption key - in a real app, this would be a secure server-side secret
-const ENCRYPTION_KEY = "rentcoach-app-encryption";
-
-/**
- * Basic encryption for API keys stored in localStorage
- * Note: This is obfuscation rather than true encryption
- * For production, use a backend service like Supabase
- */
-const encrypt = (text: string): string => {
-  // Simple XOR encryption - basic obfuscation only
-  return Array.from(text)
-    .map(char => 
-      String.fromCharCode(char.charCodeAt(0) ^ ENCRYPTION_KEY.charCodeAt(0))
-    )
-    .join('');
-};
-
-/**
- * Decrypt stored API keys
- */
-const decrypt = (encryptedText: string): string => {
-  if (!encryptedText) return '';
-  
-  // Reverse the XOR operation
-  return Array.from(encryptedText)
-    .map(char => 
-      String.fromCharCode(char.charCodeAt(0) ^ ENCRYPTION_KEY.charCodeAt(0))
-    )
-    .join('');
-};
+import { supabase } from './supabaseClient';
+import { toast } from '@/components/ui/use-toast';
 
 export interface ApiKeyConfig {
   name: string;
@@ -55,49 +26,136 @@ export const API_KEYS: Record<string, ApiKeyConfig> = {
 };
 
 /**
- * Get an API key from storage
+ * Get an API key from Supabase
  */
-export const getApiKey = (keyType: string): string | null => {
+export const getApiKey = async (keyType: string): Promise<string | null> => {
   const config = API_KEYS[keyType];
   if (!config) return null;
   
-  const encryptedKey = localStorage.getItem(config.storageKey);
-  return encryptedKey ? decrypt(encryptedKey) : null;
+  try {
+    const { data, error } = await supabase
+      .from('api_keys')
+      .select('key_value')
+      .eq('key_name', config.storageKey)
+      .single();
+    
+    if (error) {
+      console.error('Error fetching API key:', error);
+      return null;
+    }
+    
+    return data?.key_value || null;
+  } catch (error) {
+    console.error('Error accessing Supabase:', error);
+    
+    // Fallback to localStorage if Supabase is not available
+    const legacyKey = localStorage.getItem(config.storageKey);
+    if (legacyKey) {
+      // Simple XOR decryption (from previous implementation)
+      const ENCRYPTION_KEY = "rentcoach-app-encryption";
+      return Array.from(legacyKey)
+        .map(char => 
+          String.fromCharCode(char.charCodeAt(0) ^ ENCRYPTION_KEY.charCodeAt(0))
+        )
+        .join('');
+    }
+    
+    return null;
+  }
 };
 
 /**
- * Save an API key to storage with basic encryption
+ * Save an API key to Supabase
  */
-export const saveApiKey = (keyType: string, value: string): void => {
+export const saveApiKey = async (keyType: string, value: string): Promise<void> => {
   const config = API_KEYS[keyType];
   if (!config) return;
   
-  const encryptedValue = encrypt(value);
-  localStorage.setItem(config.storageKey, encryptedValue);
+  try {
+    // First check if the key already exists
+    const { data: existingKey } = await supabase
+      .from('api_keys')
+      .select('id')
+      .eq('key_name', config.storageKey)
+      .single();
+    
+    if (existingKey) {
+      // Update existing key
+      const { error } = await supabase
+        .from('api_keys')
+        .update({ key_value: value })
+        .eq('key_name', config.storageKey);
+      
+      if (error) throw error;
+    } else {
+      // Insert new key
+      const { error } = await supabase
+        .from('api_keys')
+        .insert({ key_name: config.storageKey, key_value: value });
+      
+      if (error) throw error;
+    }
+  } catch (error) {
+    console.error('Error saving API key to Supabase:', error);
+    toast({
+      title: "Warning",
+      description: "Unable to save API key securely. Using temporary storage instead.",
+      variant: "destructive",
+    });
+    
+    // Fallback to localStorage if Supabase is not available
+    // Simple XOR encryption (from previous implementation)
+    const ENCRYPTION_KEY = "rentcoach-app-encryption";
+    const encryptedValue = Array.from(value)
+      .map(char => 
+        String.fromCharCode(char.charCodeAt(0) ^ ENCRYPTION_KEY.charCodeAt(0))
+      )
+      .join('');
+    
+    localStorage.setItem(config.storageKey, encryptedValue);
+  }
 };
 
 /**
  * Check if an API key exists
  */
-export const hasApiKey = (keyType: string): boolean => {
-  return !!getApiKey(keyType);
+export const hasApiKey = async (keyType: string): Promise<boolean> => {
+  return !!(await getApiKey(keyType));
 };
 
 /**
  * Remove an API key from storage
  */
-export const removeApiKey = (keyType: string): void => {
+export const removeApiKey = async (keyType: string): Promise<void> => {
   const config = API_KEYS[keyType];
   if (!config) return;
   
-  localStorage.removeItem(config.storageKey);
+  try {
+    const { error } = await supabase
+      .from('api_keys')
+      .delete()
+      .eq('key_name', config.storageKey);
+    
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error removing API key from Supabase:', error);
+    
+    // Fallback to localStorage if Supabase is not available
+    localStorage.removeItem(config.storageKey);
+  }
 };
 
 /**
  * Get all missing required API keys
  */
-export const getMissingRequiredKeys = (): ApiKeyConfig[] => {
-  return Object.values(API_KEYS)
-    .filter(config => config.isRequired && !hasApiKey(config.name));
+export const getMissingRequiredKeys = async (): Promise<ApiKeyConfig[]> => {
+  const missingKeys = [];
+  
+  for (const [keyType, config] of Object.entries(API_KEYS)) {
+    if (config.isRequired && !(await hasApiKey(keyType))) {
+      missingKeys.push(config);
+    }
+  }
+  
+  return missingKeys;
 };
-

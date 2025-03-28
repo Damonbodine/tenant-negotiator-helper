@@ -19,10 +19,14 @@ export const ApiKeyInput = ({ onClose, keyType = 'ELEVEN_LABS' }: ApiKeyInputPro
   const keyConfig: ApiKeyConfig = API_KEYS[keyType];
   
   useEffect(() => {
-    const savedKey = agentService.getApiKey();
-    if (savedKey) {
-      setApiKey(savedKey);
-    }
+    const fetchApiKey = async () => {
+      const savedKey = await agentService.getApiKey();
+      if (savedKey) {
+        setApiKey(savedKey);
+      }
+    };
+    
+    fetchApiKey();
   }, []);
   
   const handleSave = async () => {
@@ -37,7 +41,7 @@ export const ApiKeyInput = ({ onClose, keyType = 'ELEVEN_LABS' }: ApiKeyInputPro
     
     setIsLoading(true);
     try {
-      agentService.setApiKey(apiKey);
+      await agentService.setApiKey(apiKey);
       toast({
         title: "API Key Saved",
         description: `Your ${keyConfig.name} has been saved`,
