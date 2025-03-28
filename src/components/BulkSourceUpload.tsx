@@ -1,254 +1,207 @@
 
-import { useState } from "react";
-import { z } from "zod";
-import { ExternalSource, knowledgeBaseService } from "@/utils/knowledgeBase";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Download, Upload, X } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
-import { AlertCircle, FileSpreadsheet, Upload } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
+import { knowledgeBaseService, ExternalSource } from "@/utils/knowledgeBase";
 
-const sourceSchema = z.object({
-  name: z.string().min(2, { message: "Name must be at least 2 characters" }),
-  url: z.string().url({ message: "Please enter a valid URL" }),
-  type: z.enum(["website", "marketData"], { 
-    required_error: "Please select a source type" 
-  }),
-  description: z.string().optional(),
-});
-
-type BulkSourceUploadProps = {
-  onSourcesAdded: () => void;
-  onCancel: () => void;
-};
-
-export const BulkSourceUpload = ({ onSourcesAdded, onCancel }: BulkSourceUploadProps) => {
+export const BulkSourceUpload = ({ onSourcesAdded }: { onSourcesAdded: () => void }) => {
   const [file, setFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile && selectedFile.type === "text/csv") {
+      setFile(selectedFile);
       setErrors([]);
+    } else {
+      setFile(null);
+      setErrors(["Please select a valid CSV file"]);
     }
-  };
-  
-  const processCSV = async (text: string): Promise<{
-    sources: Omit<ExternalSource, 'id' | 'status'>[];
-    errors: string[];
-  }> => {
-    const errors: string[] = [];
-    const sources: Omit<ExternalSource, 'id' | 'status'>[] = [];
-    
-    // Split by new lines and remove empty lines
-    const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
-    
-    // Check if we have a header row
-    if (lines.length === 0) {
-      errors.push("CSV file is empty");
-      return { sources, errors };
-    }
-    
-    // Assume first row is header: name,url,type,description
-    // Skip header row and process data rows
-    for (let i = 1; i < lines.length; i++) {
-      setUploadProgress(Math.floor((i / lines.length) * 100));
-      
-      const line = lines[i];
-      // Split by comma, but respect quoted values (for descriptions with commas)
-      const values = line.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g);
-      
-      if (!values || values.length < 3) {
-        errors.push(`Line ${i + 1}: Invalid format. Expected at least name, URL, and type.`);
-        continue;
-      }
-      
-      // Remove quotes if present
-      const cleanValues = values.map(val => val.replace(/^"(.*)"$/, '$1'));
-      
-      const [name, url, type, ...descriptionParts] = cleanValues;
-      const description = descriptionParts.join(',');
-      
-      // Validate with Zod schema
-      try {
-        const parsed = sourceSchema.parse({
-          name,
-          url,
-          type: type === 'marketData' || type === 'website' ? type : 'website',
-          description
-        });
-        
-        sources.push(parsed);
-      } catch (error) {
-        if (error instanceof z.ZodError) {
-          errors.push(`Line ${i + 1}: ${error.errors.map(e => e.message).join(', ')}`);
-        } else {
-          errors.push(`Line ${i + 1}: Invalid data`);
-        }
-      }
-    }
-    
-    return { sources, errors };
   };
   
   const handleUpload = async () => {
-    if (!file) {
-      toast({
-        title: "No file selected",
-        description: "Please select a CSV file to upload",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!file) return;
     
     setIsUploading(true);
-    setUploadProgress(0);
     setErrors([]);
     
     try {
-      const text = await file.text();
-      const { sources, errors } = await processCSV(text);
+      const reader = new FileReader();
       
-      if (errors.length > 0) {
-        setErrors(errors);
-      }
-      
-      if (sources.length > 0) {
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        const lines = text.split("\n");
+        
+        // Remove header row
+        lines.shift();
+        
+        const newErrors: string[] = [];
+        const sources: Array<Omit<ExternalSource, "id" | "status">> = [];
+        
+        lines.forEach((line, index) => {
+          if (!line.trim()) return;
+          
+          const values = line.split(",").map(val => val.trim());
+          
+          if (values.length < 3) {
+            newErrors.push(`Line ${index + 2}: Missing required fields`);
+            return;
+          }
+          
+          const [name, url, type, description] = values;
+          
+          if (!name || !url || !type) {
+            newErrors.push(`Line ${index + 2}: Name, URL, and Type are required`);
+            return;
+          }
+          
+          if (type !== "website" && type !== "marketData") {
+            newErrors.push(`Line ${index + 2}: Type must be "website" or "marketData"`);
+            return;
+          }
+          
+          sources.push({
+            name,
+            url,
+            type: type as "website" | "marketData",
+            description: description || undefined
+          });
+        });
+        
+        if (newErrors.length > 0) {
+          setErrors(newErrors);
+          setIsUploading(false);
+          return;
+        }
+        
         // Add sources to knowledge base
-        let addedCount = 0;
-        for (const source of sources) {
+        sources.forEach(source => {
           knowledgeBaseService.addSource(source);
-          addedCount++;
+        });
+        
+        // Reset file input
+        setFile(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
         }
         
         toast({
-          title: "Sources added",
-          description: `Successfully added ${addedCount} sources to your knowledge base.`,
+          title: "Sources Added",
+          description: `Successfully added ${sources.length} sources to the knowledge base.`
         });
         
-        if (addedCount > 0) {
-          onSourcesAdded();
-        }
-      } else {
-        toast({
-          title: "No valid sources",
-          description: "No valid sources were found in the CSV file.",
-          variant: "destructive",
-        });
-      }
+        onSourcesAdded();
+      };
+      
+      reader.readAsText(file);
     } catch (error) {
+      setErrors(["An error occurred while processing the file"]);
       console.error("Error processing CSV:", error);
-      toast({
-        title: "Error",
-        description: "Failed to process CSV file. Please check the format and try again.",
-        variant: "destructive",
-      });
     } finally {
       setIsUploading(false);
-      setUploadProgress(100);
+    }
+  };
+  
+  const handleClear = () => {
+    setFile(null);
+    setErrors([]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
   
   const downloadTemplate = () => {
-    const header = "name,url,type,description";
-    const sampleRow1 = "NY Rent Data,https://example.com/rent-data,marketData,\"NYC rent data for 2023, includes historical trends\"";
-    const sampleRow2 = "Tenant Rights Website,https://example.com/rights,website,Legal information for tenants";
-    
-    const csvContent = [header, sampleRow1, sampleRow2].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const template = "Name,URL,Type,Description\nExample Site,https://example.com,website,An example website\nRent Data,https://rentdata.org,marketData,Source of rental market data";
+    const blob = new Blob([template], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.setAttribute('href', url);
-    a.setAttribute('download', 'source_template.csv');
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "source_template.csv";
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
   
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Bulk Upload Sources</CardTitle>
-        <CardDescription>
-          Upload a CSV file with multiple knowledge sources.
-          The CSV should have columns: name, url, type, description (optional).
-        </CardDescription>
-      </CardHeader>
-      
-      <CardContent className="space-y-4">
-        <div className="flex flex-col space-y-1.5">
-          <Label htmlFor="csvFile">Upload CSV File</Label>
-          <Input 
-            id="csvFile" 
-            type="file" 
-            accept=".csv" 
-            onChange={handleFileChange}
-            disabled={isUploading}
-          />
-          <p className="text-xs text-muted-foreground">
-            Accepted format: CSV with columns for name, URL, type (website/marketData), and description
-          </p>
-        </div>
-        
-        <div className="flex items-center justify-between">
-          <Button
-            variant="outline"
+    <Card className="p-4">
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-medium">Bulk Upload Sources</h3>
+          <Button 
+            variant="outline" 
             size="sm"
             onClick={downloadTemplate}
-            disabled={isUploading}
+            className="flex items-center gap-1"
           >
-            <FileSpreadsheet className="h-4 w-4 mr-2" />
-            Download Template
+            <Download className="h-4 w-4" />
+            Template
           </Button>
         </div>
         
-        {isUploading && (
-          <div className="space-y-2">
-            <Progress value={uploadProgress} className="w-full" />
-            <p className="text-xs text-center text-muted-foreground">
-              Processing... {uploadProgress}%
-            </p>
+        <div className="flex gap-2">
+          <Input
+            type="file"
+            accept=".csv"
+            onChange={handleFileChange}
+            ref={fileInputRef}
+            className="flex-1"
+          />
+          {file && (
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={handleClear}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+        
+        {file && (
+          <div className="text-sm text-muted-foreground">
+            Selected file: {file.name}
           </div>
         )}
         
         {errors.length > 0 && (
-          <div className="bg-destructive/10 p-3 rounded-md space-y-2">
-            <div className="flex items-center text-destructive">
-              <AlertCircle className="h-4 w-4 mr-2" />
-              <p className="font-medium">Validation Errors</p>
-            </div>
-            <ul className="text-sm list-disc pl-5 space-y-1">
-              {errors.slice(0, 5).map((error, index) => (
-                <li key={index} className="text-destructive">{error}</li>
-              ))}
-              {errors.length > 5 && (
-                <li className="text-destructive">{`And ${errors.length - 5} more errors...`}</li>
-              )}
-            </ul>
-          </div>
+          <Alert variant="destructive">
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>
+              <ul className="list-disc pl-5 mt-2">
+                {errors.map((error, index) => (
+                  <li key={index}>{error}</li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
         )}
-      </CardContent>
-      
-      <CardFooter className="flex justify-end gap-2">
-        <Button
-          variant="outline"
-          onClick={onCancel}
-          disabled={isUploading}
-        >
-          Cancel
-        </Button>
-        <Button
-          variant="default"
-          onClick={handleUpload}
+        
+        <Button 
+          onClick={handleUpload} 
           disabled={!file || isUploading}
+          className="w-full"
         >
           <Upload className="h-4 w-4 mr-2" />
-          {isUploading ? "Uploading..." : "Upload Sources"}
+          {isUploading ? "Processing..." : "Upload Sources"}
         </Button>
-      </CardFooter>
+        
+        <div className="text-sm text-muted-foreground">
+          <p>Upload a CSV file with the following columns:</p>
+          <ul className="list-disc pl-5 mt-1">
+            <li>Name (required): Name of the source</li>
+            <li>URL (required): URL of the source</li>
+            <li>Type (required): "website" or "marketData"</li>
+            <li>Description (optional): Brief description of the source</li>
+          </ul>
+        </div>
+      </div>
     </Card>
   );
 };
