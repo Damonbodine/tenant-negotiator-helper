@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -8,7 +7,11 @@ import { Download, Upload, X } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { knowledgeBaseService, ExternalSource } from "@/utils/knowledgeBase";
 
-export const BulkSourceUpload = ({ onSourcesAdded }: { onSourcesAdded: () => void }) => {
+interface BulkSourceUploadProps {
+  onSourcesAdded: () => void;
+}
+
+export const BulkSourceUpload = ({ onSourcesAdded }: BulkSourceUploadProps) => {
   const [file, setFile] = useState<File | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);

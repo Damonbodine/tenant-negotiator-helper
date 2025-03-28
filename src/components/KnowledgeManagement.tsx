@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SourceForm } from "@/components/SourceForm";
@@ -11,23 +11,22 @@ import { useToast } from "@/components/ui/use-toast";
 
 export const KnowledgeManagement = () => {
   const [activeTab, setActiveTab] = useState("list");
-  const [sources, setSources] = useState(knowledgeBaseService.getSources());
+  const [sources, setSources] = useState(knowledgeBaseService.getAllSources());
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const { toast } = useToast();
 
-  const handleAddSource = (source: { title: string; content: string; url?: string }) => {
-    const newSource = knowledgeBaseService.addSource(source);
-    setSources([...sources, newSource]);
+  const handleSourceAdded = (source) => {
+    setSources(knowledgeBaseService.getAllSources());
     toast({
       title: "Source Added",
-      description: `"${source.title}" has been added to your knowledge base.`,
+      description: `"${source.name}" has been added to your knowledge base.`,
     });
     setActiveTab("list");
   };
 
-  const handleDeleteSource = (id: string) => {
+  const handleDelete = (id) => {
     knowledgeBaseService.deleteSource(id);
-    setSources(sources.filter(source => source.id !== id));
+    setSources(knowledgeBaseService.getAllSources());
     toast({
       title: "Source Deleted",
       description: "The source has been removed from your knowledge base.",
@@ -35,7 +34,7 @@ export const KnowledgeManagement = () => {
   };
 
   const handleSourcesAdded = () => {
-    setSources(knowledgeBaseService.getSources());
+    setSources(knowledgeBaseService.getAllSources());
     setShowBulkUpload(false);
     toast({
       title: "Sources Added",
@@ -56,8 +55,7 @@ export const KnowledgeManagement = () => {
         {showBulkUpload ? (
           <div className="p-6">
             <BulkSourceUpload 
-              onSourcesAdded={handleSourcesAdded} 
-              onCancel={() => setShowBulkUpload(false)}
+              onSourcesAdded={handleSourcesAdded}
             />
           </div>
         ) : (
@@ -81,13 +79,13 @@ export const KnowledgeManagement = () => {
             <div className="flex-1 overflow-auto">
               <TabsContent value="list" className="h-full m-0">
                 <div className="p-6">
-                  <SourceList sources={sources} onDelete={handleDeleteSource} />
+                  <SourceList sources={sources} onRefresh={() => setSources(knowledgeBaseService.getAllSources())} />
                 </div>
               </TabsContent>
               
               <TabsContent value="add" className="h-full m-0">
                 <div className="p-6">
-                  <SourceForm onSubmit={handleAddSource} />
+                  <SourceForm onSourceAdded={handleSourceAdded} />
                 </div>
               </TabsContent>
             </div>
