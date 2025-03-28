@@ -30,7 +30,7 @@ const Index = () => {
   };
   
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-blue-100 dark:from-slate-900 dark:to-slate-800">
+    <div className="min-h-screen flex flex-col bg-[#da7756]">
       <header className="w-full bg-background/80 backdrop-blur-md border-b border-border py-3">
         <div className="container flex items-center justify-between">
           <div className="flex-1 flex items-center gap-4">
@@ -92,8 +92,8 @@ const Index = () => {
         ) : (
           <div className="space-y-16 w-full max-w-4xl">
             <div className="text-center">
-              <h2 className="text-4xl font-bold text-blue-600 mb-4">Don't overpay for your next apartment.</h2>
-              <p className="text-xl text-blue-500 font-semibold">Arm yourself with data to get the best price on rent</p>
+              <h2 className="text-4xl font-bold text-white mb-4">Don't overpay for your next apartment.</h2>
+              <p className="text-xl text-white font-semibold">Arm yourself with data to get the best price on rent</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -109,7 +109,7 @@ const Index = () => {
                 onClick={() => setActiveJourney("negotiation")}
                 className="journey-bubble flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 border-2 border-blue-200 dark:border-blue-800 rounded-full h-64 w-64 mx-auto transition-all hover:shadow-lg hover:scale-105"
               >
-                <div className="text-blue-500 text-4xl font-bold mb-2">Negotiation Tips</div>
+                <div className="text-blue-500 text-4xl font-bold mb-2">Should I negotiate</div>
                 <p className="text-slate-600 dark:text-slate-300 text-center">Learn effective rental negotiation strategies</p>
               </button>
               
@@ -117,15 +117,15 @@ const Index = () => {
                 to="/practice"
                 className="journey-bubble flex flex-col items-center justify-center p-8 bg-white dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-slate-700 border-2 border-blue-200 dark:border-blue-800 rounded-full h-64 w-64 mx-auto transition-all hover:shadow-lg hover:scale-105"
               >
-                <div className="text-blue-500 text-4xl font-bold mb-2">Practice Call</div>
+                <div className="text-blue-500 text-4xl font-bold mb-2 text-center">Practice Call</div>
                 <p className="text-slate-600 dark:text-slate-300 text-center">Rehearse your negotiation with an AI landlord</p>
               </Link>
             </div>
             
             <div className="mx-auto max-w-md w-full">
               <div className="text-center mb-4">
-                <h3 className="text-lg font-medium text-blue-600">Stay Updated</h3>
-                <p className="text-sm text-slate-600 dark:text-slate-300">Get the latest rental tips and market updates</p>
+                <h3 className="text-lg font-medium text-white">Stay Updated</h3>
+                <p className="text-sm text-white">Get the latest rental tips and market updates</p>
               </div>
               <form onSubmit={handleEmailSubmit} className="flex gap-2">
                 <Input
