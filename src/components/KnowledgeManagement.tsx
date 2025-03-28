@@ -1,115 +1,99 @@
 
-import { useState, useEffect } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState } from "react";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SourceForm } from "@/components/SourceForm";
 import { SourceList } from "@/components/SourceList";
 import { BulkSourceUpload } from "@/components/BulkSourceUpload";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { ExternalSource, knowledgeBaseService } from "@/utils/knowledgeBase";
-import { PlusCircle, Database, Globe, Upload } from "lucide-react";
+import { knowledgeBaseService } from "@/utils/knowledgeBase";
+import { useToast } from "@/components/ui/use-toast";
 
 export const KnowledgeManagement = () => {
-  const [activeTab, setActiveTab] = useState<"all" | "marketData" | "website">("all");
-  const [sources, setSources] = useState<ExternalSource[]>([]);
-  const [isAddSourceOpen, setIsAddSourceOpen] = useState(false);
-  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
-  
-  const fetchSources = () => {
-    if (activeTab === "all") {
-      setSources(knowledgeBaseService.getAllSources());
-    } else {
-      setSources(knowledgeBaseService.getSourcesByType(activeTab));
-    }
+  const [activeTab, setActiveTab] = useState("list");
+  const [sources, setSources] = useState(knowledgeBaseService.getSources());
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const { toast } = useToast();
+
+  const handleAddSource = (source: { title: string; content: string; url?: string }) => {
+    const newSource = knowledgeBaseService.addSource(source);
+    setSources([...sources, newSource]);
+    toast({
+      title: "Source Added",
+      description: `"${source.title}" has been added to your knowledge base.`,
+    });
+    setActiveTab("list");
   };
-  
-  useEffect(() => {
-    fetchSources();
-  }, [activeTab]);
-  
-  const handleSourceAdded = () => {
-    fetchSources();
-    setIsAddSourceOpen(false);
+
+  const handleDeleteSource = (id: string) => {
+    knowledgeBaseService.deleteSource(id);
+    setSources(sources.filter(source => source.id !== id));
+    toast({
+      title: "Source Deleted",
+      description: "The source has been removed from your knowledge base.",
+    });
   };
-  
-  const handleBulkSourcesAdded = () => {
-    fetchSources();
-    setIsBulkUploadOpen(false);
+
+  const handleSourcesAdded = () => {
+    setSources(knowledgeBaseService.getSources());
+    setShowBulkUpload(false);
+    toast({
+      title: "Sources Added",
+      description: "Multiple sources have been added to your knowledge base.",
+    });
   };
-  
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold">Knowledge Sources</h2>
-          <p className="text-muted-foreground mt-1">
-            Manage external data sources to enhance your knowledge base
-          </p>
-        </div>
-        
-        <div className="flex gap-2">
-          <Sheet open={isBulkUploadOpen} onOpenChange={setIsBulkUploadOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline">
-                <Upload className="h-4 w-4 mr-2" />
-                Bulk Upload
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="sm:max-w-md">
-              <SheetHeader>
-                <SheetTitle>Bulk Upload Sources</SheetTitle>
-                <SheetDescription>
-                  Upload multiple sources from a CSV file to your knowledge base
-                </SheetDescription>
-              </SheetHeader>
-              <div className="py-4">
-                <BulkSourceUpload 
-                  onSourcesAdded={handleBulkSourcesAdded} 
-                  onCancel={() => setIsBulkUploadOpen(false)} 
-                />
-              </div>
-            </SheetContent>
-          </Sheet>
-          
-          <Sheet open={isAddSourceOpen} onOpenChange={setIsAddSourceOpen}>
-            <SheetTrigger asChild>
-              <Button>
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Add Source
-              </Button>
-            </SheetTrigger>
-            <SheetContent>
-              <SheetHeader>
-                <SheetTitle>Add Knowledge Source</SheetTitle>
-                <SheetDescription>
-                  Add a new website or market data source to your knowledge base
-                </SheetDescription>
-              </SheetHeader>
-              <div className="py-4">
-                <SourceForm onSourceAdded={handleSourceAdded} />
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
-      </div>
+    <Card className="h-full flex flex-col shadow-md">
+      <CardHeader className="pb-2 bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent border-b">
+        <CardTitle>Knowledge Management</CardTitle>
+        <CardDescription>
+          Add and manage your negotiation knowledge sources
+        </CardDescription>
+      </CardHeader>
       
-      <Tabs defaultValue="all" value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-        <TabsList className="grid grid-cols-3 w-full max-w-md">
-          <TabsTrigger value="all">All Sources</TabsTrigger>
-          <TabsTrigger value="marketData" className="flex items-center">
-            <Database className="h-4 w-4 mr-2" />
-            Market Data
-          </TabsTrigger>
-          <TabsTrigger value="website" className="flex items-center">
-            <Globe className="h-4 w-4 mr-2" />
-            Websites
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value={activeTab} className="mt-6">
-          <SourceList sources={sources} onRefresh={fetchSources} />
-        </TabsContent>
-      </Tabs>
-    </div>
+      <CardContent className="flex-1 overflow-hidden p-0">
+        {showBulkUpload ? (
+          <div className="p-6">
+            <BulkSourceUpload 
+              onSourcesAdded={handleSourcesAdded} 
+              onCancel={() => setShowBulkUpload(false)}
+            />
+          </div>
+        ) : (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+            <div className="px-6 pt-6 pb-2 border-b">
+              <div className="flex justify-between items-center mb-4">
+                <TabsList>
+                  <TabsTrigger value="list">Your Sources</TabsTrigger>
+                  <TabsTrigger value="add">Add New</TabsTrigger>
+                </TabsList>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowBulkUpload(true)}
+                >
+                  Bulk Upload
+                </Button>
+              </div>
+            </div>
+            
+            <div className="flex-1 overflow-auto">
+              <TabsContent value="list" className="h-full m-0">
+                <div className="p-6">
+                  <SourceList sources={sources} onDelete={handleDeleteSource} />
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="add" className="h-full m-0">
+                <div className="p-6">
+                  <SourceForm onSubmit={handleAddSource} />
+                </div>
+              </TabsContent>
+            </div>
+          </Tabs>
+        )}
+      </CardContent>
+    </Card>
   );
 };

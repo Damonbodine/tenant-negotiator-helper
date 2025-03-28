@@ -14,7 +14,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState("knowledge");
   
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-background to-negotiator-50/30 dark:from-background dark:to-negotiator-950/10">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-blue-100 dark:from-slate-900 dark:to-slate-800">
       <Header activeTab={activeTab} setActiveTab={setActiveTab} />
       
       <main className="flex-1 container py-6">
@@ -30,7 +30,7 @@ const Index = () => {
           <div>
             <div className="mb-6 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
               <div>
-                <h2 className="text-2xl font-bold gradient-heading">Negotiation Strategies</h2>
+                <h2 className="text-2xl font-bold text-blue-600">Negotiation Strategies</h2>
                 <p className="text-muted-foreground mt-1">
                   Expert tips to help you secure a better rental deal
                 </p>
@@ -43,7 +43,7 @@ const Index = () => {
                   </Button>
                 </a>
                 <Link to="/practice">
-                  <Button className="gap-2 bg-negotiator-600 hover:bg-negotiator-700">
+                  <Button className="gap-2 bg-blue-600 hover:bg-blue-700">
                     <Headphones className="h-4 w-4" />
                     Practice Negotiation
                   </Button>

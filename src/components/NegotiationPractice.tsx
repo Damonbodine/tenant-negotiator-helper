@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -152,7 +153,7 @@ export const NegotiationPractice = () => {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold gradient-heading">Practice Negotiation Calls</h2>
+          <h2 className="text-2xl font-bold text-blue-600">Practice Negotiation Calls</h2>
           <p className="text-muted-foreground mt-1">
             Improve your rental negotiation skills with interactive voice practice
           </p>
@@ -167,8 +168,8 @@ export const NegotiationPractice = () => {
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <Card className="h-full flex flex-col shadow-md border-negotiator-100">
-            <CardHeader className="pb-2 flex flex-row justify-between items-center bg-gradient-to-r from-negotiator-50 to-transparent dark:from-negotiator-900/20 dark:to-transparent border-b">
+          <Card className="h-full flex flex-col shadow-md border-blue-100">
+            <CardHeader className="pb-2 flex flex-row justify-between items-center bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent border-b">
               <div>
                 <CardTitle>Negotiation Simulator</CardTitle>
                 <CardDescription>
@@ -177,7 +178,7 @@ export const NegotiationPractice = () => {
               </div>
               <div className="flex items-center gap-2">
                 {!isCallActive ? (
-                  <Button onClick={startCall} className="gap-2 bg-negotiator-600 hover:bg-negotiator-700">
+                  <Button onClick={startCall} className="gap-2 bg-blue-600 hover:bg-blue-700">
                     <Phone className="h-4 w-4" />
                     Start Call
                   </Button>
@@ -211,7 +212,7 @@ export const NegotiationPractice = () => {
                             className={`
                               max-w-[80%] p-3
                               ${message.type === "user" 
-                                ? "bg-negotiator-500 text-white" 
+                                ? "bg-blue-500 text-white" 
                                 : "bg-card border border-border"}
                             `}
                           >
@@ -219,7 +220,7 @@ export const NegotiationPractice = () => {
                             <div 
                               className={`
                                 text-xs mt-1 
-                                ${message.type === "user" ? "text-negotiator-100" : "text-muted-foreground"}
+                                ${message.type === "user" ? "text-blue-100" : "text-muted-foreground"}
                               `}
                             >
                               {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -231,9 +232,9 @@ export const NegotiationPractice = () => {
                         <div className="flex justify-start">
                           <Card className="max-w-[80%] p-3 bg-card border border-border">
                             <div className="flex space-x-2">
-                              <div className="w-2 h-2 rounded-full bg-negotiator-400 animate-pulse" />
-                              <div className="w-2 h-2 rounded-full bg-negotiator-400 animate-pulse delay-150" />
-                              <div className="w-2 h-2 rounded-full bg-negotiator-400 animate-pulse delay-300" />
+                              <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                              <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse delay-150" />
+                              <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse delay-300" />
                             </div>
                           </Card>
                         </div>
@@ -297,8 +298,8 @@ export const NegotiationPractice = () => {
         </div>
         
         <div className="space-y-6">
-          <Card className="shadow-md border-negotiator-100">
-            <CardHeader className="bg-gradient-to-r from-negotiator-50 to-transparent dark:from-negotiator-900/20 dark:to-transparent border-b">
+          <Card className="shadow-md border-blue-100">
+            <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent border-b">
               <CardTitle>Practice Scenarios</CardTitle>
               <CardDescription>
                 Choose a scenario to practice different negotiation contexts
@@ -321,20 +322,20 @@ export const NegotiationPractice = () => {
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-to-br from-negotiator-700 to-negotiator-600 text-white shadow-md">
+          <Card className="bg-gradient-to-br from-blue-700 to-blue-600 text-white shadow-md">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">Quick Tips</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-negotiator-100">
+              <p className="text-blue-100">
                 <Badge variant="outline" className="mb-1 border-white/20 text-white mr-2">Tip 1</Badge>
                 Start by building rapport. Briefly introduce yourself and why you like the property.
               </p>
-              <p className="text-negotiator-100">
+              <p className="text-blue-100">
                 <Badge variant="outline" className="mb-1 border-white/20 text-white mr-2">Tip 2</Badge>
                 Ask open-ended questions to understand the landlord's needs and flexibility.
               </p>
-              <p className="text-negotiator-100">
+              <p className="text-blue-100">
                 <Badge variant="outline" className="mb-1 border-white/20 text-white mr-2">Tip 3</Badge>
                 When stating your offer, provide reasoning based on market research or property condition.
               </p>

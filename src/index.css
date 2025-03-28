@@ -98,6 +98,6 @@
 
 @layer utilities {
   .gradient-heading {
-    @apply bg-gradient-to-r from-negotiator-700 to-negotiator-500 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-blue-700 to-blue-500 bg-clip-text text-transparent;
   }
 }
