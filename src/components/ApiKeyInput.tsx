@@ -5,18 +5,21 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { agentService } from "@/utils/agentService";
+import { API_KEYS, ApiKeyConfig } from "@/utils/keyManager";
 
 interface ApiKeyInputProps {
   onClose: () => void;
+  keyType?: string; // Optional key type, defaults to ElevenLabs
 }
 
-export const ApiKeyInput = ({ onClose }: ApiKeyInputProps) => {
+export const ApiKeyInput = ({ onClose, keyType = 'ELEVEN_LABS' }: ApiKeyInputProps) => {
   const { toast } = useToast();
   const [apiKey, setApiKey] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const keyConfig: ApiKeyConfig = API_KEYS[keyType];
   
   useEffect(() => {
-    const savedKey = localStorage.getItem("elevenlabs_api_key");
+    const savedKey = agentService.getApiKey();
     if (savedKey) {
       setApiKey(savedKey);
     }
@@ -26,7 +29,7 @@ export const ApiKeyInput = ({ onClose }: ApiKeyInputProps) => {
     if (!apiKey.trim()) {
       toast({
         title: "API Key Required",
-        description: "Please enter your ElevenLabs API key",
+        description: `Please enter your ${keyConfig.name}`,
         variant: "destructive",
       });
       return;
@@ -37,7 +40,7 @@ export const ApiKeyInput = ({ onClose }: ApiKeyInputProps) => {
       agentService.setApiKey(apiKey);
       toast({
         title: "API Key Saved",
-        description: "Your ElevenLabs API key has been saved",
+        description: `Your ${keyConfig.name} has been saved`,
       });
       onClose();
     } catch (error) {
@@ -56,24 +59,24 @@ export const ApiKeyInput = ({ onClose }: ApiKeyInputProps) => {
     <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>ElevenLabs API Key</DialogTitle>
+          <DialogTitle>{keyConfig.name}</DialogTitle>
           <DialogDescription>
-            Enter your ElevenLabs API key to enable the AI voice agent.
+            Enter your {keyConfig.name} to enable the AI voice agent.
             Get your API key at{" "}
             <a 
-              href="https://elevenlabs.io/app/api" 
+              href={keyConfig.url} 
               target="_blank" 
               rel="noreferrer"
               className="text-negotiator-500 hover:underline"
             >
-              elevenlabs.io
+              {new URL(keyConfig.url).hostname}
             </a>
           </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-4 py-4">
           <Input
-            placeholder="Enter your ElevenLabs API key"
+            placeholder={`Enter your ${keyConfig.name}`}
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             className="w-full"

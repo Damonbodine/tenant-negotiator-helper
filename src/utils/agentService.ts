@@ -1,29 +1,28 @@
 
 // This service integrates with the ElevenLabs API for voice-based conversations
-// It handles API key management, conversation state, and API calls
+// It handles conversation state and API calls
+
+import { getApiKey, hasApiKey, saveApiKey, API_KEYS } from './keyManager';
 
 class AgentService {
-  private apiKey: string | null = null;
   private conversationId: string | null = null;
   private voiceId: string = "21m00Tcm4TlvDq8ikWAM"; // Default voice - Rachel
   private baseUrl: string = "https://api.elevenlabs.io/v1";
   
   constructor() {
-    // Try to load API key from localStorage on initialization
-    this.apiKey = localStorage.getItem("elevenlabs_api_key");
+    // Constructor stays minimal, keys are handled by keyManager
   }
   
   setApiKey(key: string): void {
-    this.apiKey = key;
-    localStorage.setItem("elevenlabs_api_key", key);
+    saveApiKey('ELEVEN_LABS', key);
   }
   
   hasApiKey(): boolean {
-    return !!this.apiKey;
+    return hasApiKey('ELEVEN_LABS');
   }
   
   getApiKey(): string | null {
-    return this.apiKey;
+    return getApiKey('ELEVEN_LABS');
   }
   
   setVoice(voiceId: string): void {
@@ -32,7 +31,7 @@ class AgentService {
   
   // Initialize a conversation with ElevenLabs API
   async startConversation(): Promise<void> {
-    if (!this.apiKey) {
+    if (!this.hasApiKey()) {
       throw new Error("API key not set");
     }
     
@@ -51,7 +50,7 @@ class AgentService {
   
   // Send a user message to the ElevenLabs API and get a response
   async sendMessage(message: string): Promise<string> {
-    if (!this.apiKey) {
+    if (!this.hasApiKey()) {
       throw new Error("API key not set");
     }
     
@@ -73,7 +72,8 @@ class AgentService {
   
   // Generate speech using the ElevenLabs API
   async generateSpeech(text: string): Promise<ArrayBuffer> {
-    if (!this.apiKey) {
+    const apiKey = this.getApiKey();
+    if (!apiKey) {
       throw new Error("API key not set");
     }
     
@@ -81,7 +81,7 @@ class AgentService {
       const response = await fetch(`${this.baseUrl}/text-to-speech/${this.voiceId}`, {
         method: 'POST',
         headers: {
-          'xi-api-key': this.apiKey,
+          'xi-api-key': apiKey,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -108,7 +108,7 @@ class AgentService {
   
   // Get market insights based on user query
   async getMarketInsights(query: string): Promise<string> {
-    if (!this.apiKey) {
+    if (!this.hasApiKey()) {
       throw new Error("API key not set");
     }
     
@@ -124,7 +124,7 @@ class AgentService {
   
   // Get negotiation advice based on user query
   async getNegotiationAdvice(query: string): Promise<string> {
-    if (!this.apiKey) {
+    if (!this.hasApiKey()) {
       throw new Error("API key not set");
     }
     
