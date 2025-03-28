@@ -7,14 +7,14 @@ import { NegotiationTips } from "@/components/NegotiationTips";
 import { KnowledgeBase } from "@/components/KnowledgeBase";
 import { KnowledgeManagement } from "@/components/KnowledgeManagement";
 import { Button } from "@/components/ui/button";
-import { Headphones } from "lucide-react";
+import { Headphones, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("knowledge");
   
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-background to-negotiator-50/30 dark:from-background dark:to-negotiator-950/10">
       <Header activeTab={activeTab} setActiveTab={setActiveTab} />
       
       <main className="flex-1 container py-6">
@@ -28,19 +28,27 @@ const Index = () => {
         
         {activeTab === "tips" && (
           <div>
-            <div className="mb-6 flex justify-between items-center">
+            <div className="mb-6 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
               <div>
                 <h2 className="text-2xl font-bold gradient-heading">Negotiation Strategies</h2>
                 <p className="text-muted-foreground mt-1">
                   Expert tips to help you secure a better rental deal
                 </p>
               </div>
-              <Link to="/practice">
-                <Button className="gap-2">
-                  <Headphones className="h-4 w-4" />
-                  Practice Negotiation
-                </Button>
-              </Link>
+              <div className="flex gap-3 flex-wrap">
+                <a href="https://ditchmyrent.com" target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" className="gap-2">
+                    <ExternalLink className="h-4 w-4" />
+                    Visit DitchMyRent
+                  </Button>
+                </a>
+                <Link to="/practice">
+                  <Button className="gap-2 bg-negotiator-600 hover:bg-negotiator-700">
+                    <Headphones className="h-4 w-4" />
+                    Practice Negotiation
+                  </Button>
+                </Link>
+              </div>
             </div>
             <NegotiationTips />
           </div>

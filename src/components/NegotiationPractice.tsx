@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,11 +5,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Headphones, Mic, MicOff, Phone, PhoneOff, Settings } from "lucide-react";
+import { Headphones, Mic, MicOff, Phone, PhoneOff, Settings, ArrowLeft } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { ApiKeyInput } from "@/components/ApiKeyInput";
 import { agentService } from "@/utils/agentService";
 import { PracticeScenario } from "@/components/PracticeScenario";
+import { Link } from "react-router-dom";
 
 type MessageType = "user" | "agent";
 
@@ -39,7 +39,6 @@ export const NegotiationPractice = () => {
   ];
   
   useEffect(() => {
-    // Add initial welcome message when no messages exist
     if (messages.length === 0 && isCallActive) {
       const scenarioTitle = scenarios.find(s => s.id === selectedScenario)?.name || "Standard Apartment";
       setMessages([
@@ -54,7 +53,6 @@ export const NegotiationPractice = () => {
   }, [messages.length, isCallActive, selectedScenario]);
   
   useEffect(() => {
-    // Scroll to bottom when messages change
     if (scrollAreaRef.current) {
       const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
       if (scrollContainer) {
@@ -110,7 +108,6 @@ export const NegotiationPractice = () => {
     setIsLoading(true);
     
     try {
-      // Get response from agent service
       const response = await agentService.sendMessage(input);
       
       const agentMessage: Message = {
@@ -122,10 +119,7 @@ export const NegotiationPractice = () => {
       
       setMessages(prev => [...prev, agentMessage]);
       
-      // In a real implementation, the response would be spoken by the ElevenLabs API
-      // For now, we'll simulate this with a console log
       console.log("Agent would speak:", response);
-      
     } catch (error) {
       console.error("Error sending message:", error);
       toast({
@@ -139,7 +133,6 @@ export const NegotiationPractice = () => {
   };
   
   const toggleListening = () => {
-    // This would integrate with browser's speech recognition API in a real implementation
     setIsListening(!isListening);
     
     if (!isListening) {
@@ -157,17 +150,25 @@ export const NegotiationPractice = () => {
   
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold gradient-heading">Practice Negotiation Calls</h2>
-        <p className="text-muted-foreground mt-1">
-          Improve your rental negotiation skills with interactive voice practice
-        </p>
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+        <div>
+          <h2 className="text-2xl font-bold gradient-heading">Practice Negotiation Calls</h2>
+          <p className="text-muted-foreground mt-1">
+            Improve your rental negotiation skills with interactive voice practice
+          </p>
+        </div>
+        <Link to="/">
+          <Button variant="outline" size="sm" className="gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Dashboard
+          </Button>
+        </Link>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <Card className="h-full flex flex-col">
-            <CardHeader className="pb-2 flex flex-row justify-between items-center">
+          <Card className="h-full flex flex-col shadow-md border-negotiator-100">
+            <CardHeader className="pb-2 flex flex-row justify-between items-center bg-gradient-to-r from-negotiator-50 to-transparent dark:from-negotiator-900/20 dark:to-transparent border-b">
               <div>
                 <CardTitle>Negotiation Simulator</CardTitle>
                 <CardDescription>
@@ -176,7 +177,7 @@ export const NegotiationPractice = () => {
               </div>
               <div className="flex items-center gap-2">
                 {!isCallActive ? (
-                  <Button onClick={startCall} className="gap-2">
+                  <Button onClick={startCall} className="gap-2 bg-negotiator-600 hover:bg-negotiator-700">
                     <Phone className="h-4 w-4" />
                     Start Call
                   </Button>
@@ -296,14 +297,14 @@ export const NegotiationPractice = () => {
         </div>
         
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
+          <Card className="shadow-md border-negotiator-100">
+            <CardHeader className="bg-gradient-to-r from-negotiator-50 to-transparent dark:from-negotiator-900/20 dark:to-transparent border-b">
               <CardTitle>Practice Scenarios</CardTitle>
               <CardDescription>
                 Choose a scenario to practice different negotiation contexts
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               <Tabs value={selectedScenario} onValueChange={setSelectedScenario}>
                 <TabsList className="grid grid-cols-3 mb-4">
                   <TabsTrigger value="standard">Standard</TabsTrigger>
@@ -320,7 +321,7 @@ export const NegotiationPractice = () => {
             </CardContent>
           </Card>
           
-          <Card className="bg-gradient-to-br from-negotiator-800 to-negotiator-600 text-white">
+          <Card className="bg-gradient-to-br from-negotiator-700 to-negotiator-600 text-white shadow-md">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">Quick Tips</CardTitle>
             </CardHeader>
