@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { agentService } from "@/utils/agentService";
 import { knowledgeBaseService } from "@/utils/knowledgeBase";
+import { ApiKeyInput } from "@/components/ApiKeyInput";
 
 type MessageType = "user" | "agent";
 type ChatType = "market" | "negotiation" | "general";
@@ -30,9 +31,14 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
   const [isListening, setIsListening] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
+    // Initialize audio element
+    audioRef.current = new Audio();
+    
     // Add initial welcome message based on chat type
     if (messages.length === 0) {
       let welcomeMessage = "";
@@ -56,6 +62,11 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
           timestamp: new Date()
         }
       ]);
+
+      // Check if API key is set, if not, prompt user
+      if (!agentService.hasApiKey()) {
+        setShowApiKeyInput(true);
+      }
     }
   }, [messages.length, chatType]);
   
@@ -86,11 +97,7 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
     try {
       // Check if API key is set
       if (!agentService.hasApiKey()) {
-        toast({
-          title: "API Key Required",
-          description: "Please set your ElevenLabs API key to chat with the agent",
-          variant: "destructive",
-        });
+        setShowApiKeyInput(true);
         setIsLoading(false);
         return;
       }
@@ -100,10 +107,10 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
       
       switch(chatType) {
         case "market":
-          response = await simulateMarketResponse(input);
+          response = await agentService.getMarketInsights(input);
           break;
         case "negotiation":
-          response = await simulateNegotiationResponse(input);
+          response = await agentService.getNegotiationAdvice(input);
           break;
         default:
           response = await getIntelligentResponse(input);
@@ -120,8 +127,19 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
       
       // If not muted, speak the response
       if (!isMuted) {
-        // In a real implementation, this would use the ElevenLabs API to speak the response
-        console.log("Would speak:", response);
+        try {
+          const audioBuffer = await agentService.generateSpeech(response);
+          const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
+          const audioUrl = URL.createObjectURL(audioBlob);
+          
+          if (audioRef.current) {
+            audioRef.current.src = audioUrl;
+            audioRef.current.play();
+          }
+        } catch (error) {
+          console.error("Error generating speech:", error);
+          // Fail silently - text response is still shown
+        }
       }
     } catch (error) {
       console.error("Error sending message:", error);
@@ -143,76 +161,36 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
       return knowledgeResponse;
     }
     
-    // Fall back to the simulated responses if no knowledge match
-    return simulateGeneralResponse(userInput);
-  };
-  
-  const simulateMarketResponse = (userInput: string): Promise<string> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const responses = [
-          "Based on current data, rental prices in that area have increased by about 5% over the past year, with a median price of $1,850 for a one-bedroom apartment.",
-          "That neighborhood is currently seeing high demand but also increasing supply with several new developments. This might provide some negotiation leverage in the next 3-6 months.",
-          "Comparable properties in that area are currently renting for $2.75-$3.25 per square foot, which is slightly above the city average.",
-          "The seasonal trends show that winter months (November-February) typically have lower rental prices, with potential savings of 5-8% compared to summer peaks.",
-          "That area has a current vacancy rate of approximately 4.2%, which is below the 5% threshold considered a 'balanced' market. This gives landlords some pricing power.",
-          "Recent policy changes in that municipality now require landlords to disclose the rental history of units, which can give you valuable information for negotiation."
-        ];
-        const randomIndex = Math.floor(Math.random() * responses.length);
-        resolve(responses[randomIndex]);
-      }, 1500);
-    });
-  };
-  
-  const simulateNegotiationResponse = (userInput: string): Promise<string> => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const responses = [
-          "A good strategy is to start by expressing genuine interest in the property, then mention 2-3 comparable units with lower prices. This shows you've done your research and have alternatives.",
-          "Consider offering a longer lease term in exchange for a lower monthly rent. Many landlords value stability and reduced vacancy risk over maximizing monthly income.",
-          "When negotiating, focus on creating a win-win scenario. For example, offering to handle minor repairs yourself in exchange for a rent reduction can benefit both parties.",
-          "Timing matters in negotiations. If a unit has been vacant for over 30 days, landlords are typically more willing to negotiate on price or terms.",
-          "Don't limit negotiations to just the rent. Security deposits, parking fees, included utilities, and move-in dates are all negotiable terms that can save you money.",
-          "Practice active listening during negotiations. Often, landlords will reveal their priorities or concerns, giving you valuable information about what concessions might be most effective."
-        ];
-        const randomIndex = Math.floor(Math.random() * responses.length);
-        resolve(responses[randomIndex]);
-      }, 1500);
-    });
-  };
-  
-  const simulateGeneralResponse = (userInput: string): Promise<string> => {
-    // This function simulates a general AI response
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const responses = [
-          "Based on current market data, you can negotiate for a 5-10% discount on the asking rent if the property has been vacant for over 30 days.",
-          "When negotiating your lease, consider asking for a longer lease term in exchange for a lower monthly rent. Landlords often prefer stable, long-term tenants.",
-          "I'd recommend gathering information about similar properties in the area. Having comparable rental prices can strengthen your negotiating position.",
-          "You might want to ask about maintenance responsibilities. Sometimes landlords are willing to reduce rent if you take on some minor maintenance tasks.",
-          "When viewing the apartment, take notes of any issues or needed repairs. These can be leveraging points during your negotiation.",
-          "In this market, security deposit amount is often negotiable. You could ask for a reduction from two months' rent to one month's rent."
-        ];
-        const randomIndex = Math.floor(Math.random() * responses.length);
-        resolve(responses[randomIndex]);
-      }, 1500);
-    });
+    // Fall back to the agent service
+    return agentService.sendMessage(userInput);
   };
   
   const toggleListening = () => {
     // This would implement speech recognition in a real application
-    // For now, just toggle the state
     setIsListening(!isListening);
+    
     if (!isListening) {
+      // In a real implementation, this would start speech recognition
       toast({
         title: "Voice Input",
         description: "Voice input would be activated here in a complete implementation",
       });
+    } else {
+      // In a real implementation, this would stop speech recognition
     }
   };
   
   const toggleMute = () => {
     setIsMuted(!isMuted);
+    
+    // If currently playing, stop it
+    if (!isMuted && audioRef.current) {
+      audioRef.current.pause();
+    }
+  };
+  
+  const handleApiKeyClose = () => {
+    setShowApiKeyInput(false);
   };
   
   return (
@@ -295,6 +273,10 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
           </div>
         </div>
       </div>
+      
+      {showApiKeyInput && (
+        <ApiKeyInput onClose={handleApiKeyClose} />
+      )}
     </div>
   );
 };
