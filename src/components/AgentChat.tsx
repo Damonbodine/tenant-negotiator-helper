@@ -64,9 +64,13 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
       ]);
 
       // Check if API key is set, if not, prompt user
-      if (!agentService.hasApiKey()) {
-        setShowApiKeyInput(true);
-      }
+      const checkApiKey = async () => {
+        if (!(await agentService.hasApiKey())) {
+          setShowApiKeyInput(true);
+        }
+      };
+      
+      checkApiKey();
     }
   }, [messages.length, chatType]);
   
@@ -96,7 +100,7 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
     
     try {
       // Check if API key is set
-      if (!agentService.hasApiKey()) {
+      if (!(await agentService.hasApiKey())) {
         setShowApiKeyInput(true);
         setIsLoading(false);
         return;

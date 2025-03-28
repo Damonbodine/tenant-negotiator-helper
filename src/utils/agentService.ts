@@ -13,16 +13,16 @@ class AgentService {
     // Constructor stays minimal, keys are handled by keyManager
   }
   
-  setApiKey(key: string): void {
-    saveApiKey('ELEVEN_LABS', key);
+  async setApiKey(key: string): Promise<void> {
+    await saveApiKey('ELEVEN_LABS', key);
   }
   
-  hasApiKey(): boolean {
-    return hasApiKey('ELEVEN_LABS');
+  async hasApiKey(): Promise<boolean> {
+    return await hasApiKey('ELEVEN_LABS');
   }
   
-  getApiKey(): string | null {
-    return getApiKey('ELEVEN_LABS');
+  async getApiKey(): Promise<string | null> {
+    return await getApiKey('ELEVEN_LABS');
   }
   
   setVoice(voiceId: string): void {
@@ -31,7 +31,7 @@ class AgentService {
   
   // Initialize a conversation with ElevenLabs API
   async startConversation(): Promise<void> {
-    if (!this.hasApiKey()) {
+    if (!(await this.hasApiKey())) {
       throw new Error("API key not set");
     }
     
@@ -50,7 +50,7 @@ class AgentService {
   
   // Send a user message to the ElevenLabs API and get a response
   async sendMessage(message: string): Promise<string> {
-    if (!this.hasApiKey()) {
+    if (!(await this.hasApiKey())) {
       throw new Error("API key not set");
     }
     
@@ -72,7 +72,7 @@ class AgentService {
   
   // Generate speech using the ElevenLabs API
   async generateSpeech(text: string): Promise<ArrayBuffer> {
-    const apiKey = this.getApiKey();
+    const apiKey = await this.getApiKey();
     if (!apiKey) {
       throw new Error("API key not set");
     }
@@ -108,7 +108,7 @@ class AgentService {
   
   // Get market insights based on user query
   async getMarketInsights(query: string): Promise<string> {
-    if (!this.hasApiKey()) {
+    if (!(await this.hasApiKey())) {
       throw new Error("API key not set");
     }
     
@@ -124,7 +124,7 @@ class AgentService {
   
   // Get negotiation advice based on user query
   async getNegotiationAdvice(query: string): Promise<string> {
-    if (!this.hasApiKey()) {
+    if (!(await this.hasApiKey())) {
       throw new Error("API key not set");
     }
     
