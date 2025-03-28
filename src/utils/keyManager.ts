@@ -22,6 +22,12 @@ export const API_KEYS: Record<string, ApiKeyConfig> = {
     isRequired: true,
     url: "https://elevenlabs.io/app/api"
   },
+  GOOGLE: {
+    name: "Google API Key",
+    storageKey: "google_api_key",
+    isRequired: false,
+    url: "https://console.cloud.google.com/apis/credentials"
+  }
   // Add additional API keys here as needed
 };
 

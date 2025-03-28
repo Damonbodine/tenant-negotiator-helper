@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Building, DollarSign, MessagesSquare, PieChart, Headphones } from "lucide-react";
+import { Building, DollarSign, MessagesSquare, PieChart, Headphones, Key } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ApiKeyInput } from "@/components/ApiKeyInput";
@@ -53,9 +53,10 @@ export const Header = ({ activeTab, setActiveTab }: HeaderProps) => {
           variant="outline" 
           size="sm" 
           onClick={() => setShowApiModal(true)}
-          className="text-sm"
+          className="text-sm flex items-center gap-1"
         >
-          Set API Key
+          <Key className="h-4 w-4" />
+          <span>Manage API Keys</span>
         </Button>
         
         {showApiModal && <ApiKeyInput onClose={() => setShowApiModal(false)} />}
