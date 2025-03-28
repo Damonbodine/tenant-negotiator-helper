@@ -92,8 +92,8 @@ const Index = () => {
         ) : (
           <div className="space-y-16 w-full max-w-4xl">
             <div className="text-center">
-              <h2 className="text-3xl font-bold text-blue-600 mb-2">Start Your Rental Journey</h2>
-              <p className="text-slate-600 dark:text-slate-300">Choose an option to get started</p>
+              <h2 className="text-4xl font-bold text-blue-600 mb-4">Don't overpay for your next apartment.</h2>
+              <p className="text-xl text-blue-500 font-semibold">Arm yourself with data to get the best price on rent</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
