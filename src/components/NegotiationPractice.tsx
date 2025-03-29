@@ -25,6 +25,7 @@ export const NegotiationPractice = () => {
     isMuted,
     selectedVoice,
     availableVoices,
+    microphoneAccessState,
     startCall,
     endCall,
     handleSend,
@@ -85,6 +86,7 @@ export const NegotiationPractice = () => {
                 isCallActive={isCallActive}
                 toggleListening={toggleListening}
                 handleSend={handleSend}
+                microphoneAccessState={microphoneAccessState}
               />
             </CardContent>
           </Card>

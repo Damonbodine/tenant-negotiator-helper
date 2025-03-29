@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { agentService } from "@/utils/agentService";
@@ -26,6 +27,7 @@ export function useVoiceNegotiation(scenario: string) {
   const [selectedVoice, setSelectedVoice] = useState("21m00Tcm4TlvDq8ikWAM"); // Rachel voice
   const [availableVoices, setAvailableVoices] = useState<any[]>([]);
   const [hasBackendApiKey, setHasBackendApiKey] = useState(false);
+  const [microphoneAccessState, setMicrophoneAccessState] = useState<'granted' | 'denied' | 'prompt' | 'error' | null>(null);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -50,6 +52,52 @@ export function useVoiceNegotiation(scenario: string) {
     };
     
     checkBackendApiKey();
+  }, []);
+  
+  // Check microphone permissions when the component mounts
+  useEffect(() => {
+    const checkMicrophonePermission = async () => {
+      try {
+        // Check if the browser supports navigator.permissions
+        if (navigator.permissions) {
+          const permissionStatus = await navigator.permissions.query({ name: 'microphone' as PermissionName });
+          
+          setMicrophoneAccessState(permissionStatus.state as 'granted' | 'denied' | 'prompt');
+          
+          // Listen for permission changes
+          permissionStatus.onchange = () => {
+            setMicrophoneAccessState(permissionStatus.state as 'granted' | 'denied' | 'prompt');
+            
+            if (permissionStatus.state === 'granted') {
+              toast({
+                title: "Microphone Access Granted",
+                description: "You can now use your microphone for voice input.",
+              });
+            } else if (permissionStatus.state === 'denied') {
+              toast({
+                title: "Microphone Access Denied",
+                description: "Please enable microphone access in your browser settings to use voice features.",
+                variant: "destructive",
+              });
+              
+              // Stop listening if it was active
+              if (isListening) {
+                stopListening();
+              }
+            }
+          };
+        } else {
+          // Fallback for browsers that don't support permissions API
+          console.log("Browser doesn't support permissions API, will check on first use");
+          setMicrophoneAccessState('prompt');
+        }
+      } catch (error) {
+        console.error("Error checking microphone permissions:", error);
+        setMicrophoneAccessState('error');
+      }
+    };
+    
+    checkMicrophonePermission();
   }, []);
   
   // Initialize audio element and start negotiation if call is active
@@ -277,11 +325,35 @@ export function useVoiceNegotiation(scenario: string) {
   
   const startListening = async () => {
     try {
-      // Request microphone access
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Display toast to show we're requesting microphone access
+      toast({
+        title: "Requesting Microphone Access",
+        description: "Please allow microphone access when prompted by your browser.",
+      });
       
-      // Create MediaRecorder instance
-      const mediaRecorder = new MediaRecorder(stream);
+      // Request microphone access with explicit options for compatibility
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        } 
+      });
+      
+      // If we get here, permission was granted
+      setMicrophoneAccessState('granted');
+      
+      // Create MediaRecorder instance with specific MIME type for better compatibility
+      const options = { mimeType: 'audio/webm' };
+      let mediaRecorder;
+      
+      try {
+        mediaRecorder = new MediaRecorder(stream, options);
+      } catch (e) {
+        console.log('MediaRecorder with specified options failed, trying without options');
+        mediaRecorder = new MediaRecorder(stream);
+      }
+      
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
       
@@ -292,9 +364,27 @@ export function useVoiceNegotiation(scenario: string) {
         }
       };
       
+      // Log MediaRecorder state to help with debugging
+      mediaRecorder.onstart = () => {
+        console.log("MediaRecorder started");
+      };
+      
+      mediaRecorder.onerror = (event) => {
+        console.error("MediaRecorder error:", event);
+        toast({
+          title: "Microphone Error",
+          description: "An error occurred while using your microphone. Please try again.",
+          variant: "destructive",
+        });
+        stopListening();
+      };
+      
       // Handle recording stop
       mediaRecorder.onstop = async () => {
+        console.log("MediaRecorder stopped, processing audio chunks");
+        
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        console.log(`Audio blob created with size: ${audioBlob.size} bytes`);
         
         try {
           // In a real implementation, this would send the audio to a speech-to-text service
@@ -319,7 +409,7 @@ export function useVoiceNegotiation(scenario: string) {
           console.error("Error processing audio:", error);
           toast({
             title: "Voice Processing Error",
-            description: "Could not process your voice input.",
+            description: "Could not process your voice input: " + ((error as Error).message || "Unknown error"),
             variant: "destructive",
           });
         }
@@ -327,31 +417,61 @@ export function useVoiceNegotiation(scenario: string) {
         setIsListening(false);
       };
       
-      // Start recording
-      mediaRecorder.start();
-      setIsListening(true);
-      
-      toast({
-        title: "Voice Input Activated",
-        description: "Speak clearly into your microphone",
-      });
+      // Start recording - use a try/catch here to capture any errors during start
+      try {
+        console.log("Starting MediaRecorder with timeSlice of 1000ms");
+        mediaRecorder.start(1000); // Collect data in 1-second chunks
+        setIsListening(true);
+        
+        toast({
+          title: "Voice Input Activated",
+          description: "Speak clearly into your microphone",
+        });
+      } catch (e) {
+        console.error("Error starting MediaRecorder:", e);
+        toast({
+          title: "Microphone Error",
+          description: "Could not start recording: " + ((e as Error).message || "Unknown error"),
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error("Error accessing microphone:", error);
-      toast({
-        title: "Microphone Error",
-        description: "Could not access your microphone",
-        variant: "destructive",
-      });
+      
+      // If permission is denied, update our state
+      if ((error as Error).name === 'NotAllowedError' || (error as Error).name === 'PermissionDeniedError') {
+        setMicrophoneAccessState('denied');
+        toast({
+          title: "Microphone Access Denied",
+          description: "Please enable microphone access in your browser settings to use voice features.",
+          variant: "destructive",
+        });
+      } else {
+        // Handle other types of errors
+        setMicrophoneAccessState('error');
+        toast({
+          title: "Microphone Error",
+          description: "Could not access your microphone: " + ((error as Error).message || "Unknown error"),
+          variant: "destructive",
+        });
+      }
     }
   };
   
   const stopListening = () => {
+    console.log("Stopping MediaRecorder");
+    
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-      
-      // Stop all tracks of the stream
-      if (mediaRecorderRef.current.stream) {
-        mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      try {
+        mediaRecorderRef.current.stop();
+        
+        // Stop all tracks of the stream
+        if (mediaRecorderRef.current.stream) {
+          console.log("Stopping all media tracks");
+          mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+        }
+      } catch (e) {
+        console.error("Error stopping MediaRecorder:", e);
       }
     }
     
@@ -397,6 +517,7 @@ export function useVoiceNegotiation(scenario: string) {
     selectedVoice,
     availableVoices,
     hasBackendApiKey,
+    microphoneAccessState,
     startCall,
     endCall,
     handleSend,

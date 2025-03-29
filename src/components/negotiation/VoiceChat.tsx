@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Headphones, Mic, MicOff } from "lucide-react";
+import { Headphones, Mic, MicOff, ShieldAlert, ShieldCheck } from "lucide-react";
 import { Message } from "@/hooks/useVoiceNegotiation";
 
 interface VoiceChatProps {
@@ -16,6 +16,7 @@ interface VoiceChatProps {
   isCallActive: boolean;
   toggleListening: () => void;
   handleSend: () => void;
+  microphoneAccessState?: 'granted' | 'denied' | 'prompt' | 'error' | null;
 }
 
 export function VoiceChat({
@@ -26,7 +27,8 @@ export function VoiceChat({
   isListening,
   isCallActive,
   toggleListening,
-  handleSend
+  handleSend,
+  microphoneAccessState
 }: VoiceChatProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   
@@ -39,6 +41,68 @@ export function VoiceChat({
       }
     }
   }, [messages]);
+  
+  // Helper to render microphone button with appropriate state
+  const renderMicButton = () => {
+    // If not actively listening, show the default mic button with state information
+    if (!isListening) {
+      // Different button states based on mic permission
+      if (microphoneAccessState === 'denied') {
+        return (
+          <Button 
+            onClick={toggleListening}
+            variant="outline" 
+            size="icon"
+            className="bg-red-100 text-red-500"
+            title="Microphone access denied. Click to request permission again."
+            disabled={!isCallActive}
+          >
+            <ShieldAlert className="h-4 w-4" />
+          </Button>
+        );
+      } else if (microphoneAccessState === 'granted') {
+        return (
+          <Button 
+            onClick={toggleListening}
+            variant="outline" 
+            size="icon"
+            className="bg-green-100 text-green-500"
+            title="Microphone access granted. Click to start speaking."
+            disabled={!isCallActive}
+          >
+            <Mic className="h-4 w-4" />
+          </Button>
+        );
+      } else {
+        // Default state (prompt or unknown)
+        return (
+          <Button 
+            onClick={toggleListening}
+            variant="outline" 
+            size="icon"
+            title="Click to start speaking (will request microphone permission)"
+            disabled={!isCallActive}
+          >
+            <Mic className="h-4 w-4" />
+          </Button>
+        );
+      }
+    } else {
+      // Currently listening - show stop button
+      return (
+        <Button 
+          onClick={toggleListening}
+          variant="outline" 
+          size="icon"
+          className="bg-red-100 text-red-500 animate-pulse"
+          title="Currently listening. Click to stop."
+          disabled={!isCallActive}
+        >
+          <MicOff className="h-4 w-4" />
+        </Button>
+      );
+    }
+  };
   
   // Render the active chat interface
   const renderActiveChat = () => (
@@ -100,15 +164,7 @@ export function VoiceChat({
             disabled={!isCallActive}
           />
           <div className="flex flex-col gap-2">
-            <Button 
-              onClick={toggleListening}
-              variant="outline" 
-              size="icon"
-              className={isListening ? "bg-red-100 text-red-500" : ""}
-              disabled={!isCallActive}
-            >
-              {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-            </Button>
+            {renderMicButton()}
             <Button 
               onClick={handleSend} 
               size="icon" 
@@ -131,6 +187,15 @@ export function VoiceChat({
         <p className="text-muted-foreground mb-4">
           Select a scenario from the right panel and click "Start Call" to begin your negotiation practice session.
         </p>
+        {microphoneAccessState === 'denied' && (
+          <div className="p-4 bg-red-50 rounded-lg border border-red-200 mb-4">
+            <div className="flex items-center mb-2">
+              <ShieldAlert className="h-5 w-5 text-red-500 mr-2" />
+              <span className="font-medium text-red-600">Microphone access denied</span>
+            </div>
+            <p className="text-sm text-red-700">You'll need to enable microphone access in your browser settings to use voice features.</p>
+          </div>
+        )}
       </div>
     </div>
   );
