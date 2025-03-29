@@ -158,33 +158,36 @@ async function extractPropertyDetails(url: string) {
       throw new Error("APIFY_API_KEY not set");
     }
     
-    // Using the maxcopell/zillow-scraper actor as suggested by the user
+    // Using the maxcopell/zillow-scraper actor as provided by the user
     const actorId = "maxcopell/zillow-scraper";
     console.log(`Using Apify actor: ${actorId}`);
     
-    // Create a search URL to match our target property listing
-    // For this actor, we need to transform the single property URL into a search URL
-    // to trick the actor into thinking it's a search
-    let searchUrl = url;
+    // Format URL for zillow-scraper actor
+    // This actor needs a search URL, but we also want it to work with detail URLs
+    // We'll convert the detail URL to a format that works with the actor
+    let zillowApiUrl = "https://api.apify.com/v2/acts/maxcopell/zillow-scraper/runs";
+    console.log(`API endpoint: ${zillowApiUrl}`);
     
-    // If the URL is a homedetails URL, we need to extract the zipcode
+    // Extract the zipcode for later
     const zipCodeMatch = url.match(/-(\d{5})\//) || ["", "78705"];
     
     // Start the Apify actor run
-    console.log(`Starting Apify actor run with URL: ${searchUrl}`);
-    const runResponse = await fetch(`https://api.apify.com/v2/acts/${actorId}/runs?token=${apifyApiKey}`, {
+    console.log(`Starting Apify actor run with URL: ${url}`);
+    const runResponse = await fetch(zillowApiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "Authorization": `Bearer ${apifyApiKey}`
       },
       body: JSON.stringify({
         "searchUrls": [
           {
-            "url": searchUrl
+            "url": url
           }
         ],
-        "extractionMethod": "PAGINATION_WITHOUT_ZOOM_IN", // Using pagination without zoom for quicker results
-        "maxItems": 1 // We only need the single property
+        "extractionMethod": "PAGINATION_WITHOUT_ZOOM_IN",
+        "maxItems": 1, // We only need the single property
+        "includeSellerInfo": true
       })
     });
     
@@ -198,14 +201,14 @@ async function extractPropertyDetails(url: string) {
     console.log(`Actor run initiated, run ID: ${runData.id}`);
     
     // Wait for the run to finish (with timeout)
-    const maxWaitTime = 60000; // 60 seconds
+    const maxWaitTime = 120000; // 120 seconds
     const startTime = Date.now();
     let runFinished = false;
     let runDetail = null;
     
     while (!runFinished && Date.now() - startTime < maxWaitTime) {
       // Wait a bit before checking again
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise(resolve => setTimeout(resolve, 5000));
       
       // Check if the run has finished
       const detailResponse = await fetch(`https://api.apify.com/v2/actor-runs/${runData.id}?token=${apifyApiKey}`);
@@ -256,7 +259,7 @@ async function extractPropertyDetails(url: string) {
     const propertyData = items[0];
     console.log("Property data:", JSON.stringify(propertyData));
     
-    // Extract the relevant information from the actor output
+    // Map from the schema shown in the user's message
     return {
       address: propertyData.address || `Unknown Address, ${zipCodeMatch[1]}`,
       zipCode: zipCodeMatch[1],
