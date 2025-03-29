@@ -15,6 +15,7 @@ interface PropertyDetails {
   bathrooms: number | null;
   price: number | null;
   propertyType: string;
+  squareFootage: number | null;
 }
 
 // Interface for comparable properties
@@ -26,6 +27,7 @@ interface Comparable {
   propertyType: string;
   distance: number;
   url: string;
+  squareFootage: number | null;
 }
 
 // Interface for analysis results
@@ -135,8 +137,8 @@ serve(async (req) => {
     }
     
     try {
-      console.log("Attempting to extract real property details using Apify");
-      // Try to extract real property details
+      console.log("Attempting to extract real property details using Apify Zillow Scraper");
+      // Extract property details using the specific Zillow scraper actor
       const propertyDetails = await extractPropertyDetails(apiKey, zillowUrl);
       
       // If we couldn't get property details, try using our fallback method
@@ -161,10 +163,35 @@ serve(async (req) => {
 
       console.log("Successfully extracted property details:", JSON.stringify(propertyDetails));
 
-      // Generate comparables based on the property details
-      const comparables = generateComparables(propertyDetails);
+      // Get comparable properties by ZIP code search
+      console.log("Finding comparable properties using Apify Zillow ZIP search");
+      const comparables = await findComparableProperties(
+        apiKey, 
+        propertyDetails.zipCode, 
+        propertyDetails.bedrooms, 
+        propertyDetails.propertyType,
+        propertyDetails.squareFootage
+      );
       
-      // Create and return analysis result
+      if (!comparables || comparables.length === 0) {
+        console.log("No comparable properties found, generating mock comparables");
+        // If no comparables found, generate mock ones based on the real property details
+        const mockComparables = generateComparables(propertyDetails);
+        const analysisResult = createAnalysisResult(propertyDetails, mockComparables);
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: "Could not find comparable properties. Using generated comparables.",
+            analysis: analysisResult
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+      
+      // Create and return analysis result with real data
       const analysisResult = createAnalysisResult(propertyDetails, comparables);
       
       return new Response(
@@ -177,7 +204,7 @@ serve(async (req) => {
         }
       );
     } catch (error) {
-      console.error(`Error extracting property details: ${error.message}`);
+      console.error(`Error processing property details: ${error.message}`);
       if (error.stack) {
         console.error(`Stack trace: ${error.stack}`);
       }
@@ -258,7 +285,8 @@ function createFallbackPropertyDetails(zillowUrl: string): PropertyDetails {
     bedrooms: Math.floor(Math.random() * 2) + 1,
     bathrooms: Math.floor(Math.random() * 2) + 1,
     price: Math.floor(Math.random() * 1000) + 1500,
-    propertyType: Math.random() > 0.5 ? "Apartment" : "Condo"
+    propertyType: Math.random() > 0.5 ? "Apartment" : "Condo",
+    squareFootage: Math.floor(Math.random() * 500) + 600
   };
 }
 
@@ -278,131 +306,250 @@ function createMockPropertyDetails(): PropertyDetails {
     bedrooms: Math.floor(Math.random() * 3) + 1,
     bathrooms: Math.floor(Math.random() * 2) + 1,
     price: Math.floor(Math.random() * 1000) + 2000,
-    propertyType: Math.random() > 0.5 ? "Apartment" : "Condo"
+    propertyType: Math.random() > 0.5 ? "Apartment" : "Condo",
+    squareFootage: Math.floor(Math.random() * 500) + 700
   };
 }
 
-// Extract property details using Apify
+// Extract property details using Apify Zillow Scraper actor
 async function extractPropertyDetails(apiKey: string, zillowUrl: string): Promise<PropertyDetails | null> {
   try {
     console.log("Attempting to extract property details for URL:", zillowUrl);
     console.log("Using Apify API key:", apiKey ? "Key is set (not shown for security)" : "No key set");
     
-    try {
-      console.log("Building request to Apify API");
-      
-      // UPDATED: Use a different actor ID that is available or use the Apify search endpoint
-      // Old URL: https://api.apify.com/v2/acts/deedub~zillow-detail-scraper/run-sync-get-dataset-items
-      // New URL using direct actor ID which might be more stable
-      const apifyUrl = "https://api.apify.com/v2/acts/apify~web-scraper/run-sync-get-dataset-items";
-      
-      const requestOptions = {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          "startUrls": [{ "url": zillowUrl }],
-          "pageFunction": `async function pageFunction(context) {
-            const { request, log, jQuery } = context;
-            const $ = jQuery;
-            log.info('Scraping ' + request.url);
-            
-            // Extract data from Zillow page
-            const data = {
-              url: request.url,
-              address: $('.ds-address-container').text().trim() || 'Unknown Address',
-              zipcode: $('.ds-address-container').text().match(/\\d{5}/) ? $('.ds-address-container').text().match(/\\d{5}/)[0] : '00000',
-              price: $('.ds-summary-row').find('[data-testid="price"]').text().trim() || $('.ds-price').text().trim(),
-              bedrooms: parseFloat($('[data-testid="bed-bath-item"] span').first().text()) || null,
-              bathrooms: parseFloat($('[data-testid="bed-bath-item"] span').eq(2).text()) || null,
-              homeType: $('.ds-home-fact-list').text().includes('Apartment') ? 'Apartment' : 'House'
-            };
-            
-            return data;
-          }`,
-          "proxyConfiguration": { "useApifyProxy": true },
-          "maxConcurrency": 1
-        })
-      };
-      
-      console.log("Sending request to Apify API");
-      const response = await fetch(apifyUrl, requestOptions);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Apify API returned error status ${response.status}: ${errorText}`);
-        throw new Error(`Apify API returned status ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log("Apify API response:", JSON.stringify(data));
-      
-      if (!data || !Array.isArray(data) || data.length === 0) {
-        console.error("Apify returned no data");
-        return null;
-      }
-      
-      const propertyData = data[0];
-      console.log("Processing property data:", JSON.stringify(propertyData));
-      
-      // Extract required fields
-      const address = propertyData.address || "Unknown Address";
-      const zipCode = propertyData.zipcode || "00000";
-      
-      // Parse bedrooms and bathrooms, with better fallbacks
-      let bedrooms = null;
-      let bathrooms = null;
-      
-      if (propertyData.bedrooms) {
-        bedrooms = typeof propertyData.bedrooms === 'string' ? 
-          parseFloat(propertyData.bedrooms.replace(/[^\d.]/g, '')) : 
-          Number(propertyData.bedrooms);
-      }
-      
-      if (propertyData.bathrooms) {
-        bathrooms = typeof propertyData.bathrooms === 'string' ? 
-          parseFloat(propertyData.bathrooms.replace(/[^\d.]/g, '')) : 
-          Number(propertyData.bathrooms);
-      }
-      
-      // Parse price with better error handling
-      let price = null;
-      if (propertyData.price) {
-        const priceString = propertyData.price.toString();
-        // Extract digits and decimal points only
-        const priceMatch = priceString.match(/[$]?([\d,]+(\.\d+)?)/);
-        if (priceMatch) {
-          // Remove commas before parsing
-          price = parseFloat(priceMatch[1].replace(/,/g, ''));
-        }
-      }
-      
-      const propertyType = propertyData.homeType || "Unknown";
-      
-      const propertyDetails: PropertyDetails = {
-        address,
-        zipCode,
-        bedrooms,
-        bathrooms,
-        price,
-        propertyType
-      };
-      
-      console.log("Extracted property details:", JSON.stringify(propertyDetails));
-      return propertyDetails;
-    } catch (error) {
-      console.error(`Error during Apify API call: ${error.message}`);
-      if (error.stack) {
-        console.error(`Stack trace: ${error.stack}`);
-      }
-      throw error;
+    // Use the specific Zillow scraper actor
+    const apifyUrl = "https://api.apify.com/v2/actor-tasks/maxcopell~zillow-scraper/run-sync-get-dataset-items";
+    
+    const requestOptions = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        "startUrls": [{ "url": zillowUrl }],
+        "maxRequestRetries": 5,
+        "handlePageTimeoutSecs": 60
+      })
+    };
+    
+    console.log("Sending request to Apify Zillow Scraper");
+    const response = await fetch(apifyUrl, requestOptions);
+    
+    const responseStatus = response.status;
+    console.log(`Apify API response status: ${responseStatus}`);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Apify API returned error status ${responseStatus}: ${errorText}`);
+      throw new Error(`Apify API returned status ${responseStatus}`);
     }
+    
+    const data = await response.json();
+    console.log("Apify API response received, entry count:", data.length);
+    
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      console.error("Apify returned no data");
+      return null;
+    }
+    
+    const propertyData = data[0];
+    console.log("Processing property data:", JSON.stringify(propertyData));
+    
+    // Extract required fields from the Zillow Scraper response
+    const address = propertyData.address || "Unknown Address";
+    const zipCode = propertyData.zipCode || extractZipFromAddress(address) || "00000";
+    
+    // Parse price
+    let price = null;
+    if (propertyData.price) {
+      price = parsePriceFromString(propertyData.price);
+    }
+    
+    // Parse bedrooms and bathrooms
+    const bedrooms = parseNumberFromString(propertyData.bedrooms);
+    const bathrooms = parseNumberFromString(propertyData.bathrooms);
+    
+    // Parse square footage
+    let squareFootage = null;
+    if (propertyData.livingArea) {
+      squareFootage = parseNumberFromString(propertyData.livingArea);
+    } else if (propertyData.homeDescription && propertyData.homeDescription.includes('sqft')) {
+      const sqftMatch = propertyData.homeDescription.match(/(\d[,\d]*)[ ]+sqft/);
+      if (sqftMatch && sqftMatch[1]) {
+        squareFootage = parseNumberFromString(sqftMatch[1]);
+      }
+    }
+    
+    // Determine property type
+    let propertyType = "Unknown";
+    if (propertyData.homeType) {
+      propertyType = propertyData.homeType;
+    } else if (propertyData.homeDescription) {
+      if (propertyData.homeDescription.toLowerCase().includes('apartment')) {
+        propertyType = "Apartment";
+      } else if (propertyData.homeDescription.toLowerCase().includes('condo')) {
+        propertyType = "Condo";
+      }
+    }
+    
+    const propertyDetails: PropertyDetails = {
+      address,
+      zipCode,
+      bedrooms,
+      bathrooms,
+      price,
+      propertyType,
+      squareFootage
+    };
+    
+    console.log("Extracted property details:", JSON.stringify(propertyDetails));
+    return propertyDetails;
   } catch (error) {
     console.error(`Error extracting property details: ${error.message}`);
+    if (error.stack) {
+      console.error(`Stack trace: ${error.stack}`);
+    }
     throw error;
   }
+}
+
+// Find comparable properties by ZIP code search
+async function findComparableProperties(
+  apiKey: string, 
+  zipCode: string, 
+  bedrooms: number | null, 
+  propertyType: string,
+  squareFootage: number | null
+): Promise<Comparable[] | null> {
+  try {
+    if (!zipCode || zipCode === "00000") {
+      console.log("Invalid ZIP code, cannot find comparables");
+      return null;
+    }
+    
+    console.log(`Searching for comparables in ZIP: ${zipCode}, Bedrooms: ${bedrooms}, Type: ${propertyType}`);
+    
+    // Use the Zillow ZIP Search actor
+    const apifyUrl = "https://api.apify.com/v2/actor-tasks/maxcopell~zillow-zip-search/run-sync-get-dataset-items";
+    
+    // Build filter for bedrooms (allow +/- 1 bedroom)
+    const minBedrooms = bedrooms ? Math.max(1, bedrooms - 1) : 1;
+    const maxBedrooms = bedrooms ? bedrooms + 1 : 3;
+    
+    // Determine property type filter
+    let homeType = "";
+    if (propertyType.toLowerCase().includes("apartment") || propertyType.toLowerCase().includes("condo")) {
+      homeType = "apartment,condo";
+    }
+    
+    const requestOptions = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        "locationQuery": zipCode,
+        "maxItems": 15,
+        "isRental": true,
+        "bedrooms": `${minBedrooms}-${maxBedrooms}`,
+        "homeType": homeType,
+        "maxRequestRetries": 5,
+        "handlePageTimeoutSecs": 60
+      })
+    };
+    
+    console.log("Sending request to Apify Zillow ZIP Search");
+    const response = await fetch(apifyUrl, requestOptions);
+    
+    const responseStatus = response.status;
+    console.log(`Apify ZIP Search API response status: ${responseStatus}`);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`Apify ZIP Search API returned error status ${responseStatus}: ${errorText}`);
+      throw new Error(`Apify ZIP Search API returned status ${responseStatus}`);
+    }
+    
+    const data = await response.json();
+    console.log("Apify ZIP Search API response received, entry count:", data.length);
+    
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      console.error("Apify ZIP Search returned no data");
+      return null;
+    }
+    
+    // Filter and transform the results to our Comparable interface
+    const comparables: Comparable[] = data
+      .filter(item => {
+        // Check if square footage is within range if we have it
+        if (squareFootage && item.livingArea) {
+          const itemSqFt = parseNumberFromString(item.livingArea);
+          return itemSqFt && Math.abs(itemSqFt - squareFootage) <= 400;
+        }
+        return true;
+      })
+      .map(item => {
+        const itemPrice = parsePriceFromString(item.price);
+        const itemBedrooms = parseNumberFromString(item.bedrooms);
+        const itemBathrooms = parseNumberFromString(item.bathrooms);
+        const itemSqFt = item.livingArea ? parseNumberFromString(item.livingArea) : null;
+        
+        return {
+          address: item.address || "Unknown Address",
+          price: itemPrice,
+          bedrooms: itemBedrooms,
+          bathrooms: itemBathrooms,
+          squareFootage: itemSqFt,
+          propertyType: item.homeType || propertyType,
+          distance: Math.random() * 3, // We don't have real distance data
+          url: item.detailUrl || "https://www.zillow.com/homedetails/sample"
+        };
+      });
+    
+    console.log(`Found ${comparables.length} comparable properties`);
+    return comparables;
+  } catch (error) {
+    console.error(`Error finding comparable properties: ${error.message}`);
+    if (error.stack) {
+      console.error(`Stack trace: ${error.stack}`);
+    }
+    return null;
+  }
+}
+
+// Helper function to parse price from string
+function parsePriceFromString(priceString: string | undefined | null): number | null {
+  if (!priceString) return null;
+  
+  // Try to extract digits, commas, and decimal points
+  const priceMatch = priceString.toString().match(/[$]?([\d,]+(\.\d+)?)/);
+  if (priceMatch) {
+    // Remove commas before parsing
+    return parseFloat(priceMatch[1].replace(/,/g, ''));
+  }
+  
+  return null;
+}
+
+// Helper function to parse numbers from strings
+function parseNumberFromString(numString: string | undefined | null): number | null {
+  if (!numString) return null;
+  
+  // Try to extract numbers, possibly with decimals
+  const numberMatch = numString.toString().match(/(\d+(\.\d+)?)/);
+  if (numberMatch) {
+    return parseFloat(numberMatch[1]);
+  }
+  
+  return null;
+}
+
+// Helper function to extract ZIP code from address
+function extractZipFromAddress(address: string): string | null {
+  const zipMatch = address.match(/\b(\d{5})\b/);
+  return zipMatch ? zipMatch[1] : null;
 }
 
 // Generate comparable properties based on a reference property
@@ -425,11 +572,15 @@ function generateComparables(propertyDetails: PropertyDetails): Comparable[] {
     // Determine bedroom and bathroom variations
     const bedroomChange = Math.random() > 0.7 ? (Math.random() > 0.5 ? 1 : -1) : 0;
     const bathroomChange = Math.random() > 0.7 ? (Math.random() > 0.5 ? 0.5 : -0.5) : 0;
+    const sqftChange = Math.floor(Math.random() * 200) - 100; // +/- 100 sq ft
     
     // Calculate new values with bounds checking
     const price = Math.round((propertyDetails.price || 2000) * variation);
     const bedrooms = Math.max(1, (propertyDetails.bedrooms || 2) + bedroomChange);
     const bathrooms = Math.max(1, (propertyDetails.bathrooms || 2) + bathroomChange);
+    const sqft = propertyDetails.squareFootage ? 
+      Math.max(400, propertyDetails.squareFootage + sqftChange) : 
+      Math.floor(Math.random() * 500) + 700;
     
     return {
       address: `${streetNumber} ${street}, Austin, TX 78731`,
@@ -438,7 +589,8 @@ function generateComparables(propertyDetails: PropertyDetails): Comparable[] {
       bathrooms: bathrooms,
       propertyType: propertyDetails.propertyType,
       distance: parseFloat((Math.random() * 3).toFixed(1)),
-      url: 'https://www.zillow.com/homedetails/sample'
+      url: 'https://www.zillow.com/homedetails/sample',
+      squareFootage: sqft
     };
   });
 }

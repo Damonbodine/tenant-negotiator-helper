@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { 
   Loader2, ArrowDown, ArrowUp, DollarSign, 
-  Home, MapPin, BedDouble, Bath, Info, AlertTriangle, Bug
+  Home, MapPin, BedDouble, Bath, Info, AlertTriangle, Bug, 
+  SquareFootage, ActivitySquare
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,6 +23,7 @@ interface PropertyDetails {
   bathrooms: number | null;
   price: number | null;
   propertyType: string;
+  squareFootage: number | null;
 }
 
 interface Comparable {
@@ -31,6 +34,7 @@ interface Comparable {
   propertyType: string;
   distance: number;
   url: string;
+  squareFootage: number | null;
 }
 
 interface AnalysisResult {
@@ -66,6 +70,11 @@ export function ApartmentAnalysis() {
       currency: 'USD',
       maximumFractionDigits: 0
     }).format(price);
+  };
+
+  const formatSqFt = (sqft: number | null) => {
+    if (sqft === null) return "N/A";
+    return new Intl.NumberFormat('en-US').format(sqft) + " sqft";
   };
 
   const toggleTestControls = () => {
@@ -299,7 +308,7 @@ export function ApartmentAnalysis() {
         )}
 
         {!isLoading && analysis && (
-          <AnalysisResults analysis={analysis} formatPrice={formatPrice} />
+          <AnalysisResults analysis={analysis} formatPrice={formatPrice} formatSqFt={formatSqFt} />
         )}
 
         {!isLoading && !analysis && !errorMessage && !rawErrorResponse && <EmptyState />}
@@ -339,17 +348,20 @@ function EmptyState() {
 
 function AnalysisResults({ 
   analysis, 
-  formatPrice 
+  formatPrice,
+  formatSqFt
 }: { 
   analysis: AnalysisResult;
   formatPrice: (price: number | null) => string;
+  formatSqFt: (sqft: number | null) => string;
 }) {
   return (
     <ScrollArea className="flex-1 pr-4 -mr-4">
       <div className="space-y-6">
         <PropertyDetailsSection 
           property={analysis.subjectProperty} 
-          formatPrice={formatPrice} 
+          formatPrice={formatPrice}
+          formatSqFt={formatSqFt}
         />
         <MarketAnalysisSection 
           analysis={analysis}
@@ -361,6 +373,7 @@ function AnalysisResults({
         <ComparablePropertiesSection 
           comparables={analysis.comparables}
           formatPrice={formatPrice}
+          formatSqFt={formatSqFt}
         />
       </div>
     </ScrollArea>
@@ -369,10 +382,12 @@ function AnalysisResults({
 
 function PropertyDetailsSection({ 
   property, 
-  formatPrice 
+  formatPrice,
+  formatSqFt
 }: { 
   property: PropertyDetails;
   formatPrice: (price: number | null) => string;
+  formatSqFt: (sqft: number | null) => string;
 }) {
   return (
     <div>
@@ -406,6 +421,11 @@ function PropertyDetailsSection({
             <DollarSign className="h-4 w-4 text-slate-500" />
             <span className="text-sm font-medium">Price:</span>
             <span className="text-sm">{formatPrice(property.price)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <ActivitySquare className="h-4 w-4 text-slate-500" />
+            <span className="text-sm font-medium">Size:</span>
+            <span className="text-sm">{formatSqFt(property.squareFootage)}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">Zip Code:</span>
@@ -508,11 +528,13 @@ function NegotiationStrategySection({ strategy }: { strategy: string }) {
 }
 
 function ComparablePropertiesSection({ 
-  comparables, 
-  formatPrice 
+  comparables,
+  formatPrice,
+  formatSqFt
 }: { 
   comparables: Comparable[];
   formatPrice: (price: number | null) => string;
+  formatSqFt: (sqft: number | null) => string;
 }) {
   if (!comparables || comparables.length === 0) return null;
   
@@ -526,7 +548,7 @@ function ComparablePropertiesSection({
               <div className="truncate" style={{ maxWidth: '70%' }}>
                 <div className="font-medium">{comp.address}</div>
                 <div className="text-sm text-muted-foreground">
-                  {comp.bedrooms} bed • {comp.bathrooms} bath • {comp.propertyType}
+                  {comp.bedrooms} bed • {comp.bathrooms} bath • {formatSqFt(comp.squareFootage)}
                 </div>
               </div>
               <div className="text-right">
