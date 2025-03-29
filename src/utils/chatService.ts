@@ -11,6 +11,9 @@ export interface ChatMessage {
 export const chatService = {
   async sendMessageToGemini(message: string, history: ChatMessage[]): Promise<string> {
     try {
+      console.log("Sending message to Gemini:", message);
+      console.log("With history:", history);
+      
       const { data, error } = await supabase.functions.invoke('gemini-chat', {
         body: { message, history },
       });
@@ -20,7 +23,14 @@ export const chatService = {
         throw new Error('Failed to get response from AI service');
       }
 
-      return data.text || 'Sorry, I couldn\'t generate a response at this time.';
+      console.log("Response from Gemini:", data);
+      
+      if (!data || !data.text) {
+        console.error('Invalid response from Gemini API:', data);
+        throw new Error('Received an invalid response from the AI service');
+      }
+
+      return data.text;
     } catch (error) {
       console.error('Error in sendMessageToGemini:', error);
       throw error;

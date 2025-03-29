@@ -3,7 +3,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:streamGenerateContent";
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -69,6 +69,14 @@ serve(async (req) => {
     let responseText = "";
     if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
       responseText = data.candidates[0].content.parts[0].text;
+    } else if (data.content && data.content.parts) {
+      // Alternative response structure
+      responseText = data.content.parts[0].text;
+    }
+
+    if (!responseText) {
+      console.error("Unexpected Gemini API response structure:", JSON.stringify(data));
+      throw new Error("Could not extract response text from Gemini API");
     }
 
     return new Response(
