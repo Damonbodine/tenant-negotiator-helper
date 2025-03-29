@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export interface ChatMessage {
@@ -103,11 +102,13 @@ Then provide a market comparison:
       {
         id: 'practice-negotiation',
         trigger: 'practice',
-        content: `When a user wants to practice negotiating, suggest role-playing as a landlord:
-1. Ask what scenario they want to practice (new lease, renewal, specific request)
-2. Simulate landlord responses with common objections
-3. Provide feedback on their negotiation approach
-4. Offer alternative phrasing or strategies`
+        content: `When a user wants to practice negotiating, suggest using our practice negotiation tool:
+1. Direct the user to the Practice page where they can engage in voice-based negotiation practice
+2. Explain that they can select different negotiation scenarios
+3. Inform them that the tool uses voice technology to create a realistic conversation
+4. Let them know they can receive feedback on their negotiation approach
+5. Provide a direct link to the practice page
+6. Offer to explain how the tool works if they have questions`
       }
     ]
   },
@@ -223,7 +224,61 @@ export const chatService = {
     }
   },
   
-  // Methods to manage prompt templates
+  async getPracticeNegotiationPrompt(scenarioId: string): Promise<string> {
+    try {
+      // Get scenario-specific prompts
+      const scenarioData = {
+        'standard': {
+          role: 'landlord',
+          property: 'a standard 1-bedroom apartment in an urban area',
+          price: '$1,800 per month',
+          marketRate: '$1,700-$1,900',
+          prompt: 'You are a firm but reasonable landlord discussing a standard 1-bedroom apartment rental. The asking price is $1,800, which is within the market rate. Be open to hearing the tenant\'s offers but maintain that the price is fair for the area.'
+        },
+        'luxury': {
+          role: 'property manager',
+          property: 'a luxury condo with premium amenities',
+          price: '$3,200 per month',
+          marketRate: '$3,000-$3,400',
+          prompt: 'You are a professional property manager for a luxury condo building. The unit has high-end finishes and premium amenities. The asking price is $3,200, which is competitive for luxury units in this area. Be polite but emphasize the premium features that justify the price.'
+        },
+        'house': {
+          role: 'private owner',
+          property: 'a 3-bedroom single family home in the suburbs',
+          price: '$2,500 per month',
+          marketRate: '$2,300-$2,600',
+          prompt: 'You are the private owner of a 3-bedroom house in a suburban area. You\'re asking $2,500 per month, which is reasonable for the neighborhood. You\'re somewhat flexible but concerned about finding reliable, long-term tenants.'
+        }
+      };
+      
+      const scenario = scenarioData[scenarioId as keyof typeof scenarioData] || scenarioData.standard;
+      
+      // Base system prompt for the practice negotiation
+      const systemPrompt = `
+You are an AI assistant roleplaying as ${scenario.role} for ${scenario.property}. 
+The asking rent is ${scenario.price}, which is within the market rate of ${scenario.marketRate} for similar properties.
+
+${scenario.prompt}
+
+Important guidelines:
+1. Keep responses conversational and realistic - respond as a real landlord would
+2. Ask questions about the potential tenant's situation or needs when appropriate
+3. Be willing to negotiate on some points, but don't immediately accept every request
+4. If the tenant makes a good case, be willing to make small concessions
+5. If the tenant is unreasonable, politely hold your ground
+6. Keep responses under 3-4 sentences to maintain a natural conversation flow
+7. Focus on creating a realistic negotiation experience to help the user practice
+
+Start by introducing yourself as the landlord/property manager and asking how you can help the potential tenant.
+`;
+      
+      return systemPrompt;
+    } catch (error) {
+      console.error('Error getting practice negotiation prompt:', error);
+      throw error;
+    }
+  },
+  
   getPromptTemplates,
   savePromptTemplates,
   

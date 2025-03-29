@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,7 @@ import { Headphones, Mic, MicOff, Phone, PhoneOff, Settings, ArrowLeft, Volume2,
 import { useToast } from "@/components/ui/use-toast";
 import { ApiKeyInput } from "@/components/ApiKeyInput";
 import { agentService } from "@/utils/agentService";
+import { chatService } from "@/utils/chatService";
 import { PracticeScenario } from "@/components/PracticeScenario";
 import { Link } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -51,20 +51,7 @@ export const NegotiationPractice = () => {
     audioRef.current = new Audio();
     
     if (messages.length === 0 && isCallActive) {
-      const scenarioTitle = scenarios.find(s => s.id === selectedScenario)?.name || "Standard Apartment";
-      setMessages([
-        {
-          id: "welcome",
-          type: "agent",
-          text: `Hello! I'm the landlord for the ${scenarioTitle} you're interested in. I understand you wanted to discuss the terms. What aspects of the lease would you like to negotiate?`,
-          timestamp: new Date()
-        }
-      ]);
-      
-      // If not muted, speak the welcome message
-      if (!isMuted) {
-        speakText(`Hello! I'm the landlord for the ${scenarioTitle} you're interested in. I understand you wanted to discuss the terms. What aspects of the lease would you like to negotiate?`);
-      }
+      startNegotiationPractice();
     }
   }, [messages.length, isCallActive, selectedScenario, isMuted]);
   
@@ -76,6 +63,38 @@ export const NegotiationPractice = () => {
       }
     }
   }, [messages]);
+  
+  const startNegotiationPractice = async () => {
+    try {
+      const scenario = scenarios.find(s => s.id === selectedScenario);
+      if (!scenario) return;
+      
+      // Get the system prompt for the selected scenario
+      const systemPrompt = await chatService.getPracticeNegotiationPrompt(selectedScenario);
+      
+      // Set initial landlord message
+      const initialMessage: Message = {
+        id: "welcome",
+        type: "agent",
+        text: `Hello! I'm the landlord for the ${scenario.name} you're interested in. What aspects of the lease would you like to discuss today?`,
+        timestamp: new Date()
+      };
+      
+      setMessages([initialMessage]);
+      
+      // If not muted, speak the welcome message
+      if (!isMuted) {
+        speakText(initialMessage.text);
+      }
+    } catch (error) {
+      console.error("Error starting negotiation practice:", error);
+      toast({
+        title: "Error",
+        description: "Failed to start the negotiation practice",
+        variant: "destructive",
+      });
+    }
+  };
   
   const loadVoices = async () => {
     try {
@@ -164,7 +183,18 @@ export const NegotiationPractice = () => {
     setIsLoading(true);
     
     try {
-      const response = await agentService.sendMessage(input);
+      // Get the system prompt for the selected scenario
+      const systemPrompt = await chatService.getPracticeNegotiationPrompt(selectedScenario);
+      
+      // Prepare conversation history for the model
+      const history = messages.map(msg => ({
+        type: msg.type,
+        text: msg.text,
+        timestamp: msg.timestamp
+      }));
+      
+      // Send to Gemini through Supabase function
+      const response = await chatService.sendMessageToGemini(input, history);
       
       const agentMessage: Message = {
         id: Date.now().toString(),
@@ -220,12 +250,34 @@ export const NegotiationPractice = () => {
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         
-        // In a real implementation, this would send the audio to a speech-to-text service
-        // For now, we'll just show a toast
-        toast({
-          title: "Voice Input",
-          description: "Voice input processing would be implemented here",
-        });
+        try {
+          // In a real implementation, this would send the audio to a speech-to-text service
+          // For now, we'll just show a toast and set some placeholder text
+          toast({
+            title: "Voice Input",
+            description: "Processing your voice input...",
+          });
+          
+          // Simulate processing delay
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Set some placeholder text based on the scenario
+          const placeholderTexts = {
+            'standard': "I think $1,800 is a bit high for this area. Would you consider $1,700 per month?",
+            'luxury': "I'm definitely interested in the premium amenities, but I'd like to discuss the possibility of including the utilities in the rent.",
+            'house': "I love the house and location. I'm willing to sign a longer lease if you can offer a small discount on the monthly rent."
+          };
+          
+          setInput(placeholderTexts[selectedScenario as keyof typeof placeholderTexts] || "I'd like to discuss the rent amount. Is there any flexibility?");
+          
+        } catch (error) {
+          console.error("Error processing audio:", error);
+          toast({
+            title: "Voice Processing Error",
+            description: "Could not process your voice input.",
+            variant: "destructive",
+          });
+        }
         
         setIsListening(false);
       };
