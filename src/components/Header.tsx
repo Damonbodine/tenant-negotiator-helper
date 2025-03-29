@@ -50,10 +50,10 @@ export const Header = ({ activeTab, setActiveTab }: HeaderProps) => {
         </Tabs>
         
         <Button 
-          variant="outline" 
+          variant="default" 
           size="sm" 
           onClick={() => setShowApiModal(true)}
-          className="text-sm flex items-center gap-1"
+          className="text-sm flex items-center gap-1 bg-blue-500 hover:bg-blue-600"
         >
           <Key className="h-4 w-4" />
           <span>Manage API Keys</span>
@@ -83,6 +83,18 @@ export const Header = ({ activeTab, setActiveTab }: HeaderProps) => {
             </TabsTrigger>
           </TabsList>
         </Tabs>
+        
+        <div className="mt-2 flex justify-center">
+          <Button 
+            variant="default" 
+            size="sm" 
+            onClick={() => setShowApiModal(true)}
+            className="text-sm flex items-center gap-1 bg-blue-500 hover:bg-blue-600"
+          >
+            <Key className="h-4 w-4" />
+            <span>Manage API Keys</span>
+          </Button>
+        </div>
       </div>
     </header>
   );
