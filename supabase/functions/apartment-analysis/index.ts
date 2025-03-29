@@ -28,9 +28,11 @@ function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 
 async function extractPropertyDetails(zillowUrl: string) {
   console.log(`Extracting property details from: ${zillowUrl}`);
+  console.log(`Using APIFY_API_KEY: ${APIFY_API_KEY ? "Key is set" : "KEY IS MISSING!!!"}`);
   
   try {
-    const response = await fetch(`https://api.apify.com/v2/acts/maxcopell~zillow-detail-scraper/runs?token=${APIFY_API_KEY}`, {
+    // Start the actor run
+    const runResponse = await fetch(`https://api.apify.com/v2/acts/maxcopell~zillow-detail-scraper/runs?token=${APIFY_API_KEY}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -40,34 +42,49 @@ async function extractPropertyDetails(zillowUrl: string) {
       }),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Error response from Apify: ${errorText}`);
-      throw new Error(`Apify API responded with status ${response.status}`);
+    if (!runResponse.ok) {
+      const errorText = await runResponse.text();
+      console.error(`Error starting Apify actor run: ${errorText}`);
+      throw new Error(`Failed to start Apify actor run: ${runResponse.status} - ${errorText}`);
     }
 
-    const runData = await response.json();
+    const runData = await runResponse.json();
     console.log(`Actor run started with ID: ${runData.id}`);
+    
+    if (!runData.id) {
+      throw new Error("No actor run ID returned from Apify");
+    }
 
     // Wait for the run to finish and get the dataset ID
     const datasetId = runData.defaultDatasetId;
     
+    if (!datasetId) {
+      throw new Error("No dataset ID returned from Apify");
+    }
+    
     // Poll until the run is completed
     let runFinished = false;
     let attempts = 0;
-    while (!runFinished && attempts < 60) { // Timeout after 60 attempts (5 minutes)
+    let statusData;
+    
+    while (!runFinished && attempts < 30) { // Timeout after 30 attempts (2.5 minutes)
       await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds between polls
       
+      console.log(`Checking run status for run ID: ${runData.id}, attempt ${attempts + 1}/30`);
       const statusResponse = await fetch(`https://api.apify.com/v2/actor-runs/${runData.id}?token=${APIFY_API_KEY}`);
+      
       if (!statusResponse.ok) {
+        console.error(`Failed to check run status: ${statusResponse.status} - ${await statusResponse.text()}`);
         throw new Error(`Failed to check run status: ${statusResponse.statusText}`);
       }
       
-      const statusData = await statusResponse.json();
+      statusData = await statusResponse.json();
       console.log(`Run status: ${statusData.status}`);
       
       if (statusData.status === 'SUCCEEDED' || statusData.status === 'FINISHED') {
         runFinished = true;
+      } else if (statusData.status === 'FAILED' || statusData.status === 'ABORTED' || statusData.status === 'TIMED_OUT') {
+        throw new Error(`Apify run failed with status: ${statusData.status}`);
       }
       
       attempts++;
@@ -78,8 +95,11 @@ async function extractPropertyDetails(zillowUrl: string) {
     }
 
     // Get the dataset items
+    console.log(`Retrieving dataset items from ID: ${datasetId}`);
     const datasetResponse = await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_API_KEY}`);
+    
     if (!datasetResponse.ok) {
+      console.error(`Failed to get dataset: ${datasetResponse.status} - ${await datasetResponse.text()}`);
       throw new Error(`Failed to get dataset: ${datasetResponse.statusText}`);
     }
     
@@ -96,7 +116,7 @@ async function extractPropertyDetails(zillowUrl: string) {
     // Parse price value
     let price = null;
     if (typeof propertyData.price === 'string') {
-      price = parseFloat(propertyData.price.replace('$', '').replace(',', ''));
+      price = parseFloat(propertyData.price.replace(/[$,+]/g, ''));
     } else if (typeof propertyData.price === 'number') {
       price = propertyData.price;
     }
@@ -157,48 +177,64 @@ async function searchPropertiesByZipAndType(params: any) {
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`Error response from Apify: ${errorText}`);
-      throw new Error(`Apify API responded with status ${response.status}`);
+      throw new Error(`Apify API responded with status ${response.status}: ${errorText}`);
     }
 
     const runData = await response.json();
     console.log(`Search actor run started with ID: ${runData.id}`);
 
+    if (!runData.id) {
+      throw new Error("No actor run ID returned from Apify");
+    }
+
     // Wait for the run to finish
     const datasetId = runData.defaultDatasetId;
+    
+    if (!datasetId) {
+      throw new Error("No dataset ID returned from Apify");
+    }
     
     // Poll until the run is completed
     let runFinished = false;
     let attempts = 0;
-    while (!runFinished && attempts < 60) { // Timeout after 60 attempts (5 minutes)
+    while (!runFinished && attempts < 30) { // Timeout after 30 attempts (2.5 minutes)
       await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds between polls
       
+      console.log(`Checking search run status for run ID: ${runData.id}, attempt ${attempts + 1}/30`);
       const statusResponse = await fetch(`https://api.apify.com/v2/actor-runs/${runData.id}?token=${APIFY_API_KEY}`);
+      
       if (!statusResponse.ok) {
-        throw new Error(`Failed to check run status: ${statusResponse.statusText}`);
+        console.error(`Failed to check search run status: ${statusResponse.status} - ${await statusResponse.text()}`);
+        throw new Error(`Failed to check search run status: ${statusResponse.statusText}`);
       }
       
       const statusData = await statusResponse.json();
-      console.log(`Run status: ${statusData.status}`);
+      console.log(`Search run status: ${statusData.status}`);
       
       if (statusData.status === 'SUCCEEDED' || statusData.status === 'FINISHED') {
         runFinished = true;
+      } else if (statusData.status === 'FAILED' || statusData.status === 'ABORTED' || statusData.status === 'TIMED_OUT') {
+        throw new Error(`Apify search run failed with status: ${statusData.status}`);
       }
       
       attempts++;
     }
     
     if (!runFinished) {
-      throw new Error('Timed out waiting for Apify run to complete');
+      throw new Error('Timed out waiting for Apify search run to complete');
     }
 
     // Get the dataset items
+    console.log(`Retrieving search dataset items from ID: ${datasetId}`);
     const datasetResponse = await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?token=${APIFY_API_KEY}`);
+    
     if (!datasetResponse.ok) {
-      throw new Error(`Failed to get dataset: ${datasetResponse.statusText}`);
+      console.error(`Failed to get search dataset: ${datasetResponse.status} - ${await datasetResponse.text()}`);
+      throw new Error(`Failed to get search dataset: ${datasetResponse.statusText}`);
     }
     
     const items = await datasetResponse.json();
-    console.log(`Retrieved ${items.length} items from dataset`);
+    console.log(`Retrieved ${items.length} items from search dataset`);
 
     const properties: any[] = [];
 
@@ -220,7 +256,7 @@ async function searchPropertiesByZipAndType(params: any) {
         for (const unit of units) {
           let price = null;
           if (typeof unit.price === 'string') {
-            price = parseFloat(unit.price.replace('$', '').replace(',', '').replace('+', ''));
+            price = parseFloat(unit.price.replace(/[$,+]/g, ''));
           }
 
           const beds = unit.beds;
@@ -250,7 +286,7 @@ async function searchPropertiesByZipAndType(params: any) {
       } else {
         let price = null;
         if (typeof item.price === 'string') {
-          price = parseFloat(item.price.replace('$', '').replace(',', ''));
+          price = parseFloat(item.price.replace(/[$,+]/g, ''));
         }
 
         const beds = item.bedrooms;
@@ -332,32 +368,104 @@ serve(async (req) => {
   }
 
   try {
+    // Check if APIFY_API_KEY is set
+    if (!APIFY_API_KEY) {
+      console.error("APIFY_API_KEY is not set in environment variables");
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "API key not configured. Please contact the administrator." 
+        }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    
     const { zillowUrl } = await req.json();
     
     if (!zillowUrl) {
       throw new Error('Zillow URL is required');
     }
     
+    console.log("Starting apartment analysis for URL:", zillowUrl);
+    
     // Extract property details
-    const propertyDetails = await extractPropertyDetails(zillowUrl);
-    console.log("Property details:", JSON.stringify(propertyDetails));
+    let propertyDetails;
+    try {
+      propertyDetails = await extractPropertyDetails(zillowUrl);
+      console.log("Property details extracted:", JSON.stringify(propertyDetails));
+    } catch (error) {
+      console.error("Failed to extract property details:", error.message);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `Failed to extract property details: ${error.message}` 
+        }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
     
     if (!propertyDetails) {
       throw new Error('Failed to extract property details');
     }
     
-    // Search for comparable properties
-    const properties = await searchPropertiesByZipAndType({
-      zipCode: propertyDetails.zipCode,
-      propertyType: propertyDetails.propertyType,
-      subjectPrice: propertyDetails.price,
-      subjectLat: propertyDetails.latitude,
-      subjectLon: propertyDetails.longitude,
-      forRent: true,
-      limit: 10
-    });
+    if (!propertyDetails.zipCode) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Could not determine property zip code"
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
     
-    console.log(`Raw properties found: ${properties.length}`);
+    if (!propertyDetails.price) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Could not determine property price"
+        }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    
+    // Search for comparable properties
+    let properties;
+    try {
+      properties = await searchPropertiesByZipAndType({
+        zipCode: propertyDetails.zipCode,
+        propertyType: propertyDetails.propertyType,
+        subjectPrice: propertyDetails.price,
+        subjectLat: propertyDetails.latitude,
+        subjectLon: propertyDetails.longitude,
+        forRent: true,
+        limit: 10
+      });
+      
+      console.log(`Raw properties found: ${properties.length}`);
+    } catch (error) {
+      console.error("Failed to search for comparable properties:", error.message);
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          propertyDetails,
+          message: `Could not find comparable properties: ${error.message}`
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
     if (!properties || properties.length === 0) {
       return new Response(

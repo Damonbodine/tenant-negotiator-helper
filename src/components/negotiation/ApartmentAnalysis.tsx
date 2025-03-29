@@ -72,15 +72,21 @@ export function ApartmentAnalysis() {
     setAnalysis(null);
 
     try {
+      console.log("Sending request to apartment-analysis function with URL:", zillowUrl);
+      
       const { data, error } = await supabase.functions.invoke('apartment-analysis', {
         body: { zillowUrl }
       });
 
+      console.log("Response from apartment-analysis function:", data);
+      
       if (error) {
+        console.error("Supabase function error:", error);
         throw new Error(error.message);
       }
 
       if (!data.success) {
+        console.error("Function returned error:", data.error);
         throw new Error(data.error || "Failed to analyze apartment");
       }
 
