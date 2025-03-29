@@ -32,6 +32,9 @@ serve(async (req) => {
       },
     });
     
+    // Log the request details for debugging
+    console.log("Request made to ElevenLabs API with masked key:", `${apiKey.substring(0, 3)}...${apiKey.substring(apiKey.length - 3)}`);
+    
     if (!response.ok) {
       const errorText = await response.text();
       console.error("ElevenLabs API error response:", errorText);

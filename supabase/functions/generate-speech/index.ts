@@ -35,6 +35,22 @@ serve(async (req) => {
     const ttsUrl = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
     console.log(`Making request to: ${ttsUrl}`);
     
+    // Full logging of the headers and the beginning of the request body
+    const requestBody = JSON.stringify({
+      text,
+      model_id: "eleven_monolingual_v1",
+      voice_settings: {
+        stability: 0.5,
+        similarity_boost: 0.5
+      }
+    });
+    console.log('Request headers:', {
+      'xi-api-key': `${apiKey.substring(0, 3)}...${apiKey.substring(apiKey.length - 3)}`, // Masked for security
+      'Content-Type': 'application/json',
+      'Accept': 'audio/mpeg',
+    });
+    console.log('Request body (truncated):', requestBody.substring(0, 100) + (requestBody.length > 100 ? '...' : ''));
+    
     // Call ElevenLabs API to generate speech
     const response = await fetch(ttsUrl, {
       method: 'POST',
@@ -43,14 +59,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
         'Accept': 'audio/mpeg',
       },
-      body: JSON.stringify({
-        text,
-        model_id: "eleven_monolingual_v1",
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.5
-        }
-      })
+      body: requestBody
     });
     
     if (!response.ok) {
