@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { AgentChat } from "@/components/AgentChat";
 import { Link } from "react-router-dom";
-import { Building, Download, Mail } from "lucide-react";
+import { Building, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
@@ -34,14 +34,7 @@ const Index = () => {
       <header className="w-full bg-background/80 backdrop-blur-md border-b border-border py-3">
         <div className="container flex items-center justify-between">
           <div className="flex-1 flex items-center gap-4">
-            <a 
-              href="/renters-playbook.pdf" 
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 transition-colors text-white"
-              download
-            >
-              <Download className="h-4 w-4" />
-              <span>THE RENTERS PLAYBOOK</span>
-            </a>
+            {/* Removed the renters playbook download button */}
           </div>
           <div className="flex items-center gap-3">
             <Building className="h-8 w-8 text-blue-600" />
@@ -90,7 +83,7 @@ const Index = () => {
             )}
           </>
         ) : (
-          <div className="space-y-16 w-full max-w-4xl">
+          <div className="space-y-12 w-full max-w-4xl">
             <div className="text-center">
               <h2 className="text-4xl font-bold text-white mb-4">Don't overpay for your next apartment.</h2>
               <p className="text-xl text-white font-semibold">Arm yourself with data to get the best price on rent</p>
@@ -122,10 +115,9 @@ const Index = () => {
               </Link>
             </div>
             
-            <div className="mx-auto max-w-md w-full">
-              <div className="text-center mb-4">
-                <h3 className="text-lg font-medium text-white">Stay Updated</h3>
-                <p className="text-sm text-white">Get the latest rental tips and market updates</p>
+            <div className="mx-auto max-w-md w-full mt-6">
+              <div className="text-center mb-3">
+                <h3 className="text-xl font-semibold text-white">Join our email list and get a free book</h3>
               </div>
               <form onSubmit={handleEmailSubmit} className="flex gap-2">
                 <Input
