@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { AgentChat } from "@/components/AgentChat";
 import { Link } from "react-router-dom";
@@ -39,7 +38,6 @@ const Index = () => {
 
   useEffect(() => {
     if (activeJourney === "market" && messages.length === 0) {
-      // Add initial welcome message
       setMessages([
         {
           id: "welcome",
@@ -52,7 +50,6 @@ const Index = () => {
   }, [activeJourney, messages.length]);
 
   useEffect(() => {
-    // Scroll to bottom when messages change
     if (scrollAreaRef.current) {
       const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
       if (scrollContainer) {
@@ -103,7 +100,6 @@ const Index = () => {
       <header className="w-full bg-background/80 backdrop-blur-md border-b border-border py-3">
         <div className="container flex items-center justify-between">
           <div className="flex-1 flex items-center gap-4">
-            {/* Removed the renters playbook download button */}
           </div>
           <div className="flex items-center gap-3">
             <Building className="h-8 w-8 text-blue-600" />
@@ -233,7 +229,7 @@ const Index = () => {
               </button>
               
               <Link
-                to="/practice?tab=analysis"
+                to="/practice"
                 className="journey-bubble flex flex-col items-center justify-center p-8 bg-[#FEF7CD] hover:bg-[#fcf4b8] border-2 border-[#f0e9b0] rounded-full h-64 w-64 mx-auto transition-all hover:shadow-lg hover:scale-105"
               >
                 <div className="text-black text-4xl font-bold mb-2">Should I negotiate</div>
@@ -241,7 +237,7 @@ const Index = () => {
               </Link>
               
               <Link
-                to="/practice"
+                to="/practice/voice"
                 className="journey-bubble flex flex-col items-center justify-center p-8 bg-[#FEF7CD] hover:bg-[#fcf4b8] border-2 border-[#f0e9b0] rounded-full h-64 w-64 mx-auto transition-all hover:shadow-lg hover:scale-105"
               >
                 <div className="text-black text-4xl font-bold mb-2 text-center">Practice Call</div>
