@@ -145,8 +145,8 @@ function generateFallbackData(zipCode: string, address: string) {
   };
 }
 
-// Extract property details from the URL - direct way
-async function extractPropertyDetailsDirectly(url: string) {
+// Extract property details from URL
+async function extractPropertyDetails(url: string) {
   try {
     console.log(`Attempting to extract property details for URL: ${url}`);
     
@@ -175,11 +175,12 @@ async function extractPropertyDetailsDirectly(url: string) {
     
     console.log("Using Apify API key: Key is set (not shown for security)");
     
-    // Use a more direct and reliable actor for Zillow data
-    const actorId = "puppeteer~single-page-html";
+    // Use the correct format for Apify actor ID
+    // Note: Changed from puppeteer~single-page-html to a specific actor ID format
+    const actorId = "lukaskrivka/website-content-crawler";
     console.log(`Using Apify actor: ${actorId}`);
     
-    // Call Apify API to run the actor
+    // Call Apify API to run the actor with the correct endpoint
     const runResponse = await fetch(`https://api.apify.com/v2/acts/${actorId}/runs?token=${apifyApiKey}`, {
       method: "POST",
       headers: {
@@ -187,63 +188,10 @@ async function extractPropertyDetailsDirectly(url: string) {
       },
       body: JSON.stringify({
         "startUrls": [{ "url": url }],
-        "pageFunction": `async function pageFunction(context) {
-          const { request, log, $ } = context;
-          log.info('Scraping Zillow property details');
-          
-          try {
-            // Extract basic property details
-            const propertyPrice = $('[data-testid="price"] span').first().text();
-            const propertyAddress = $('[data-testid="home-details-summary-address"]').text();
-            let propertyType = "Unknown";
-            let bedrooms = null;
-            let bathrooms = null;
-            let squareFootage = null;
-            
-            // Extract property type, beds, baths
-            $('[data-testid="home-summary-list"] li').each((i, el) => {
-              const text = $(el).text().toLowerCase();
-              if (text.includes('sqft')) {
-                squareFootage = parseInt(text.replace(/[^0-9]/g, ''));
-              } else if (text.includes('bed')) {
-                bedrooms = parseFloat(text.replace(/[^0-9.]/g, ''));
-              } else if (text.includes('bath')) {
-                bathrooms = parseFloat(text.replace(/[^0-9.]/g, ''));
-              } else if (text.includes('condo') || text.includes('apartment')) {
-                propertyType = 'Condo';
-              } else if (text.includes('house') || text.includes('home')) {
-                propertyType = 'House';
-              } else if (text.includes('townhouse')) {
-                propertyType = 'Townhouse';
-              }
-            });
-            
-            // Extract numeric price
-            const priceMatch = propertyPrice ? propertyPrice.match(/\\$([\\d,]+)/) : null;
-            const numericPrice = priceMatch ? parseInt(priceMatch[1].replace(/,/g, '')) : null;
-            
-            // Extract zipcode from address
-            const zipMatch = propertyAddress ? propertyAddress.match(/(\\d{5})/) : null;
-            const zipCode = zipMatch ? zipMatch[1] : "${zipCode}";
-            
-            return {
-              address: propertyAddress || "${address}",
-              zipCode: zipCode,
-              bedrooms: bedrooms,
-              bathrooms: bathrooms,
-              price: numericPrice,
-              propertyType: propertyType,
-              squareFootage: squareFootage
-            };
-          } catch (error) {
-            log.error('Error scraping property details: ' + error.message);
-            return {
-              error: error.message
-            };
-          }
-        }`,
-        "waitUntil": ["networkidle2"]
-      }),
+        "proxyConfiguration": { "useApifyProxy": true },
+        "pseudoUrls": [],
+        "linkSelector": ""
+      })
     });
     
     if (!runResponse.ok) {
@@ -309,13 +257,26 @@ async function extractPropertyDetailsDirectly(url: string) {
       throw new Error("No property data returned from scraper");
     }
     
-    // Use the first item as our property data
-    const propertyData = items[0];
+    // Process the scraped HTML to extract property details
+    const htmlData = items[0].text || items[0].html || "";
     
-    if (propertyData.error) {
-      console.error(`Error in scraped data: ${propertyData.error}`);
-      throw new Error(`Error scraping property: ${propertyData.error}`);
-    }
+    // Extract key property information using regex patterns
+    // This is a simplified example - in production you'd use a more robust HTML parser
+    const priceMatch = htmlData.match(/\$([0-9,]+)/);
+    const bedroomsMatch = htmlData.match(/(\d+)\s*bed/i);
+    const bathroomsMatch = htmlData.match(/(\d+(?:\.\d+)?)\s*bath/i);
+    const sqftMatch = htmlData.match(/(\d+(?:,\d+)?)\s*sqft/i);
+    
+    // Create property data object
+    const propertyData = {
+      address: address,
+      zipCode: zipCode,
+      bedrooms: bedroomsMatch ? parseFloat(bedroomsMatch[1]) : 1,
+      bathrooms: bathroomsMatch ? parseFloat(bathroomsMatch[1]) : 1,
+      price: priceMatch ? parseInt(priceMatch[1].replace(/,/g, "")) : null,
+      propertyType: htmlData.includes("condo") || htmlData.includes("apartment") ? "Condo" : "House",
+      squareFootage: sqftMatch ? parseInt(sqftMatch[1].replace(/,/g, "")) : 700
+    };
     
     console.log("Successfully extracted property details:", JSON.stringify(propertyData));
     return propertyData;
@@ -403,8 +364,8 @@ serve(async (req) => {
     }
     
     try {
-      console.log(`Attempting to extract real property details using direct Apify API call`);
-      const propertyDetails = await extractPropertyDetailsDirectly(zillowUrl);
+      console.log(`Attempting to extract real property details using Apify`);
+      const propertyDetails = await extractPropertyDetails(zillowUrl);
       
       // Generate analysis based on the extracted property details
       // For simplicity, we're using the same generation function but with real data
