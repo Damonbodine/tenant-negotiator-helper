@@ -3,6 +3,7 @@
 // It handles conversation state and API calls
 
 import { getApiKey, hasApiKey, saveApiKey, API_KEYS } from './keyManager';
+import { supabase } from "@/integrations/supabase/client";
 
 class AgentService {
   private conversationId: string | null = null;
@@ -55,7 +56,7 @@ class AgentService {
     }
     
     if (!this.conversationId) {
-      throw new Error("No active conversation");
+      await this.startConversation();
     }
     
     console.log("Sending message to ElevenLabs API:", message);
@@ -106,6 +107,35 @@ class AgentService {
     }
   }
   
+  // Get voices from ElevenLabs API
+  async getVoices(): Promise<any[]> {
+    const apiKey = await this.getApiKey();
+    if (!apiKey) {
+      throw new Error("API key not set");
+    }
+    
+    try {
+      const response = await fetch(`${this.baseUrl}/voices`, {
+        method: 'GET',
+        headers: {
+          'xi-api-key': apiKey,
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`ElevenLabs API error: ${errorData.detail}`);
+      }
+      
+      const data = await response.json();
+      return data.voices || [];
+    } catch (error) {
+      console.error("Error getting voices:", error);
+      throw error;
+    }
+  }
+  
   // Get market insights based on user query
   async getMarketInsights(query: string): Promise<string> {
     if (!(await this.hasApiKey())) {
@@ -134,6 +164,18 @@ class AgentService {
       return this.simulateNegotiationResponse(query);
     } catch (error) {
       console.error("Error getting negotiation advice:", error);
+      throw error;
+    }
+  }
+  
+  // Speech to text conversion (not implemented yet, but placeholder for future)
+  async speechToText(audioBlob: Blob): Promise<string> {
+    try {
+      // This would call an API for speech-to-text conversion
+      // For now, return a placeholder
+      return "Speech to text not implemented yet";
+    } catch (error) {
+      console.error("Error in speech to text:", error);
       throw error;
     }
   }

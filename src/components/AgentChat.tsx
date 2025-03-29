@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { agentService } from "@/utils/agentService";
 import { knowledgeBaseService } from "@/utils/knowledgeBase";
 import { ApiKeyInput } from "@/components/ApiKeyInput";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type MessageType = "user" | "agent";
 type ChatType = "market" | "negotiation" | "general";
@@ -18,6 +19,7 @@ interface Message {
   type: MessageType;
   text: string;
   timestamp: Date;
+  isAudio?: boolean;
 }
 
 interface AgentChatProps {
@@ -32,8 +34,12 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
   const [isMuted, setIsMuted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const [selectedVoice, setSelectedVoice] = useState("21m00Tcm4TlvDq8ikWAM"); // Rachel voice
+  const [availableVoices, setAvailableVoices] = useState<any[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   
   useEffect(() => {
     // Initialize audio element
@@ -67,6 +73,9 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
       const checkApiKey = async () => {
         if (!(await agentService.hasApiKey())) {
           setShowApiKeyInput(true);
+        } else {
+          // Load available voices if API key is set
+          loadVoices();
         }
       };
       
@@ -83,6 +92,17 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
       }
     }
   }, [messages]);
+
+  const loadVoices = async () => {
+    try {
+      const voices = await agentService.getVoices();
+      setAvailableVoices(voices);
+      console.log("Available voices:", voices);
+    } catch (error) {
+      console.error("Error loading voices:", error);
+      // Don't show error toast here, as it might be normal when API key isn't set
+    }
+  };
   
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -132,6 +152,7 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
       // If not muted, speak the response
       if (!isMuted) {
         try {
+          agentService.setVoice(selectedVoice);
           const audioBuffer = await agentService.generateSpeech(response);
           const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
           const audioUrl = URL.createObjectURL(audioBlob);
@@ -142,7 +163,11 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
           }
         } catch (error) {
           console.error("Error generating speech:", error);
-          // Fail silently - text response is still shown
+          toast({
+            title: "Speech Error",
+            description: "Could not generate speech. Check your API key and try again.",
+            variant: "destructive",
+          });
         }
       }
     } catch (error) {
@@ -169,19 +194,74 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
     return agentService.sendMessage(userInput);
   };
   
-  const toggleListening = () => {
-    // This would implement speech recognition in a real application
-    setIsListening(!isListening);
-    
-    if (!isListening) {
-      // In a real implementation, this would start speech recognition
-      toast({
-        title: "Voice Input",
-        description: "Voice input would be activated here in a complete implementation",
-      });
+  const toggleListening = async () => {
+    if (isListening) {
+      stopListening();
     } else {
-      // In a real implementation, this would stop speech recognition
+      startListening();
     }
+  };
+  
+  const startListening = async () => {
+    try {
+      // Request microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Create MediaRecorder instance
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      
+      // Handle audio data
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+      
+      // Handle recording stop
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        
+        // In a real implementation, this would send the audio to a speech-to-text service
+        // For now, we'll just show a toast
+        toast({
+          title: "Voice Input",
+          description: "Voice input processing would be implemented here",
+        });
+        
+        setIsListening(false);
+      };
+      
+      // Start recording
+      mediaRecorder.start();
+      setIsListening(true);
+      
+      toast({
+        title: "Voice Input Activated",
+        description: "Speak clearly into your microphone",
+      });
+    } catch (error) {
+      console.error("Error accessing microphone:", error);
+      toast({
+        title: "Microphone Error",
+        description: "Could not access your microphone",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  const stopListening = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+      
+      // Stop all tracks of the stream
+      if (mediaRecorderRef.current.stream) {
+        mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      }
+    }
+    
+    setIsListening(false);
   };
   
   const toggleMute = () => {
@@ -191,14 +271,65 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
     if (!isMuted && audioRef.current) {
       audioRef.current.pause();
     }
+    
+    toast({
+      title: isMuted ? "Audio Enabled" : "Audio Disabled",
+      description: isMuted ? "Agent responses will now be spoken" : "Agent responses will be text only",
+    });
   };
   
   const handleApiKeyClose = () => {
     setShowApiKeyInput(false);
+    loadVoices(); // Try to load voices after API key is set
+  };
+
+  const handleVoiceChange = (voiceId: string) => {
+    setSelectedVoice(voiceId);
+    agentService.setVoice(voiceId);
+    
+    toast({
+      title: "Voice Changed",
+      description: "The agent will now use a different voice",
+    });
   };
   
   return (
     <div className="flex flex-col h-full border rounded-xl overflow-hidden shadow-md bg-white dark:bg-slate-800">
+      <div className="p-3 border-b border-border flex justify-between items-center bg-slate-50 dark:bg-slate-900">
+        <h3 className="font-medium">AI Assistant</h3>
+        
+        <div className="flex items-center gap-2">
+          <Select 
+            value={selectedVoice}
+            onValueChange={handleVoiceChange}
+          >
+            <SelectTrigger className="w-[140px] h-8">
+              <SelectValue placeholder="Select voice" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableVoices.length > 0 ? (
+                availableVoices.map((voice) => (
+                  <SelectItem key={voice.voice_id} value={voice.voice_id}>
+                    {voice.name}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem value="21m00Tcm4TlvDq8ikWAM">Default Voice</SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+          
+          <Button 
+            onClick={toggleMute}
+            variant="outline" 
+            size="icon"
+            className={isMuted ? "bg-red-100 text-red-500" : ""}
+          >
+            {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+          </Button>
+        </div>
+      </div>
+      
       <ScrollArea className="flex-1" ref={scrollAreaRef}>
         <div className="p-4 space-y-4">
           {messages.map((message) => (

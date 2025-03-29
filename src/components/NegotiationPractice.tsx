@@ -6,12 +6,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Headphones, Mic, MicOff, Phone, PhoneOff, Settings, ArrowLeft } from "lucide-react";
+import { Headphones, Mic, MicOff, Phone, PhoneOff, Settings, ArrowLeft, Volume2, VolumeX } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { ApiKeyInput } from "@/components/ApiKeyInput";
 import { agentService } from "@/utils/agentService";
 import { PracticeScenario } from "@/components/PracticeScenario";
 import { Link } from "react-router-dom";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type MessageType = "user" | "agent";
 
@@ -31,7 +32,13 @@ export const NegotiationPractice = () => {
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [selectedScenario, setSelectedScenario] = useState("standard");
   const [isLoading, setIsLoading] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [selectedVoice, setSelectedVoice] = useState("21m00Tcm4TlvDq8ikWAM"); // Rachel voice
+  const [availableVoices, setAvailableVoices] = useState<any[]>([]);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   
   const scenarios = [
     { id: "standard", name: "Standard Apartment", description: "Practice negotiating rent for a standard 1-bedroom apartment in an urban area." },
@@ -40,6 +47,9 @@ export const NegotiationPractice = () => {
   ];
   
   useEffect(() => {
+    // Initialize audio element
+    audioRef.current = new Audio();
+    
     if (messages.length === 0 && isCallActive) {
       const scenarioTitle = scenarios.find(s => s.id === selectedScenario)?.name || "Standard Apartment";
       setMessages([
@@ -50,8 +60,13 @@ export const NegotiationPractice = () => {
           timestamp: new Date()
         }
       ]);
+      
+      // If not muted, speak the welcome message
+      if (!isMuted) {
+        speakText(`Hello! I'm the landlord for the ${scenarioTitle} you're interested in. I understand you wanted to discuss the terms. What aspects of the lease would you like to negotiate?`);
+      }
     }
-  }, [messages.length, isCallActive, selectedScenario]);
+  }, [messages.length, isCallActive, selectedScenario, isMuted]);
   
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -62,8 +77,40 @@ export const NegotiationPractice = () => {
     }
   }, [messages]);
   
+  const loadVoices = async () => {
+    try {
+      const voices = await agentService.getVoices();
+      setAvailableVoices(voices);
+      console.log("Available voices:", voices);
+    } catch (error) {
+      console.error("Error loading voices:", error);
+      // Don't show error toast here, as it might be normal when API key isn't set
+    }
+  };
+  
+  const speakText = async (text: string) => {
+    try {
+      agentService.setVoice(selectedVoice);
+      const audioBuffer = await agentService.generateSpeech(text);
+      const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
+      const audioUrl = URL.createObjectURL(audioBlob);
+      
+      if (audioRef.current) {
+        audioRef.current.src = audioUrl;
+        audioRef.current.play();
+      }
+    } catch (error) {
+      console.error("Error generating speech:", error);
+      toast({
+        title: "Speech Error",
+        description: "Could not generate speech. Check your API key and try again.",
+        variant: "destructive",
+      });
+    }
+  };
+  
   const startCall = async () => {
-    if (!agentService.hasApiKey()) {
+    if (!(await agentService.hasApiKey())) {
       setShowApiKeyInput(true);
       return;
     }
@@ -71,6 +118,8 @@ export const NegotiationPractice = () => {
     try {
       await agentService.startConversation();
       setIsCallActive(true);
+      loadVoices();
+      
       toast({
         title: "Call Started",
         description: "You're now connected with the landlord agent.",
@@ -88,6 +137,12 @@ export const NegotiationPractice = () => {
   const endCall = () => {
     setIsCallActive(false);
     setMessages([]);
+    
+    // Stop any ongoing audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    
     toast({
       title: "Call Ended",
       description: "Your practice session has ended.",
@@ -120,7 +175,10 @@ export const NegotiationPractice = () => {
       
       setMessages(prev => [...prev, agentMessage]);
       
-      console.log("Agent would speak:", response);
+      // If not muted, speak the response
+      if (!isMuted) {
+        speakText(response);
+      }
     } catch (error) {
       console.error("Error sending message:", error);
       toast({
@@ -133,20 +191,98 @@ export const NegotiationPractice = () => {
     }
   };
   
-  const toggleListening = () => {
-    setIsListening(!isListening);
-    
-    if (!isListening) {
-      toast({
-        title: "Voice Input",
-        description: "Voice input activated. Speak clearly into your microphone.",
-      });
+  const toggleListening = async () => {
+    if (isListening) {
+      stopListening();
     } else {
+      startListening();
+    }
+  };
+  
+  const startListening = async () => {
+    try {
+      // Request microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // Create MediaRecorder instance
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      
+      // Handle audio data
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+      
+      // Handle recording stop
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        
+        // In a real implementation, this would send the audio to a speech-to-text service
+        // For now, we'll just show a toast
+        toast({
+          title: "Voice Input",
+          description: "Voice input processing would be implemented here",
+        });
+        
+        setIsListening(false);
+      };
+      
+      // Start recording
+      mediaRecorder.start();
+      setIsListening(true);
+      
       toast({
-        title: "Voice Input Disabled",
-        description: "Returning to text input mode.",
+        title: "Voice Input Activated",
+        description: "Speak clearly into your microphone",
+      });
+    } catch (error) {
+      console.error("Error accessing microphone:", error);
+      toast({
+        title: "Microphone Error",
+        description: "Could not access your microphone",
+        variant: "destructive",
       });
     }
+  };
+  
+  const stopListening = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+      
+      // Stop all tracks of the stream
+      if (mediaRecorderRef.current.stream) {
+        mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      }
+    }
+    
+    setIsListening(false);
+  };
+  
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
+    
+    // If currently playing, stop it
+    if (!isMuted && audioRef.current) {
+      audioRef.current.pause();
+    }
+    
+    toast({
+      title: isMuted ? "Audio Enabled" : "Audio Disabled",
+      description: isMuted ? "Agent responses will now be spoken" : "Agent responses will be text only",
+    });
+  };
+  
+  const handleVoiceChange = (voiceId: string) => {
+    setSelectedVoice(voiceId);
+    agentService.setVoice(voiceId);
+    
+    toast({
+      title: "Voice Changed",
+      description: "The landlord will now use a different voice",
+    });
   };
   
   return (
@@ -183,10 +319,41 @@ export const NegotiationPractice = () => {
                     Start Call
                   </Button>
                 ) : (
-                  <Button onClick={endCall} variant="destructive" className="gap-2">
-                    <PhoneOff className="h-4 w-4" />
-                    End Call
-                  </Button>
+                  <>
+                    <Select 
+                      value={selectedVoice}
+                      onValueChange={handleVoiceChange}
+                    >
+                      <SelectTrigger className="w-[140px] h-8">
+                        <SelectValue placeholder="Select voice" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableVoices.length > 0 ? (
+                          availableVoices.map((voice) => (
+                            <SelectItem key={voice.voice_id} value={voice.voice_id}>
+                              {voice.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="21m00Tcm4TlvDq8ikWAM">Default Voice</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    
+                    <Button 
+                      onClick={toggleMute}
+                      variant="outline" 
+                      size="icon"
+                      className={isMuted ? "bg-red-100 text-red-500" : ""}
+                    >
+                      {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                    </Button>
+                    
+                    <Button onClick={endCall} variant="destructive" className="gap-2">
+                      <PhoneOff className="h-4 w-4" />
+                      End Call
+                    </Button>
+                  </>
                 )}
                 <Button 
                   variant="outline"
