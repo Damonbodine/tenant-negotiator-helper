@@ -4,7 +4,7 @@
  * Uses Supabase for secure storage instead of localStorage
  */
 
-import { supabase } from './supabaseClient';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 
 export interface ApiKeyConfig {
