@@ -18,9 +18,16 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   global: {
     fetch: (url, options) => {
       // Enhanced fetch with better error handling and logging
+      console.log(`Supabase fetch request: ${options?.method || 'GET'} | ${url}`);
+      
       return fetch(url, options).then(response => {
         // Log the response status for debugging
         console.log(`Supabase fetch: ${options?.method || 'GET'} | ${response.status} | ${url}`);
+        
+        // Additional logging for non-200 responses
+        if (!response.ok) {
+          console.warn(`Supabase non-OK response: ${response.status} | ${url}`);
+        }
         
         // Return the response to continue the promise chain
         return response;

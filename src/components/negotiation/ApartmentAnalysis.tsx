@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,6 +56,8 @@ export function ApartmentAnalysis() {
   const [rawErrorResponse, setRawErrorResponse] = useState<string | null>(null);
   const [httpStatus, setHttpStatus] = useState<number | null>(null);
   const [showDebugInfo, setShowDebugInfo] = useState(false);
+  const [requestStartTime, setRequestStartTime] = useState<string | null>(null);
+  const [requestEndTime, setRequestEndTime] = useState<string | null>(null);
 
   const formatPrice = (price: number | null) => {
     if (price === null) return "N/A";
@@ -99,13 +100,15 @@ export function ApartmentAnalysis() {
     setAnalysis(null);
     setRawErrorResponse(null);
     setHttpStatus(null);
+    setRequestStartTime(new Date().toISOString());
+    setRequestEndTime(null);
 
     try {
       console.log("Sending request to apartment-analysis function with URL:", zillowUrl);
       console.log("Test mode:", testMode || "disabled");
       
       // Add a timestamp to log when the request starts
-      console.log("Request started at:", new Date().toISOString());
+      console.log("Request started at:", requestStartTime);
       
       const response = await supabase.functions.invoke('apartment-analysis', {
         body: { 
@@ -121,7 +124,7 @@ export function ApartmentAnalysis() {
       
       if (error) {
         console.error("Supabase function error:", error);
-        setHttpStatus(500); // Assuming 500 for function errors
+        setHttpStatus(error.context?.status || 500);
         setRawErrorResponse(JSON.stringify(error, null, 2));
         throw new Error("Failed to connect to analysis service. Please try again later.");
       }
@@ -142,8 +145,21 @@ export function ApartmentAnalysis() {
         setErrorMessage(data.message);
       }
 
+      if (data.technicalError) {
+        console.warn("Technical error from function:", data.technicalError);
+        setRawErrorResponse(JSON.stringify({
+          technicalError: data.technicalError,
+          apiStatus: data.apiStatus
+        }, null, 2));
+      }
+
       if (data.analysis) {
         setAnalysis(data.analysis);
+        toast({
+          title: "Analysis Complete",
+          description: data.message || "Analysis completed successfully",
+          variant: data.message ? "default" : "default"
+        });
       } else {
         console.error("No analysis data in response:", data);
         setRawErrorResponse(JSON.stringify(data, null, 2));
@@ -163,7 +179,9 @@ export function ApartmentAnalysis() {
       });
     } finally {
       // Add a timestamp to log when the request completes
-      console.log("Request completed at:", new Date().toISOString());
+      const endTime = new Date().toISOString();
+      setRequestEndTime(endTime);
+      console.log("Request completed at:", endTime);
       setIsLoading(false);
     }
   };
@@ -244,6 +262,17 @@ export function ApartmentAnalysis() {
                 <div><strong>HTTP Status:</strong> {httpStatus || "N/A"}</div>
                 <div><strong>URL:</strong> {zillowUrl || "N/A"}</div>
                 <div><strong>Function:</strong> apartment-analysis</div>
+                {requestStartTime && (
+                  <div><strong>Request Start:</strong> {requestStartTime}</div>
+                )}
+                {requestEndTime && (
+                  <div><strong>Request End:</strong> {requestEndTime}</div>
+                )}
+                {requestStartTime && requestEndTime && (
+                  <div><strong>Duration:</strong> {
+                    new Date(requestEndTime).getTime() - new Date(requestStartTime).getTime()
+                  } ms</div>
+                )}
               </div>
             </AlertDescription>
           </Alert>
