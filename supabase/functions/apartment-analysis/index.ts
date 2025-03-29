@@ -145,27 +145,12 @@ function generateFallbackData(zipCode: string, address: string) {
   };
 }
 
-// Extract property details from URL
+// Extract property details from URL using the Zillow scraper
 async function extractPropertyDetails(url: string) {
   try {
     console.log(`Attempting to extract property details for URL: ${url}`);
     
-    // Try to extract address and zip code from URL
-    let addressMatch = url.match(/\/([^\/]+?)-([^\/]+?)-([^\/]+?)-([^\/]+?)\/\d+/);
-    let zipCodeMatch = url.match(/-(\d{5})\//) || ["", "00000"];
-    
-    if (!addressMatch) {
-      console.error("Could not extract address from URL");
-      throw new Error("Could not extract address from URL");
-    }
-    
-    // Format address from URL components
-    const address = addressMatch.slice(1, 5).join(" ").replace(/-/g, " ");
-    const zipCode = zipCodeMatch[1];
-    
-    console.log(`Extracted address: ${address}, zipCode: ${zipCode}`);
-    
-    // Create a more targeted web scraping approach
+    // Get the APIFY API key from environment variables
     const apifyApiKey = Deno.env.get("APIFY_API_KEY");
     
     if (!apifyApiKey) {
@@ -173,45 +158,54 @@ async function extractPropertyDetails(url: string) {
       throw new Error("APIFY_API_KEY not set");
     }
     
-    console.log("Using Apify API key: Key is set (not shown for security)");
-    
-    // Use the correct format for Apify actor ID
-    // Note: Changed from puppeteer~single-page-html to a specific actor ID format
-    const actorId = "lukaskrivka/website-content-crawler";
+    // Using the maxcopell/zillow-scraper actor as suggested by the user
+    const actorId = "maxcopell/zillow-scraper";
     console.log(`Using Apify actor: ${actorId}`);
     
-    // Call Apify API to run the actor with the correct endpoint
+    // Create a search URL to match our target property listing
+    // For this actor, we need to transform the single property URL into a search URL
+    // to trick the actor into thinking it's a search
+    let searchUrl = url;
+    
+    // If the URL is a homedetails URL, we need to extract the zipcode
+    const zipCodeMatch = url.match(/-(\d{5})\//) || ["", "78705"];
+    
+    // Start the Apify actor run
+    console.log(`Starting Apify actor run with URL: ${searchUrl}`);
     const runResponse = await fetch(`https://api.apify.com/v2/acts/${actorId}/runs?token=${apifyApiKey}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        "startUrls": [{ "url": url }],
-        "proxyConfiguration": { "useApifyProxy": true },
-        "pseudoUrls": [],
-        "linkSelector": ""
+        "searchUrls": [
+          {
+            "url": searchUrl
+          }
+        ],
+        "extractionMethod": "PAGINATION_WITHOUT_ZOOM_IN", // Using pagination without zoom for quicker results
+        "maxItems": 1 // We only need the single property
       })
     });
     
     if (!runResponse.ok) {
       const errorText = await runResponse.text();
       console.error(`Apify run API error: ${runResponse.status} - ${errorText}`);
-      throw new Error(`Apify API returned status ${runResponse.status}`);
+      throw new Error(`Apify API returned status ${runResponse.status}: ${errorText}`);
     }
     
     const runData = await runResponse.json();
     console.log(`Actor run initiated, run ID: ${runData.id}`);
     
     // Wait for the run to finish (with timeout)
-    const maxWaitTime = 30000; // 30 seconds
+    const maxWaitTime = 60000; // 60 seconds
     const startTime = Date.now();
     let runFinished = false;
     let runDetail = null;
     
     while (!runFinished && Date.now() - startTime < maxWaitTime) {
       // Wait a bit before checking again
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
       // Check if the run has finished
       const detailResponse = await fetch(`https://api.apify.com/v2/actor-runs/${runData.id}?token=${apifyApiKey}`);
@@ -226,7 +220,7 @@ async function extractPropertyDetails(url: string) {
         runFinished = true;
         console.log(`Run finished with status: ${runDetail.status}`);
       } else {
-        console.log(`Run status: ${runDetail.status}`);
+        console.log(`Run status: ${runDetail.status}, waited ${Math.round((Date.now() - startTime) / 1000)}s`);
       }
     }
     
@@ -242,6 +236,7 @@ async function extractPropertyDetails(url: string) {
     
     // Get the dataset items
     const datasetId = runDetail.defaultDatasetId;
+    console.log(`Fetching results from dataset: ${datasetId}`);
     const itemsResponse = await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?token=${apifyApiKey}`);
     
     if (!itemsResponse.ok) {
@@ -257,29 +252,21 @@ async function extractPropertyDetails(url: string) {
       throw new Error("No property data returned from scraper");
     }
     
-    // Process the scraped HTML to extract property details
-    const htmlData = items[0].text || items[0].html || "";
+    // Process the first property in the results
+    const propertyData = items[0];
+    console.log("Property data:", JSON.stringify(propertyData));
     
-    // Extract key property information using regex patterns
-    // This is a simplified example - in production you'd use a more robust HTML parser
-    const priceMatch = htmlData.match(/\$([0-9,]+)/);
-    const bedroomsMatch = htmlData.match(/(\d+)\s*bed/i);
-    const bathroomsMatch = htmlData.match(/(\d+(?:\.\d+)?)\s*bath/i);
-    const sqftMatch = htmlData.match(/(\d+(?:,\d+)?)\s*sqft/i);
-    
-    // Create property data object
-    const propertyData = {
-      address: address,
-      zipCode: zipCode,
-      bedrooms: bedroomsMatch ? parseFloat(bedroomsMatch[1]) : 1,
-      bathrooms: bathroomsMatch ? parseFloat(bathroomsMatch[1]) : 1,
-      price: priceMatch ? parseInt(priceMatch[1].replace(/,/g, "")) : null,
-      propertyType: htmlData.includes("condo") || htmlData.includes("apartment") ? "Condo" : "House",
-      squareFootage: sqftMatch ? parseInt(sqftMatch[1].replace(/,/g, "")) : 700
+    // Extract the relevant information from the actor output
+    return {
+      address: propertyData.address || `Unknown Address, ${zipCodeMatch[1]}`,
+      zipCode: zipCodeMatch[1],
+      bedrooms: propertyData.beds || 1,
+      bathrooms: propertyData.baths || 1,
+      price: propertyData.unformattedPrice || parseInt(propertyData.price?.replace(/[^0-9]/g, "")) || 1500,
+      propertyType: propertyData.statusText?.includes("Condo") ? "Condo" : 
+                   propertyData.statusText?.includes("Apartment") ? "Apartment" : "House",
+      squareFootage: propertyData.area || 700
     };
-    
-    console.log("Successfully extracted property details:", JSON.stringify(propertyData));
-    return propertyData;
   } catch (error) {
     console.error("Error extracting property details:", error.message);
     console.error("Stack trace:", error.stack);
@@ -318,7 +305,7 @@ serve(async (req) => {
     
     // Sanitize the URL parameter
     const sanitizedUrl = sanitizeUrlParam(zillowUrl);
-    console.log(`Extracting property details from: ${zillowUrl}`);
+    console.log(`Processing property details from: ${zillowUrl}`);
     
     // Check if we are in test mode
     console.log(`Test mode: ${testMode || "disabled"}`);
@@ -364,7 +351,7 @@ serve(async (req) => {
     }
     
     try {
-      console.log(`Attempting to extract real property details using Apify`);
+      console.log(`Attempting to extract real property details using Apify with actor: maxcopell/zillow-scraper`);
       const propertyDetails = await extractPropertyDetails(zillowUrl);
       
       // Generate analysis based on the extracted property details
