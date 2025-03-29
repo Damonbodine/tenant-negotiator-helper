@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface HeaderProps {
   activeTab: string;
@@ -16,7 +17,15 @@ interface HeaderProps {
 
 export const Header = ({ activeTab, setActiveTab }: HeaderProps) => {
   const [showApiModal, setShowApiModal] = useState(false);
-  const { user, signOut } = useAuth();
+  const { user, signOut, isLoading } = useAuth();
+  
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error("Sign out error:", error);
+    }
+  };
   
   return (
     <header className="sticky top-0 z-10 w-full bg-background/80 backdrop-blur-md border-b border-border py-3">
@@ -64,7 +73,9 @@ export const Header = ({ activeTab, setActiveTab }: HeaderProps) => {
             <span>Manage API Keys</span>
           </Button>
           
-          {user ? (
+          {isLoading ? (
+            <Skeleton className="h-8 w-8 rounded-full" />
+          ) : user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="rounded-full h-8 w-8 p-0">
@@ -77,7 +88,7 @@ export const Header = ({ activeTab, setActiveTab }: HeaderProps) => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={signOut} className="cursor-pointer">
+                <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
                   <LogOut className="h-4 w-4 mr-2" />
                   <span>Sign out</span>
                 </DropdownMenuItem>
@@ -134,11 +145,13 @@ export const Header = ({ activeTab, setActiveTab }: HeaderProps) => {
             <span>API Keys</span>
           </Button>
           
-          {user ? (
+          {isLoading ? (
+            <Skeleton className="h-8 w-20" />
+          ) : user ? (
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={signOut}
+              onClick={handleSignOut}
               className="text-sm flex items-center gap-1"
             >
               <LogOut className="h-4 w-4" />

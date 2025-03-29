@@ -2,11 +2,13 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/use-toast';
 
 interface AuthContextType {
   session: Session | null;
   user: User | null;
   isLoading: boolean;
+  authError: string | null;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -17,19 +19,43 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
+        console.log("Auth state change event:", event);
+        
         setSession(newSession);
         setUser(newSession?.user ?? null);
         setIsLoading(false);
+        
+        // Reset error on successful authentication
+        if (event === 'SIGNED_IN') {
+          setAuthError(null);
+          toast({
+            title: "Welcome!",
+            description: "You have successfully signed in.",
+          });
+        }
+        
+        if (event === 'SIGNED_OUT') {
+          toast({
+            title: "Signed out",
+            description: "You have been signed out.",
+          });
+        }
       }
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+    supabase.auth.getSession().then(({ data: { session: currentSession }, error }) => {
+      if (error) {
+        console.error("Error getting session:", error);
+        setAuthError(error.message);
+      }
+      
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       setIsLoading(false);
@@ -39,28 +65,67 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signInWithGoogle = async () => {
+    setIsLoading(true);
+    setAuthError(null);
+    
     try {
-      await supabase.auth.signInWithOAuth({
+      console.log("Starting Google sign in...");
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: `${window.location.origin}/auth`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
         }
       });
+      
+      if (error) {
+        console.error("Error signing in with Google:", error);
+        setAuthError(error.message);
+        setIsLoading(false);
+        throw error;
+      }
+      
+      // Note: No need to set loading to false here as redirect will happen
     } catch (error) {
-      console.error('Error signing in with Google:', error);
+      console.error("Unexpected error during sign in:", error);
+      setAuthError(error.message || "An unexpected error occurred");
+      setIsLoading(false);
+      throw error;
     }
   };
 
   const signOut = async () => {
+    setIsLoading(true);
+    
     try {
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error("Error signing out:", error);
+        setAuthError(error.message);
+        throw error;
+      }
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error("Unexpected error during sign out:", error);
+      setAuthError(error.message || "An unexpected error occurred");
+      throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, isLoading, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ 
+      session, 
+      user, 
+      isLoading, 
+      authError, 
+      signInWithGoogle, 
+      signOut 
+    }}>
       {children}
     </AuthContext.Provider>
   );

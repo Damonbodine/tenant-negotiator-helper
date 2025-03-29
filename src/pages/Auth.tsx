@@ -1,20 +1,48 @@
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { toast } from '@/components/ui/use-toast';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const Auth = () => {
-  const { user, signInWithGoogle, isLoading } = useAuth();
+  const { user, signInWithGoogle, isLoading, authError } = useAuth();
   const navigate = useNavigate();
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user && !isLoading) {
       navigate('/');
     }
   }, [user, isLoading, navigate]);
+
+  useEffect(() => {
+    // Check for auth error in URL (Supabase redirects with error param)
+    const urlParams = new URLSearchParams(window.location.search);
+    const error = urlParams.get('error');
+    const errorDescription = urlParams.get('error_description');
+    
+    if (error) {
+      setLoginError(errorDescription || 'Authentication failed. Please try again.');
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      toast({
+        title: "Authentication Error",
+        description: error.message || "Failed to sign in with Google",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-4">
@@ -32,8 +60,16 @@ const Auth = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {(loginError || authError) && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertDescription>
+                  {loginError || authError}
+                </AlertDescription>
+              </Alert>
+            )}
+            
             <Button 
-              onClick={signInWithGoogle} 
+              onClick={handleGoogleSignIn} 
               className="w-full flex items-center justify-center gap-2"
               disabled={isLoading}
             >
@@ -46,7 +82,7 @@ const Auth = () => {
                 </g>
               </svg>
               <LogIn className="h-4 w-4" />
-              <span>Sign in with Google</span>
+              <span>{isLoading ? "Signing in..." : "Sign in with Google"}</span>
             </Button>
           </CardContent>
           <CardFooter className="flex justify-center">
