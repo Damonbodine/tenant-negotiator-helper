@@ -232,13 +232,13 @@ const Index = () => {
                 <p className="text-black text-center">Get insights on rental prices and market trends</p>
               </button>
               
-              <button
-                onClick={() => setActiveJourney("negotiation")}
+              <Link
+                to="/practice?tab=analysis"
                 className="journey-bubble flex flex-col items-center justify-center p-8 bg-[#FEF7CD] hover:bg-[#fcf4b8] border-2 border-[#f0e9b0] rounded-full h-64 w-64 mx-auto transition-all hover:shadow-lg hover:scale-105"
               >
                 <div className="text-black text-4xl font-bold mb-2">Should I negotiate</div>
-                <p className="text-black text-center">Learn effective rental negotiation strategies</p>
-              </button>
+                <p className="text-black text-center">Analyze apartment pricing to strengthen your position</p>
+              </Link>
               
               <Link
                 to="/practice"
