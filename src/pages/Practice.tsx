@@ -23,7 +23,7 @@ const Practice = () => {
       </header>
       
       <main className="flex-1 container py-6">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <h2 className="text-2xl font-bold text-white mb-6">Practice Negotiation Call</h2>
           <div className="h-[calc(100vh-10rem)]">
             <NegotiationPractice />

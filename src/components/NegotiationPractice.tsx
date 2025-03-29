@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,10 +14,19 @@ import { chatService } from "@/utils/chatService";
 import { PracticeScenario } from "@/components/PracticeScenario";
 import { Link } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
 
 type MessageType = "user" | "agent";
 
 interface Message {
+  id: string;
+  type: MessageType;
+  text: string;
+  timestamp: Date;
+}
+
+// Define the ChatMessage interface to match what's expected by chatService
+interface ChatMessage {
   id: string;
   type: MessageType;
   text: string;
@@ -35,6 +45,7 @@ export const NegotiationPractice = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState("21m00Tcm4TlvDq8ikWAM"); // Rachel voice
   const [availableVoices, setAvailableVoices] = useState<any[]>([]);
+  const [hasBackendApiKey, setHasBackendApiKey] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -45,6 +56,27 @@ export const NegotiationPractice = () => {
     { id: "luxury", name: "Luxury Condo", description: "Negotiate for a high-end luxury condo with premium amenities." },
     { id: "house", name: "Single Family Home", description: "Practice negotiating for a 3-bedroom single family home in the suburbs." }
   ];
+  
+  // Check if the backend has an ElevenLabs API key configured
+  useEffect(() => {
+    const checkBackendApiKey = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('check-elevenlabs-key');
+        if (!error && data?.hasKey) {
+          setHasBackendApiKey(true);
+          console.log("Backend ElevenLabs API key is configured");
+        } else {
+          console.log("Backend ElevenLabs API key is not configured or error occurred");
+          setHasBackendApiKey(false);
+        }
+      } catch (error) {
+        console.error("Error checking backend API key:", error);
+        setHasBackendApiKey(false);
+      }
+    };
+    
+    checkBackendApiKey();
+  }, []);
   
   useEffect(() => {
     // Initialize audio element
@@ -98,9 +130,17 @@ export const NegotiationPractice = () => {
   
   const loadVoices = async () => {
     try {
-      const voices = await agentService.getVoices();
-      setAvailableVoices(voices);
-      console.log("Available voices:", voices);
+      if (hasBackendApiKey) {
+        // Fetch voices from the backend
+        const { data, error } = await supabase.functions.invoke('get-elevenlabs-voices');
+        if (error) throw error;
+        setAvailableVoices(data?.voices || []);
+      } else {
+        // Fall back to using the client-side service if backend key isn't available
+        const voices = await agentService.getVoices();
+        setAvailableVoices(voices);
+      }
+      console.log("Available voices loaded");
     } catch (error) {
       console.error("Error loading voices:", error);
       // Don't show error toast here, as it might be normal when API key isn't set
@@ -109,8 +149,29 @@ export const NegotiationPractice = () => {
   
   const speakText = async (text: string) => {
     try {
-      agentService.setVoice(selectedVoice);
-      const audioBuffer = await agentService.generateSpeech(text);
+      let audioBuffer;
+      
+      if (hasBackendApiKey) {
+        // Use backend to generate speech
+        const { data, error } = await supabase.functions.invoke('generate-speech', {
+          body: { text, voiceId: selectedVoice }
+        });
+        
+        if (error) throw error;
+        
+        // Convert base64 to ArrayBuffer
+        const binaryString = atob(data.audioContent);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        audioBuffer = bytes.buffer;
+      } else {
+        // Fall back to client-side service
+        agentService.setVoice(selectedVoice);
+        audioBuffer = await agentService.generateSpeech(text);
+      }
+      
       const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
       const audioUrl = URL.createObjectURL(audioBlob);
       
@@ -122,20 +183,23 @@ export const NegotiationPractice = () => {
       console.error("Error generating speech:", error);
       toast({
         title: "Speech Error",
-        description: "Could not generate speech. Check your API key and try again.",
+        description: "Could not generate speech. Please try again.",
         variant: "destructive",
       });
     }
   };
   
   const startCall = async () => {
-    if (!(await agentService.hasApiKey())) {
+    if (!hasBackendApiKey && !(await agentService.hasApiKey())) {
       setShowApiKeyInput(true);
       return;
     }
     
     try {
-      await agentService.startConversation();
+      if (!hasBackendApiKey) {
+        await agentService.startConversation();
+      }
+      
       setIsCallActive(true);
       loadVoices();
       
@@ -147,7 +211,7 @@ export const NegotiationPractice = () => {
       console.error("Error starting call:", error);
       toast({
         title: "Error",
-        description: "Failed to start the call. Please check your API key.",
+        description: "Failed to start the call. Please try again.",
         variant: "destructive",
       });
     }
@@ -187,7 +251,8 @@ export const NegotiationPractice = () => {
       const systemPrompt = await chatService.getPracticeNegotiationPrompt(selectedScenario);
       
       // Prepare conversation history for the model
-      const history = messages.map(msg => ({
+      const history: ChatMessage[] = messages.map(msg => ({
+        id: msg.id,
         type: msg.type,
         text: msg.text,
         timestamp: msg.timestamp
@@ -329,7 +394,9 @@ export const NegotiationPractice = () => {
   
   const handleVoiceChange = (voiceId: string) => {
     setSelectedVoice(voiceId);
-    agentService.setVoice(voiceId);
+    if (!hasBackendApiKey) {
+      agentService.setVoice(voiceId);
+    }
     
     toast({
       title: "Voice Changed",
