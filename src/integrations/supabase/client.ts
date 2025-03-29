@@ -17,11 +17,21 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   },
   global: {
     fetch: (url, options) => {
-      // Custom fetch to add error handling
+      // Enhanced fetch with better error handling and logging
       return fetch(url, options).then(response => {
+        // Log the response status for debugging
+        console.log(`Supabase fetch: ${options?.method || 'GET'} | ${response.status} | ${url}`);
+        
+        // Return the response to continue the promise chain
         return response;
       }).catch(error => {
         console.error("Supabase fetch error:", error);
+        // Add more detailed error information
+        console.error("Request details:", { 
+          url, 
+          method: options?.method,
+          headers: options?.headers
+        });
         throw error;
       });
     }

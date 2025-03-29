@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { 
   Loader2, ArrowDown, ArrowUp, DollarSign, 
-  Home, MapPin, BedDouble, Bath, Info, AlertTriangle
+  Home, MapPin, BedDouble, Bath, Info, AlertTriangle, Bug
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -54,6 +55,8 @@ export function ApartmentAnalysis() {
   const [testMode, setTestMode] = useState<string | null>(null);
   const [showTestControls, setShowTestControls] = useState(false);
   const [rawErrorResponse, setRawErrorResponse] = useState<string | null>(null);
+  const [httpStatus, setHttpStatus] = useState<number | null>(null);
+  const [showDebugInfo, setShowDebugInfo] = useState(false);
 
   const formatPrice = (price: number | null) => {
     if (price === null) return "N/A";
@@ -66,6 +69,10 @@ export function ApartmentAnalysis() {
 
   const toggleTestControls = () => {
     setShowTestControls(!showTestControls);
+  };
+
+  const toggleDebugInfo = () => {
+    setShowDebugInfo(!showDebugInfo);
   };
 
   const handleAnalyze = async () => {
@@ -91,10 +98,14 @@ export function ApartmentAnalysis() {
     setErrorMessage(null);
     setAnalysis(null);
     setRawErrorResponse(null);
+    setHttpStatus(null);
 
     try {
       console.log("Sending request to apartment-analysis function with URL:", zillowUrl);
       console.log("Test mode:", testMode || "disabled");
+      
+      // Add a timestamp to log when the request starts
+      console.log("Request started at:", new Date().toISOString());
       
       const response = await supabase.functions.invoke('apartment-analysis', {
         body: { 
@@ -103,12 +114,14 @@ export function ApartmentAnalysis() {
         }
       });
       
-      console.log("Full response from apartment-analysis function:", response);
+      // Log the full response for debugging
+      console.log("Full response from apartment-analysis function:", JSON.stringify(response, null, 2));
       
       const { data, error } = response;
       
       if (error) {
         console.error("Supabase function error:", error);
+        setHttpStatus(500); // Assuming 500 for function errors
         setRawErrorResponse(JSON.stringify(error, null, 2));
         throw new Error("Failed to connect to analysis service. Please try again later.");
       }
@@ -149,6 +162,8 @@ export function ApartmentAnalysis() {
         variant: "destructive"
       });
     } finally {
+      // Add a timestamp to log when the request completes
+      console.log("Request completed at:", new Date().toISOString());
       setIsLoading(false);
     }
   };
@@ -160,7 +175,18 @@ export function ApartmentAnalysis() {
   return (
     <Card className="h-full flex flex-col shadow-md border-blue-100 overflow-hidden" onDoubleClick={handleCardDoubleClick}>
       <CardContent className="p-6 flex-1 overflow-hidden flex flex-col">
-        <h2 className="text-xl font-semibold mb-4">Apartment Price Analysis</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Apartment Price Analysis</h2>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={toggleDebugInfo}
+            className="flex gap-1 items-center"
+          >
+            <Bug className="h-4 w-4" />
+            {showDebugInfo ? "Hide Debug" : "Show Debug"}
+          </Button>
+        </div>
         
         {showTestControls && (
           <div className="mb-4 p-3 bg-slate-50 border rounded-md">
@@ -205,6 +231,23 @@ export function ApartmentAnalysis() {
         </div>
 
         {isLoading && <LoadingState />}
+
+        {showDebugInfo && !isLoading && (
+          <Alert className="bg-gray-50 border-gray-200 text-gray-800 mb-4">
+            <AlertTitle className="flex items-center gap-2">
+              <Bug className="h-4 w-4" />
+              Technical Debugging Information
+            </AlertTitle>
+            <AlertDescription>
+              <div className="mt-2 space-y-2 text-xs">
+                <div><strong>Test Mode:</strong> {testMode || "disabled"}</div>
+                <div><strong>HTTP Status:</strong> {httpStatus || "N/A"}</div>
+                <div><strong>URL:</strong> {zillowUrl || "N/A"}</div>
+                <div><strong>Function:</strong> apartment-analysis</div>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {!isLoading && errorMessage && (
           <Alert className="bg-amber-50 border-amber-200 text-amber-800 mb-4">
