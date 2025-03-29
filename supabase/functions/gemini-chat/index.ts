@@ -17,7 +17,7 @@ serve(async (req) => {
   }
 
   try {
-    const { message, history } = await req.json();
+    const { message, history, systemPrompt } = await req.json();
     
     // Convert history to Gemini format
     const formattedHistory = history.map((msg: any) => ({
@@ -31,12 +31,18 @@ serve(async (req) => {
       parts: [{ text: message }]
     });
 
+    // Prepare the default system prompt if none provided
+    const defaultSystemPrompt = "You're a rental market expert assistant. Your goal is to help users understand rental market trends, pricing strategies, and provide data-driven advice to help them get the best rental deals. Keep responses concise and practical. Focus on rental market data.";
+    
+    // Use provided system prompt or default
+    const finalSystemPrompt = systemPrompt || defaultSystemPrompt;
+
     // Add system prompt for specialized role
     const payload = {
       contents: [
         {
           role: "user",
-          parts: [{ text: "You're a rental market expert assistant. Your goal is to help users understand rental market trends, pricing strategies, and provide data-driven advice to help them get the best rental deals. Keep responses concise and practical. Focus on rental market data." }]
+          parts: [{ text: finalSystemPrompt }]
         },
         ...formattedHistory
       ],
