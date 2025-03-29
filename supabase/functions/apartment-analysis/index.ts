@@ -162,10 +162,8 @@ async function extractPropertyDetails(url: string) {
     const actorId = "maxcopell/zillow-scraper";
     console.log(`Using Apify actor: ${actorId}`);
     
-    // Format URL for zillow-scraper actor
-    // This actor needs a search URL, but we also want it to work with detail URLs
-    // We'll convert the detail URL to a format that works with the actor
-    let zillowApiUrl = "https://api.apify.com/v2/acts/maxcopell/zillow-scraper/runs";
+    // The API endpoint format should be /v2/acts/{ACTOR_ID}/runs
+    const zillowApiUrl = `https://api.apify.com/v2/actor-tasks/${actorId}/run-sync`;
     console.log(`API endpoint: ${zillowApiUrl}`);
     
     // Extract the zipcode for later
@@ -200,6 +198,55 @@ async function extractPropertyDetails(url: string) {
     const runData = await runResponse.json();
     console.log(`Actor run initiated, run ID: ${runData.id}`);
     
+    // For a sync run, the data should be available immediately in the output
+    if (runData.data && runData.data.length > 0) {
+      const propertyData = runData.data[0];
+      console.log("Property data:", JSON.stringify(propertyData));
+      
+      // Map from the schema shown in the user's message
+      return {
+        address: propertyData.address || `Unknown Address, ${zipCodeMatch[1]}`,
+        zipCode: zipCodeMatch[1],
+        bedrooms: propertyData.beds || 1,
+        bathrooms: propertyData.baths || 1,
+        price: propertyData.unformattedPrice || parseInt(propertyData.price?.replace(/[^0-9]/g, "")) || 1500,
+        propertyType: propertyData.statusText?.includes("Condo") ? "Condo" : 
+                    propertyData.statusText?.includes("Apartment") ? "Apartment" : "House",
+        squareFootage: propertyData.area || 700
+      };
+    }
+    
+    // If we're here, try a different approach with a standard run
+    console.log("No data in sync run, trying standard run approach");
+    const standardApiUrl = `https://api.apify.com/v2/acts/${actorId}/runs`;
+    
+    const standardRunResponse = await fetch(standardApiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apifyApiKey}`
+      },
+      body: JSON.stringify({
+        "searchUrls": [
+          {
+            "url": url
+          }
+        ],
+        "extractionMethod": "PAGINATION_WITHOUT_ZOOM_IN",
+        "maxItems": 1,
+        "includeSellerInfo": true
+      })
+    });
+    
+    if (!standardRunResponse.ok) {
+      const errorText = await standardRunResponse.text();
+      console.error(`Apify standard run API error: ${standardRunResponse.status} - ${errorText}`);
+      throw new Error(`Apify API returned status ${standardRunResponse.status}: ${errorText}`);
+    }
+    
+    const standardRunData = await standardRunResponse.json();
+    console.log(`Standard actor run initiated, run ID: ${standardRunData.id}`);
+    
     // Wait for the run to finish (with timeout)
     const maxWaitTime = 120000; // 120 seconds
     const startTime = Date.now();
@@ -211,7 +258,7 @@ async function extractPropertyDetails(url: string) {
       await new Promise(resolve => setTimeout(resolve, 5000));
       
       // Check if the run has finished
-      const detailResponse = await fetch(`https://api.apify.com/v2/actor-runs/${runData.id}?token=${apifyApiKey}`);
+      const detailResponse = await fetch(`https://api.apify.com/v2/actor-runs/${standardRunData.id}?token=${apifyApiKey}`);
       
       if (!detailResponse.ok) {
         console.warn(`Could not check run status: ${detailResponse.status}`);
