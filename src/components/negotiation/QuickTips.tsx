@@ -9,18 +9,18 @@ export function QuickTips() {
         <CardTitle className="text-lg">Quick Tips</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-blue-100">
+        <div className="text-blue-100">
           <Badge variant="outline" className="mb-1 border-white/20 text-white mr-2">Tip 1</Badge>
           Start by building rapport. Briefly introduce yourself and why you like the property.
-        </p>
-        <p className="text-blue-100">
+        </div>
+        <div className="text-blue-100">
           <Badge variant="outline" className="mb-1 border-white/20 text-white mr-2">Tip 2</Badge>
           Ask open-ended questions to understand the landlord's needs and flexibility.
-        </p>
-        <p className="text-blue-100">
+        </div>
+        <div className="text-blue-100">
           <Badge variant="outline" className="mb-1 border-white/20 text-white mr-2">Tip 3</Badge>
           When stating your offer, provide reasoning based on market research or property condition.
-        </p>
+        </div>
       </CardContent>
     </Card>
   );

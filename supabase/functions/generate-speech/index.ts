@@ -26,12 +26,15 @@ serve(async (req) => {
       throw new Error('Text is required');
     }
     
+    console.log(`Generating speech for text: "${text.substring(0, 50)}..." with voice ID: ${voiceId}`);
+    
     // Call ElevenLabs API to generate speech
     const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
       method: 'POST',
       headers: {
         'xi-api-key': apiKey,
         'Content-Type': 'application/json',
+        'Accept': 'audio/mpeg',
       },
       body: JSON.stringify({
         text,
@@ -44,15 +47,29 @@ serve(async (req) => {
     });
     
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`ElevenLabs API error: ${errorData.detail || response.statusText}`);
+      const errorText = await response.text();
+      console.error("ElevenLabs API error response:", errorText);
+      let errorMessage;
+      
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.detail || errorData.message || response.statusText;
+      } catch (e) {
+        errorMessage = errorText || response.statusText;
+      }
+      
+      throw new Error(`ElevenLabs API error: ${errorMessage}`);
     }
     
-    // Convert audio buffer to base64
+    // Get audio as arrayBuffer
     const arrayBuffer = await response.arrayBuffer();
+    
+    // Convert audio buffer to base64
     const base64Audio = btoa(
       String.fromCharCode(...new Uint8Array(arrayBuffer))
     );
+    
+    console.log("Successfully generated speech, returning audio content");
     
     return new Response(
       JSON.stringify({ audioContent: base64Audio }),

@@ -19,6 +19,8 @@ serve(async (req) => {
       throw new Error('ElevenLabs API key is not configured');
     }
     
+    console.log("Fetching voices from ElevenLabs API");
+    
     // Call the ElevenLabs API to get available voices
     const response = await fetch('https://api.elevenlabs.io/v1/voices', {
       method: 'GET',
@@ -29,11 +31,22 @@ serve(async (req) => {
     });
     
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`ElevenLabs API error: ${errorData.detail || response.statusText}`);
+      const errorText = await response.text();
+      console.error("ElevenLabs API error response:", errorText);
+      let errorMessage;
+      
+      try {
+        const errorData = JSON.parse(errorText);
+        errorMessage = errorData.detail || errorData.message || response.statusText;
+      } catch (e) {
+        errorMessage = errorText || response.statusText;
+      }
+      
+      throw new Error(`ElevenLabs API error: ${errorMessage}`);
     }
     
     const data = await response.json();
+    console.log(`Successfully fetched ${data.voices?.length || 0} voices`);
     
     return new Response(
       JSON.stringify({ voices: data.voices || [] }),
