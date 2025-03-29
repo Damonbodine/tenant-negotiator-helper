@@ -158,52 +158,79 @@ async function extractPropertyDetails(url: string) {
       throw new Error("APIFY_API_KEY not set");
     }
     
-    // Using the maxcopell/zillow-scraper actor as provided by the user
-    const actorId = "maxcopell/zillow-scraper";
-    console.log(`Using Apify actor: ${actorId}`);
-    
-    // The API endpoint format should be /v2/acts/{ACTOR_ID}/runs
-    const zillowApiUrl = `https://api.apify.com/v2/actor-tasks/${actorId}/run-sync`;
-    console.log(`API endpoint: ${zillowApiUrl}`);
-    
     // Extract the zipcode for later
     const zipCodeMatch = url.match(/-(\d{5})\//) || ["", "78705"];
     
-    // Start the Apify actor run
-    console.log(`Starting Apify actor run with URL: ${url}`);
-    const runResponse = await fetch(zillowApiUrl, {
+    // First try with the detail scraper which is better for individual property listings
+    console.log("Using detail scraper first (better for property details)");
+    const detailScraperUrl = "https://api.apify.com/v2/acts/maxcopell~zillow-detail-scraper/run-sync-get-dataset-items";
+    
+    const detailResponse = await fetch(detailScraperUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${apifyApiKey}`
       },
       body: JSON.stringify({
-        "searchUrls": [
-          {
-            "url": url
-          }
-        ],
-        "extractionMethod": "PAGINATION_WITHOUT_ZOOM_IN",
-        "maxItems": 1, // We only need the single property
+        "propertyUrls": [url],
         "includeSellerInfo": true
       })
     });
     
-    if (!runResponse.ok) {
-      const errorText = await runResponse.text();
-      console.error(`Apify run API error: ${runResponse.status} - ${errorText}`);
-      throw new Error(`Apify API returned status ${runResponse.status}: ${errorText}`);
+    if (!detailResponse.ok) {
+      const errorText = await detailResponse.text();
+      console.error(`Apify detail scraper error: ${detailResponse.status} - ${errorText}`);
+      throw new Error(`Apify detail scraper returned status ${detailResponse.status}`);
     }
     
-    const runData = await runResponse.json();
-    console.log(`Actor run initiated, run ID: ${runData.id}`);
+    const detailData = await detailResponse.json();
+    console.log(`Received ${detailData.length} items from detail scraper`);
     
-    // For a sync run, the data should be available immediately in the output
-    if (runData.data && runData.data.length > 0) {
-      const propertyData = runData.data[0];
-      console.log("Property data:", JSON.stringify(propertyData));
+    if (detailData && detailData.length > 0) {
+      const propertyData = detailData[0];
+      console.log("Detail scraper property data:", JSON.stringify(propertyData));
       
-      // Map from the schema shown in the user's message
+      return {
+        address: propertyData.address || `Unknown Address, ${zipCodeMatch[1]}`,
+        zipCode: zipCodeMatch[1],
+        bedrooms: propertyData.beds || propertyData.bedrooms || 1,
+        bathrooms: propertyData.baths || propertyData.bathrooms || 1,
+        price: propertyData.price || 1500,
+        propertyType: (propertyData.homeType || propertyData.propertyType || "Condo"),
+        squareFootage: propertyData.livingArea || propertyData.area || 700
+      };
+    }
+    
+    // Fallback to the search scraper
+    console.log("Detail scraper returned no data, trying search scraper");
+    const searchScraperUrl = "https://api.apify.com/v2/acts/maxcopell~zillow-scraper/run-sync-get-dataset-items";
+    
+    const searchResponse = await fetch(searchScraperUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apifyApiKey}`
+      },
+      body: JSON.stringify({
+        "searchUrls": [{ "url": url }],
+        "maxItems": 1,
+        "includeSellerInfo": true
+      })
+    });
+    
+    if (!searchResponse.ok) {
+      const errorText = await searchResponse.text();
+      console.error(`Apify search scraper error: ${searchResponse.status} - ${errorText}`);
+      throw new Error(`Apify search scraper returned status ${searchResponse.status}`);
+    }
+    
+    const searchData = await searchResponse.json();
+    console.log(`Received ${searchData.length} items from search scraper`);
+    
+    if (searchData && searchData.length > 0) {
+      const propertyData = searchData[0];
+      console.log("Search scraper property data:", JSON.stringify(propertyData));
+      
       return {
         address: propertyData.address || `Unknown Address, ${zipCodeMatch[1]}`,
         zipCode: zipCodeMatch[1],
@@ -211,112 +238,13 @@ async function extractPropertyDetails(url: string) {
         bathrooms: propertyData.baths || 1,
         price: propertyData.unformattedPrice || parseInt(propertyData.price?.replace(/[^0-9]/g, "")) || 1500,
         propertyType: propertyData.statusText?.includes("Condo") ? "Condo" : 
-                    propertyData.statusText?.includes("Apartment") ? "Apartment" : "House",
+                   propertyData.statusText?.includes("Apartment") ? "Apartment" : "House",
         squareFootage: propertyData.area || 700
       };
     }
     
-    // If we're here, try a different approach with a standard run
-    console.log("No data in sync run, trying standard run approach");
-    const standardApiUrl = `https://api.apify.com/v2/acts/${actorId}/runs`;
-    
-    const standardRunResponse = await fetch(standardApiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apifyApiKey}`
-      },
-      body: JSON.stringify({
-        "searchUrls": [
-          {
-            "url": url
-          }
-        ],
-        "extractionMethod": "PAGINATION_WITHOUT_ZOOM_IN",
-        "maxItems": 1,
-        "includeSellerInfo": true
-      })
-    });
-    
-    if (!standardRunResponse.ok) {
-      const errorText = await standardRunResponse.text();
-      console.error(`Apify standard run API error: ${standardRunResponse.status} - ${errorText}`);
-      throw new Error(`Apify API returned status ${standardRunResponse.status}: ${errorText}`);
-    }
-    
-    const standardRunData = await standardRunResponse.json();
-    console.log(`Standard actor run initiated, run ID: ${standardRunData.id}`);
-    
-    // Wait for the run to finish (with timeout)
-    const maxWaitTime = 120000; // 120 seconds
-    const startTime = Date.now();
-    let runFinished = false;
-    let runDetail = null;
-    
-    while (!runFinished && Date.now() - startTime < maxWaitTime) {
-      // Wait a bit before checking again
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      
-      // Check if the run has finished
-      const detailResponse = await fetch(`https://api.apify.com/v2/actor-runs/${standardRunData.id}?token=${apifyApiKey}`);
-      
-      if (!detailResponse.ok) {
-        console.warn(`Could not check run status: ${detailResponse.status}`);
-        continue;
-      }
-      
-      runDetail = await detailResponse.json();
-      if (runDetail.status === "SUCCEEDED" || runDetail.status === "FAILED" || runDetail.status === "TIMED-OUT") {
-        runFinished = true;
-        console.log(`Run finished with status: ${runDetail.status}`);
-      } else {
-        console.log(`Run status: ${runDetail.status}, waited ${Math.round((Date.now() - startTime) / 1000)}s`);
-      }
-    }
-    
-    if (!runFinished) {
-      console.error(`Run timeout or error after ${Date.now() - startTime}ms`);
-      throw new Error("Timeout waiting for Apify run to complete");
-    }
-    
-    if (runDetail?.status !== "SUCCEEDED") {
-      console.error(`Run failed with status: ${runDetail?.status}`);
-      throw new Error(`Apify run failed with status: ${runDetail?.status}`);
-    }
-    
-    // Get the dataset items
-    const datasetId = runDetail.defaultDatasetId;
-    console.log(`Fetching results from dataset: ${datasetId}`);
-    const itemsResponse = await fetch(`https://api.apify.com/v2/datasets/${datasetId}/items?token=${apifyApiKey}`);
-    
-    if (!itemsResponse.ok) {
-      console.error(`Failed to get dataset items: ${itemsResponse.status}`);
-      throw new Error(`Failed to get Apify dataset items: ${itemsResponse.status}`);
-    }
-    
-    const items = await itemsResponse.json();
-    console.log(`Retrieved ${items.length} items from dataset`);
-    
-    if (items.length === 0) {
-      console.error("No data returned from Apify run");
-      throw new Error("No property data returned from scraper");
-    }
-    
-    // Process the first property in the results
-    const propertyData = items[0];
-    console.log("Property data:", JSON.stringify(propertyData));
-    
-    // Map from the schema shown in the user's message
-    return {
-      address: propertyData.address || `Unknown Address, ${zipCodeMatch[1]}`,
-      zipCode: zipCodeMatch[1],
-      bedrooms: propertyData.beds || 1,
-      bathrooms: propertyData.baths || 1,
-      price: propertyData.unformattedPrice || parseInt(propertyData.price?.replace(/[^0-9]/g, "")) || 1500,
-      propertyType: propertyData.statusText?.includes("Condo") ? "Condo" : 
-                   propertyData.statusText?.includes("Apartment") ? "Apartment" : "House",
-      squareFootage: propertyData.area || 700
-    };
+    // If we get here, neither scraper worked
+    throw new Error("No property data returned from any scraper");
   } catch (error) {
     console.error("Error extracting property details:", error.message);
     console.error("Stack trace:", error.stack);
@@ -401,7 +329,7 @@ serve(async (req) => {
     }
     
     try {
-      console.log(`Attempting to extract real property details using Apify with actor: maxcopell/zillow-scraper`);
+      console.log(`Attempting to extract real property details using Apify with Zillow scrapers`);
       const propertyDetails = await extractPropertyDetails(zillowUrl);
       
       // Generate analysis based on the extracted property details
