@@ -16,9 +16,9 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     persistSession: true,
   },
   global: {
-    fetch: (...args) => {
+    fetch: (url, options) => {
       // Custom fetch to add error handling
-      return fetch(...args).then(response => {
+      return fetch(url, options).then(response => {
         return response;
       }).catch(error => {
         console.error("Supabase fetch error:", error);

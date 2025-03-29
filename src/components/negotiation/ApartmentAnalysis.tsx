@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { 
   Loader2, ArrowDown, ArrowUp, DollarSign, 
-  Home, MapPin, BedDouble, Bath, Info 
+  Home, MapPin, BedDouble, Bath, Info, AlertTriangle
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,7 +14,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
-// Types for property details
 interface PropertyDetails {
   address: string;
   zipCode: string;
@@ -25,7 +23,6 @@ interface PropertyDetails {
   propertyType: string;
 }
 
-// Types for comparable properties
 interface Comparable {
   address: string;
   price: number | null;
@@ -36,7 +33,6 @@ interface Comparable {
   url: string;
 }
 
-// Types for analysis results
 interface AnalysisResult {
   subjectProperty: PropertyDetails;
   averagePrice: number;
@@ -57,8 +53,8 @@ export function ApartmentAnalysis() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [testMode, setTestMode] = useState<string | null>(null);
   const [showTestControls, setShowTestControls] = useState(false);
+  const [rawErrorResponse, setRawErrorResponse] = useState<string | null>(null);
 
-  // Format price for display
   const formatPrice = (price: number | null) => {
     if (price === null) return "N/A";
     return new Intl.NumberFormat('en-US', {
@@ -68,14 +64,11 @@ export function ApartmentAnalysis() {
     }).format(price);
   };
 
-  // Toggle test controls visibility
   const toggleTestControls = () => {
     setShowTestControls(!showTestControls);
   };
 
-  // Handle analysis initiation
   const handleAnalyze = async () => {
-    // Validate URL
     if (!zillowUrl) {
       toast({
         title: "URL Required",
@@ -94,43 +87,54 @@ export function ApartmentAnalysis() {
       return;
     }
 
-    // Reset state
     setIsLoading(true);
     setErrorMessage(null);
     setAnalysis(null);
+    setRawErrorResponse(null);
 
     try {
       console.log("Sending request to apartment-analysis function with URL:", zillowUrl);
       console.log("Test mode:", testMode || "disabled");
       
-      // Call Supabase Edge Function
-      const { data, error } = await supabase.functions.invoke('apartment-analysis', {
+      const response = await supabase.functions.invoke('apartment-analysis', {
         body: { 
           zillowUrl,
           testMode
         }
       });
-
-      console.log("Response from apartment-analysis function:", data);
+      
+      console.log("Full response from apartment-analysis function:", response);
+      
+      const { data, error } = response;
       
       if (error) {
         console.error("Supabase function error:", error);
+        setRawErrorResponse(JSON.stringify(error, null, 2));
         throw new Error("Failed to connect to analysis service. Please try again later.");
       }
 
-      if (!data || data.success === false) {
-        console.error("Function returned error:", data?.error);
-        throw new Error(data?.error || "Failed to analyze apartment");
+      if (!data) {
+        console.error("No data returned from function");
+        setRawErrorResponse("No data returned from function call");
+        throw new Error("No data returned from analysis service");
+      }
+      
+      if (data.success === false) {
+        console.error("Function returned error:", data.error);
+        setRawErrorResponse(JSON.stringify(data, null, 2));
+        throw new Error(data.error || "Failed to analyze apartment");
       }
 
-      // Check if we're using fallback/mock data
       if (data.message) {
         setErrorMessage(data.message);
       }
 
-      // Set analysis data if available
       if (data.analysis) {
         setAnalysis(data.analysis);
+      } else {
+        console.error("No analysis data in response:", data);
+        setRawErrorResponse(JSON.stringify(data, null, 2));
+        throw new Error("No analysis data returned");
       }
     } catch (error) {
       console.error("Error analyzing apartment:", error);
@@ -140,16 +144,15 @@ export function ApartmentAnalysis() {
           : "An unexpected error occurred while analyzing the apartment"
       );
       toast({
-        title: "Analysis Issue",
-        description: "We encountered a problem analyzing this listing, but we're showing you example data instead.",
-        variant: "default"
+        title: "Analysis Error",
+        description: "We encountered a problem analyzing this listing. See details below.",
+        variant: "destructive"
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Double-click handler to show the test controls
   const handleCardDoubleClick = () => {
     toggleTestControls();
   };
@@ -159,7 +162,6 @@ export function ApartmentAnalysis() {
       <CardContent className="p-6 flex-1 overflow-hidden flex flex-col">
         <h2 className="text-xl font-semibold mb-4">Apartment Price Analysis</h2>
         
-        {/* Test Mode Controls (hidden by default) */}
         {showTestControls && (
           <div className="mb-4 p-3 bg-slate-50 border rounded-md">
             <h3 className="text-sm font-medium mb-2">Test Mode Controls</h3>
@@ -179,7 +181,6 @@ export function ApartmentAnalysis() {
           </div>
         )}
         
-        {/* URL Input and Analysis Button */}
         <div className="flex gap-2 mb-6">
           <Input
             placeholder="Paste Zillow listing URL here..."
@@ -203,31 +204,38 @@ export function ApartmentAnalysis() {
           </Button>
         </div>
 
-        {/* Loading State */}
         {isLoading && <LoadingState />}
 
-        {/* Error Message */}
         {!isLoading && errorMessage && (
-          <Alert className="bg-amber-50 border-amber-200 text-amber-800">
+          <Alert className="bg-amber-50 border-amber-200 text-amber-800 mb-4">
             <Info className="h-4 w-4" />
             <AlertTitle>Analysis Note</AlertTitle>
             <AlertDescription>{errorMessage}</AlertDescription>
           </Alert>
         )}
 
-        {/* Analysis Results */}
+        {!isLoading && rawErrorResponse && (
+          <Alert className="bg-red-50 border-red-200 text-red-800 mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Error Details (Debug)</AlertTitle>
+            <AlertDescription>
+              <div className="mt-2 p-2 bg-red-100 rounded-md overflow-auto max-h-60">
+                <pre className="text-xs whitespace-pre-wrap">{rawErrorResponse}</pre>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {!isLoading && analysis && (
           <AnalysisResults analysis={analysis} formatPrice={formatPrice} />
         )}
 
-        {/* Empty State */}
-        {!isLoading && !analysis && !errorMessage && <EmptyState />}
+        {!isLoading && !analysis && !errorMessage && !rawErrorResponse && <EmptyState />}
       </CardContent>
     </Card>
   );
 }
 
-// Loading State Component
 function LoadingState() {
   return (
     <div className="space-y-4">
@@ -245,7 +253,6 @@ function LoadingState() {
   );
 }
 
-// Empty State Component
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center flex-1 text-center p-8">
@@ -258,7 +265,6 @@ function EmptyState() {
   );
 }
 
-// Analysis Results Component
 function AnalysisResults({ 
   analysis, 
   formatPrice 
@@ -269,24 +275,17 @@ function AnalysisResults({
   return (
     <ScrollArea className="flex-1 pr-4 -mr-4">
       <div className="space-y-6">
-        {/* Subject Property Section */}
         <PropertyDetailsSection 
           property={analysis.subjectProperty} 
           formatPrice={formatPrice} 
         />
-
-        {/* Market Analysis Section */}
         <MarketAnalysisSection 
           analysis={analysis}
           formatPrice={formatPrice}
         />
-
-        {/* Negotiation Strategy */}
         <NegotiationStrategySection 
           strategy={analysis.negotiationStrategy} 
         />
-
-        {/* Comparable Properties */}
         <ComparablePropertiesSection 
           comparables={analysis.comparables}
           formatPrice={formatPrice}
@@ -296,7 +295,6 @@ function AnalysisResults({
   );
 }
 
-// Property Details Section Component
 function PropertyDetailsSection({ 
   property, 
   formatPrice 
@@ -347,7 +345,6 @@ function PropertyDetailsSection({
   );
 }
 
-// Market Analysis Section Component
 function MarketAnalysisSection({ 
   analysis,
   formatPrice
@@ -399,7 +396,6 @@ function MarketAnalysisSection({
   );
 }
 
-// Price Rank Indicator Component
 function PriceRankIndicator({ priceRank }: { priceRank: number }) {
   return (
     <div className="mb-4">
@@ -428,7 +424,6 @@ function PriceRankIndicator({ priceRank }: { priceRank: number }) {
   );
 }
 
-// Negotiation Strategy Section Component
 function NegotiationStrategySection({ strategy }: { strategy: string }) {
   return (
     <div>
@@ -440,7 +435,6 @@ function NegotiationStrategySection({ strategy }: { strategy: string }) {
   );
 }
 
-// Comparable Properties Section Component
 function ComparablePropertiesSection({ 
   comparables, 
   formatPrice 
