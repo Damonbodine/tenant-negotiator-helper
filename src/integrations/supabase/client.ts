@@ -14,5 +14,16 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: localStorage,
     autoRefreshToken: true,
     persistSession: true,
+  },
+  global: {
+    fetch: (...args) => {
+      // Custom fetch to add error handling
+      return fetch(...args).then(response => {
+        return response;
+      }).catch(error => {
+        console.error("Supabase fetch error:", error);
+        throw error;
+      });
+    }
   }
 });
