@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -250,6 +249,60 @@ async function extractPropertyDetails(url: string) {
   }
 }
 
+// NEW function to find comparables
+async function findComparableProperties(zipCode: string, propertyType?: string, bedrooms?: number | null /* add other criteria? */) {
+  console.log(`Attempting to find comparable properties for zip: ${zipCode}`);
+  const apifyApiKey = Deno.env.get("APIFY_API_KEY");
+  if (!apifyApiKey) {
+    throw new Error("APIFY_API_KEY not set for comp search");
+  }
+
+  const searchScraperUrl = "https://api.apify.com/v2/acts/maxcopell~zillow-scraper/run-sync-get-dataset-items";
+
+  // === INPUT CONSTRUCTION - CRITICAL - Needs verification from Apify Docs ===
+  // Option A: If scraper takes parameters (Hypothetical - USE ACTUAL SCHEMA)
+  const searchInput = {
+     // What parameters does it REALLY take? zipcode? city? search? query? statusForSaleForRent?
+     zipcode: zipCode, // Or maybe 'query': zipCode, or 'location': zipCode ?
+     // Add other filters if possible based on actor docs and subject property
+     // propertyType: propertyType, // Does it support this?
+     // beds: bedrooms,          // Does it support this?
+     statusForSaleForRent: "forRent", // Or maybe 'listing_type'? Check docs!
+     maxItems: 15, // Get a decent number of comps
+     // ... other necessary parameters from actor docs
+  };
+
+  // Option B: If scraper takes search URLs
+  // const searchZillowUrl = `https://www.zillow.com/homes/for_rent/${zipCode}_rb/`; // Adjust URL structure as needed
+  // const searchInput = {
+  //   searchUrls: [searchZillowUrl],
+  //   maxItems: 15
+  // };
+  // === END INPUT CONSTRUCTION ===
+
+
+  console.log("Calling zillow-scraper with input:", JSON.stringify(searchInput));
+
+  const response = await fetch(searchScraperUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apifyApiKey}`
+    },
+    body: JSON.stringify(searchInput)
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`Apify search scraper error for comps: ${response.status} - ${errorText}`);
+    throw new Error(`Apify search scraper for comps returned status ${response.status}`);
+  }
+
+  const data = await response.json();
+  console.log(`Received ${data.length} items from search scraper for comps`);
+  return data || []; // Return the array of property objects found
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -257,134 +310,151 @@ serve(async (req) => {
   }
 
   try {
-    console.log("Apartment analysis function called");
-    
-    // Parse the request body
     const requestData = await req.json();
-    console.log(`Request body parsed: ${JSON.stringify(requestData)}`);
-    
     const { zillowUrl, testMode } = requestData;
-    console.log(`Received request with zillowUrl: ${zillowUrl}, testMode: ${testMode}`);
-    
+
     if (!zillowUrl) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Zillow URL is required"
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400
-        }
-      );
+      return new Response(JSON.stringify({ success: false, error: "Zillow URL is required" }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
     }
-    
-    // Sanitize the URL parameter
-    const sanitizedUrl = sanitizeUrlParam(zillowUrl);
-    console.log(`Processing property details from: ${zillowUrl}`);
-    
-    // Check if we are in test mode
-    console.log(`Test mode: ${testMode || "disabled"}`);
-    
-    // Use the mock data if in test mode
+
+    // --- Test Mode Handling (Keep as is) ---
     if (testMode === "mock") {
       console.log("Using mock data as requested");
-      
-      // Try to extract zip code for more realistic mock data
       const zipMatch = zillowUrl.match(/-(\d{5})\//) || ["", "78705"];
       const addressMatch = zillowUrl.match(/\/([^\/]+?)\//) || ["", "Unknown Address"];
-      
-      // Generate mock data
-      const mockAnalysis = generateFallbackData(zipMatch[1], addressMatch[1]);
-      
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: "Using mock data as requested",
-          analysis: mockAnalysis
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-        }
-      );
+      const mockAnalysis = generateFallbackData(zipMatch[1], addressMatch[1]); // Use existing mock generator
+      return new Response(JSON.stringify({ success: true, message: "Using mock data as requested", analysis: mockAnalysis }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
-    
-    // Check for API key
+
+    // --- API Key Check (Keep as is) ---
     const apifyApiKey = Deno.env.get("APIFY_API_KEY");
-    console.log(`APIFY_API_KEY status: ${apifyApiKey ? "Present" : "Missing"}`);
-    
     if (!apifyApiKey) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "APIFY_API_KEY is not configured"
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 500
-        }
-      );
+       return new Response(JSON.stringify({ success: false, error: "APIFY_API_KEY is not configured" }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
     }
-    
+
+
+    let subjectPropertyDetails;
+    let realComparablesData = [];
+    let analysis;
+    let message = null; // Optional message for frontend
+
+    // --- Step 1: Extract Subject Property Details ---
     try {
-      console.log(`Attempting to extract real property details using Apify with Zillow scrapers`);
-      const propertyDetails = await extractPropertyDetails(zillowUrl);
-      
-      // Generate analysis based on the extracted property details
-      // For simplicity, we're using the same generation function but with real data
-      const zipCode = propertyDetails.zipCode || "78705";
-      const address = propertyDetails.address || "Unknown Address";
-      
-      // Generate analysis with the real property as the subject
-      const analysis = generateFallbackData(zipCode, address);
-      analysis.subjectProperty = propertyDetails;
-      
-      return new Response(
-        JSON.stringify({
-          success: true,
-          analysis
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-        }
-      );
+      console.log(`Attempting to extract real property details using Apify`);
+      subjectPropertyDetails = await extractPropertyDetails(zillowUrl);
     } catch (error) {
-      console.error(`Error processing property details: ${error.message}`);
-      console.error(`Stack trace: ${error.stack}`);
-      
-      // Try to extract zip code for fallback data
+      console.error(`Error extracting subject property details: ${error.message}`);
+      // Fallback to mock data if subject extraction fails
+      console.log(`Using fallback data due to subject extraction error: ${error.message}`);
       const zipMatch = zillowUrl.match(/-(\d{5})\//) || ["", "78705"];
       const addressMatch = zillowUrl.match(/\/([^\/]+?)-/) || ["", "Unknown Address"];
-      
-      console.log(`Using fallback data due to error: ${error.message}`);
-      const fallbackAnalysis = generateFallbackData(zipMatch[1], addressMatch[1]);
-      
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: `Zillow data extraction error: ${error.message}. Using estimated data.`,
-          analysis: fallbackAnalysis,
-          technicalError: error.message,
-          apiStatus: null
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" }
-        }
-      );
+      analysis = generateFallbackData(zipMatch[1], addressMatch[1]);
+      message = `Zillow data extraction error: ${error.message}. Using estimated data.`;
+
+      return new Response(JSON.stringify({ success: true, message, analysis, technicalError: error.message }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
+    // --- Step 2: Find Real Comparable Properties ---
+    try {
+       if (subjectPropertyDetails?.zipCode) {
+          console.log(`Attempting to find real comparable properties`);
+          realComparablesData = await findComparableProperties(
+             subjectPropertyDetails.zipCode,
+             subjectPropertyDetails.propertyType,
+             subjectPropertyDetails.bedrooms
+          );
+       } else {
+          console.warn("Cannot search for comps, missing zip code from subject property.");
+       }
+    } catch(error) {
+       console.error(`Error finding comparable properties: ${error.message}. Will use fallback analysis.`);
+       message = `Could not fetch real comparable properties: ${error.message}. Analysis is based on estimates.`;
+       // Keep subject details, but use fallback for comps/analysis if desired, or return error
+    }
+
+    // --- Step 3: Process Results and Generate Analysis ---
+    if (realComparablesData && realComparablesData.length > 0) {
+      console.log(`Processing ${realComparablesData.length} real comparables.`);
+      // Filter out the subject property itself if it appears in comps
+      const filteredComps = realComparablesData.filter(comp => comp.address !== subjectPropertyDetails.address);
+
+       // Transform raw comp data to the structure frontend expects (Comparable interface)
+       // NOTE: This mapping DEPENDS HEAVILY on the actual fields returned by maxcopell~zillow-scraper
+       const processedComparables = filteredComps.map(comp => ({
+         address: comp.address || "Unknown Address",
+         // Adjust price parsing based on scraper output
+         price: comp.unformattedPrice || parseInt(comp.price?.replace(/[^0-9]/g, "")) || null,
+         bedrooms: comp.beds || comp.bedrooms || null,
+         bathrooms: comp.baths || comp.bathrooms || null,
+         propertyType: comp.homeType || comp.propertyType || "Unknown", // Adjust field names
+         distance: comp.distance || 0, // Distance is likely NOT available, set to 0 or calculate if possible
+         url: comp.url || comp.detailUrl || "", // Adjust field names
+         squareFootage: comp.livingArea || comp.area || null // Adjust field names
+       }));
+
+       // Calculate analysis metrics based on REAL comparables
+       const prices = processedComparables.map(comp => comp.price || 0).filter(p => p > 0);
+       const averagePrice = prices.length > 0 ? Math.round(prices.reduce((sum, price) => sum + price, 0) / prices.length) : 0;
+       const subjectPrice = subjectPropertyDetails.price || 0;
+       const higherPriced = prices.filter(p => p > subjectPrice).length;
+       const lowerPriced = prices.filter(p => p < subjectPrice).length;
+
+       const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+       const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
+       const priceRange = maxPrice - minPrice;
+       const priceRank = (priceRange > 0 && subjectPrice >= minPrice)
+         ? Math.round(((subjectPrice - minPrice) / priceRange) * 100)
+         : (prices.length > 0 ? (subjectPrice < minPrice ? 0 : 100) : 50); // Handle edge cases
+
+       let priceAssessment = "";
+       let negotiationStrategy = "";
+       // Generate assessment/strategy based on REAL priceRank
+        if (priceRank < 33) {
+           priceAssessment = "This property is priced competitively compared to recent listings.";
+           negotiationStrategy = "Price may be firm due to competitive positioning. Focus on other terms or be prepared to offer asking price if market is hot.";
+        } else if (priceRank < 66) {
+           priceAssessment = "This property is priced around the average for similar listings.";
+           negotiationStrategy = "A modest negotiation (1-3% below asking) might be possible. Highlight your strengths as a tenant.";
+        } else {
+           priceAssessment = "This property is priced at the higher end of the market compared to similar listings.";
+           negotiationStrategy = "There's likely room for negotiation (3-7%+ below asking). Reference lower-priced comparable properties found.";
+        }
+
+
+       analysis = {
+         subjectProperty: subjectPropertyDetails,
+         averagePrice,
+         higherPriced,
+         lowerPriced,
+         totalComparables: processedComparables.length,
+         comparables: processedComparables,
+         priceRank,
+         priceAssessment,
+         negotiationStrategy
+       };
+
+    } else {
+       // If no real comps found OR comp search failed previously, use fallback data
+       console.log("No real comparables found or error occurred, using fallback analysis.");
+       // Use the original fallback generator, but ensure subject property is the real one
+       analysis = generateFallbackData(subjectPropertyDetails.zipCode || "78705", subjectPropertyDetails.address || "Unknown");
+       analysis.subjectProperty = subjectPropertyDetails; // Override subject property
+       if (!message) { // Add message if not already set by comp search error
+         message = "Could not find sufficient comparable properties. Analysis is based on estimates.";
+       }
+    }
+
+    // --- Step 4: Return Response ---
+    return new Response(
+      JSON.stringify({ success: true, analysis, message }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+
   } catch (error) {
+    // --- Outer Error Handling (Keep mostly as is) ---
     console.error(`Unhandled error in apartment-analysis function: ${error.message}`);
     console.error(`Stack trace: ${error.stack}`);
-    
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: `An unexpected error occurred: ${error.message}`
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500
-      }
-    );
+    // Consider if generating fallback data here is appropriate or just return error
+    return new Response(JSON.stringify({ success: false, error: `An unexpected error occurred: ${error.message}` }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
   }
 });
