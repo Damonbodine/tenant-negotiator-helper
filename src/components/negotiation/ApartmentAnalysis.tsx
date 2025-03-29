@@ -12,6 +12,8 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 // Types for property details
 interface PropertyDetails {
@@ -53,6 +55,8 @@ export function ApartmentAnalysis() {
   const [isLoading, setIsLoading] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [testMode, setTestMode] = useState<string | null>(null);
+  const [showTestControls, setShowTestControls] = useState(false);
 
   // Format price for display
   const formatPrice = (price: number | null) => {
@@ -62,6 +66,11 @@ export function ApartmentAnalysis() {
       currency: 'USD',
       maximumFractionDigits: 0
     }).format(price);
+  };
+
+  // Toggle test controls visibility
+  const toggleTestControls = () => {
+    setShowTestControls(!showTestControls);
   };
 
   // Handle analysis initiation
@@ -92,10 +101,14 @@ export function ApartmentAnalysis() {
 
     try {
       console.log("Sending request to apartment-analysis function with URL:", zillowUrl);
+      console.log("Test mode:", testMode || "disabled");
       
       // Call Supabase Edge Function
       const { data, error } = await supabase.functions.invoke('apartment-analysis', {
-        body: { zillowUrl }
+        body: { 
+          zillowUrl,
+          testMode
+        }
       });
 
       console.log("Response from apartment-analysis function:", data);
@@ -136,10 +149,35 @@ export function ApartmentAnalysis() {
     }
   };
 
+  // Double-click handler to show the test controls
+  const handleCardDoubleClick = () => {
+    toggleTestControls();
+  };
+
   return (
-    <Card className="h-full flex flex-col shadow-md border-blue-100 overflow-hidden">
+    <Card className="h-full flex flex-col shadow-md border-blue-100 overflow-hidden" onDoubleClick={handleCardDoubleClick}>
       <CardContent className="p-6 flex-1 overflow-hidden flex flex-col">
         <h2 className="text-xl font-semibold mb-4">Apartment Price Analysis</h2>
+        
+        {/* Test Mode Controls (hidden by default) */}
+        {showTestControls && (
+          <div className="mb-4 p-3 bg-slate-50 border rounded-md">
+            <h3 className="text-sm font-medium mb-2">Test Mode Controls</h3>
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="use-mock"
+                  checked={testMode === "mock"}
+                  onCheckedChange={(checked) => setTestMode(checked ? "mock" : null)}
+                />
+                <Label htmlFor="use-mock">Use Mock Data</Label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Toggle this switch to force using mock data instead of real API calls. Double-click anywhere on this card to hide these controls.
+              </p>
+            </div>
+          </div>
+        )}
         
         {/* URL Input and Analysis Button */}
         <div className="flex gap-2 mb-6">

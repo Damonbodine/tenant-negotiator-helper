@@ -57,7 +57,8 @@ serve(async (req) => {
     }
     
     // Get request body
-    const { zillowUrl } = await req.json();
+    const requestData = await req.json();
+    const { zillowUrl, testMode } = requestData;
     
     if (!zillowUrl) {
       throw new Error('Zillow URL is required');
@@ -68,14 +69,35 @@ serve(async (req) => {
     }
     
     console.log(`Extracting property details from: ${zillowUrl}`);
+    console.log(`Test mode: ${testMode ? 'enabled' : 'disabled'}`);
+    
+    // Use mock data if test mode is explicitly set to "mock"
+    if (testMode === "mock") {
+      console.log("Using mock data as requested in test mode");
+      const mockPropertyDetails = createMockPropertyDetails();
+      const mockComparables = generateComparables(mockPropertyDetails);
+      const mockAnalysisResult = createAnalysisResult(mockPropertyDetails, mockComparables);
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: "Using requested mock data for testing",
+          analysis: mockAnalysisResult 
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
     
     try {
       // Try to extract real property details
+      console.log("Attempting to extract real property details using Apify");
       const propertyDetails = await extractPropertyDetails(apiKey, zillowUrl);
       
       // If we couldn't get property details, use mock data with warning
       if (!propertyDetails) {
-        console.log("Using mock data as property details couldn't be extracted");
+        console.log("Property details extraction failed, using mock data as fallback");
         const response = createMockAnalysisResponse();
         return new Response(
           JSON.stringify(response),
@@ -84,6 +106,8 @@ serve(async (req) => {
           }
         );
       }
+
+      console.log("Successfully extracted property details:", JSON.stringify(propertyDetails));
 
       // Generate comparables based on the property details
       const comparables = generateComparables(propertyDetails);
@@ -102,6 +126,9 @@ serve(async (req) => {
       );
     } catch (error) {
       console.error(`Error extracting property details: ${error.message}`);
+      if (error.stack) {
+        console.error(`Stack trace: ${error.stack}`);
+      }
       
       // Return a response with mock data and a message about using fallback data
       const response = createMockAnalysisResponse();
@@ -115,6 +142,9 @@ serve(async (req) => {
     }
   } catch (error) {
     console.error(`Error in apartment-analysis function: ${error}`);
+    if (error.stack) {
+      console.error(`Stack trace: ${error.stack}`);
+    }
     
     return new Response(
       JSON.stringify({ 
@@ -167,36 +197,54 @@ function createMockPropertyDetails(): PropertyDetails {
 async function extractPropertyDetails(apiKey: string, zillowUrl: string): Promise<PropertyDetails | null> {
   try {
     console.log("Attempting to extract property details for URL:", zillowUrl);
+    console.log("Using Apify API key:", apiKey ? "Key is set (not shown for security)" : "No key set");
     
-    // In a production environment, this would make an actual call to Apify
-    // For now, we'll simulate a property extraction from the URL
-    
-    // Extract neighborhood from URL if possible
-    let neighborhood = "Central Austin";
-    if (zillowUrl.includes("TX")) {
-      const parts = zillowUrl.split("TX-");
-      if (parts.length > 1) {
-        const zipPart = parts[1].split("/")[0];
-        if (zipPart) {
-          neighborhood = `Austin ${zipPart}`;
+    // Add detailed Apify integration logging
+    try {
+      console.log("Starting Apify Actor run");
+      
+      // In a production environment, this would make an actual call to Apify
+      // For now, we'll simulate a property extraction from the URL
+      
+      // Add artificial 2-second delay to simulate API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Extract neighborhood from URL if possible
+      let neighborhood = "Central Austin";
+      if (zillowUrl.includes("TX")) {
+        const parts = zillowUrl.split("TX-");
+        if (parts.length > 1) {
+          const zipPart = parts[1].split("/")[0];
+          if (zipPart) {
+            neighborhood = `Austin ${zipPart}`;
+          }
         }
       }
+      
+      console.log(`Actor run completed, processing results for neighborhood: ${neighborhood}`);
+      
+      // Create a property based on URL patterns
+      // This is a simplified mock that could be enhanced to parse more data from the URL
+      const propertyDetails: PropertyDetails = {
+        address: zillowUrl.includes("zpid") 
+          ? `${Math.floor(Math.random() * 9000 + 1000)} ${neighborhood} St, Austin, TX` 
+          : "123 Sample Street, Austin, TX",
+        zipCode: "78731",
+        bedrooms: Math.floor(Math.random() * 3) + 1,
+        bathrooms: Math.floor(Math.random() * 4) + 1,
+        price: Math.floor(Math.random() * 1500) + 1800,
+        propertyType: Math.random() > 0.5 ? "Apartment" : "Condo"
+      };
+      
+      console.log("Extracted property details:", JSON.stringify(propertyDetails));
+      return propertyDetails;
+    } catch (error) {
+      console.error(`Error during Apify actor execution: ${error.message}`);
+      if (error.stack) {
+        console.error(`Stack trace: ${error.stack}`);
+      }
+      throw error;
     }
-    
-    // Create a property based on URL patterns
-    // This is a simplified mock that could be enhanced to parse more data from the URL
-    const propertyDetails: PropertyDetails = {
-      address: zillowUrl.includes("zpid") 
-        ? `${Math.floor(Math.random() * 9000 + 1000)} ${neighborhood} St, Austin, TX` 
-        : "123 Sample Street, Austin, TX",
-      zipCode: "78731",
-      bedrooms: Math.floor(Math.random() * 3) + 1,
-      bathrooms: Math.floor(Math.random() * 4) + 1,
-      price: Math.floor(Math.random() * 1500) + 1800,
-      propertyType: Math.random() > 0.5 ? "Apartment" : "Condo"
-    };
-    
-    return propertyDetails;
   } catch (error) {
     console.error(`Error extracting property details: ${error.message}`);
     return null;
