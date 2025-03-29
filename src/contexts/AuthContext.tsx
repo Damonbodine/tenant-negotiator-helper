@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,20 +17,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
         console.log("Auth state change event:", event);
         
         setSession(newSession);
         setUser(newSession?.user ?? null);
-        setIsLoading(false);
         
-        // Reset error on successful authentication
         if (event === 'SIGNED_IN') {
           setAuthError(null);
           toast({
@@ -49,7 +45,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session: currentSession }, error }) => {
       if (error) {
         console.error("Error getting session:", error);
@@ -58,7 +53,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
-      setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -87,8 +81,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsLoading(false);
         throw error;
       }
-      
-      // Note: No need to set loading to false here as redirect will happen
     } catch (error) {
       console.error("Unexpected error during sign in:", error);
       setAuthError(error.message || "An unexpected error occurred");

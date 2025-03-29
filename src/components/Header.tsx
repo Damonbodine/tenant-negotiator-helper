@@ -1,14 +1,11 @@
 
 import { useState } from 'react';
-import { Building, DollarSign, MessagesSquare, PieChart, Headphones, Key, LogOut, User } from "lucide-react";
+import { Building, DollarSign, MessagesSquare, PieChart, Headphones, Key } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ApiKeyInput } from "@/components/ApiKeyInput";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Skeleton } from "@/components/ui/skeleton";
 
 interface HeaderProps {
   activeTab: string;
@@ -17,15 +14,7 @@ interface HeaderProps {
 
 export const Header = ({ activeTab, setActiveTab }: HeaderProps) => {
   const [showApiModal, setShowApiModal] = useState(false);
-  const { user, signOut, isLoading } = useAuth();
-  
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-    } catch (error) {
-      console.error("Sign out error:", error);
-    }
-  };
+  const { user } = useAuth(); // We still use useAuth but don't enforce authentication
   
   return (
     <header className="sticky top-0 z-10 w-full bg-background/80 backdrop-blur-md border-b border-border py-3">
@@ -73,40 +62,7 @@ export const Header = ({ activeTab, setActiveTab }: HeaderProps) => {
             <span>Manage API Keys</span>
           </Button>
           
-          {isLoading ? (
-            <Skeleton className="h-8 w-8 rounded-full" />
-          ) : user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="rounded-full h-8 w-8 p-0">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.user_metadata?.avatar_url} alt={user.user_metadata?.full_name || 'User'} />
-                    <AvatarFallback className="bg-blue-100 text-blue-600">
-                      {user.user_metadata?.full_name ? user.user_metadata.full_name.charAt(0) : <User className="h-4 w-4" />}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer">
-                  <LogOut className="h-4 w-4 mr-2" />
-                  <span>Sign out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="text-sm"
-              asChild
-            >
-              <Link to="/auth">
-                <User className="h-4 w-4 mr-1" />
-                <span>Sign In</span>
-              </Link>
-            </Button>
-          )}
+          {/* Removed authentication-related UI elements */}
         </div>
         
         {showApiModal && <ApiKeyInput onClose={() => setShowApiModal(false)} />}
@@ -145,31 +101,7 @@ export const Header = ({ activeTab, setActiveTab }: HeaderProps) => {
             <span>API Keys</span>
           </Button>
           
-          {isLoading ? (
-            <Skeleton className="h-8 w-20" />
-          ) : user ? (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleSignOut}
-              className="text-sm flex items-center gap-1"
-            >
-              <LogOut className="h-4 w-4" />
-              <span>Sign Out</span>
-            </Button>
-          ) : (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="text-sm flex items-center gap-1"
-              asChild
-            >
-              <Link to="/auth">
-                <User className="h-4 w-4" />
-                <span>Sign In</span>
-              </Link>
-            </Button>
-          )}
+          {/* Removed authentication-related UI elements */}
         </div>
       </div>
     </header>
