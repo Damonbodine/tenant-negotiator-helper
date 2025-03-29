@@ -16,9 +16,11 @@ serve(async (req) => {
     const apiKey = Deno.env.get('ELEVENLABS_API_KEY');
     
     if (!apiKey) {
+      console.error('ElevenLabs API key is not configured');
       throw new Error('ElevenLabs API key is not configured');
     }
     
+    console.log('ELEVENLABS_API_KEY is present and has length:', apiKey.length);
     console.log("Fetching voices from ElevenLabs API");
     
     // Call the ElevenLabs API to get available voices
@@ -33,13 +35,16 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("ElevenLabs API error response:", errorText);
+      console.error("ElevenLabs API response status:", response.status, response.statusText);
       let errorMessage;
       
       try {
         const errorData = JSON.parse(errorText);
-        errorMessage = errorData.detail || errorData.message || response.statusText;
+        errorMessage = errorData.detail?.message || errorData.detail || errorData.message || response.statusText;
+        console.error("Parsed error detail:", JSON.stringify(errorData.detail || {}));
       } catch (e) {
         errorMessage = errorText || response.statusText;
+        console.error("Error parsing error response:", e);
       }
       
       throw new Error(`ElevenLabs API error: ${errorMessage}`);

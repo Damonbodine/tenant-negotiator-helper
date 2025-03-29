@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { agentService } from "@/utils/agentService";
@@ -41,7 +40,7 @@ export function useVoiceNegotiation(scenario: string) {
           setHasBackendApiKey(true);
           console.log("Backend ElevenLabs API key is configured");
         } else {
-          console.log("Backend ElevenLabs API key is not configured or error occurred");
+          console.log("Backend ElevenLabs API key is not configured or error occurred:", error?.message);
           setHasBackendApiKey(false);
         }
       } catch (error) {
@@ -67,7 +66,10 @@ export function useVoiceNegotiation(scenario: string) {
       if (hasBackendApiKey) {
         // Fetch voices from the backend
         const { data, error } = await supabase.functions.invoke('get-elevenlabs-voices');
-        if (error) throw error;
+        if (error) {
+          console.error("Error invoking get-elevenlabs-voices:", error);
+          throw error;
+        }
         setAvailableVoices(data?.voices || []);
       } else {
         // Fall back to using the client-side service if backend key isn't available
@@ -87,11 +89,20 @@ export function useVoiceNegotiation(scenario: string) {
       
       if (hasBackendApiKey) {
         // Use backend to generate speech
+        console.log("Using backend edge function to generate speech");
         const { data, error } = await supabase.functions.invoke('generate-speech', {
           body: { text, voiceId: selectedVoice }
         });
         
-        if (error) throw error;
+        if (error) {
+          console.error("Error invoking generate-speech:", error);
+          throw error;
+        }
+        
+        if (!data || !data.audioContent) {
+          console.error("No audio content returned from generate-speech function");
+          throw new Error("Failed to generate speech: No audio content returned");
+        }
         
         // Convert base64 to ArrayBuffer
         const binaryString = atob(data.audioContent);
@@ -102,6 +113,7 @@ export function useVoiceNegotiation(scenario: string) {
         audioBuffer = bytes.buffer;
       } else {
         // Fall back to client-side service
+        console.log("Using client-side service to generate speech");
         agentService.setVoice(selectedVoice);
         audioBuffer = await agentService.generateSpeech(text);
       }
@@ -111,13 +123,19 @@ export function useVoiceNegotiation(scenario: string) {
       
       if (audioRef.current) {
         audioRef.current.src = audioUrl;
-        audioRef.current.play();
+        console.log("Playing audio");
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.catch(error => {
+            console.error("Error playing audio:", error);
+          });
+        }
       }
     } catch (error) {
       console.error("Error generating speech:", error);
       toast({
         title: "Speech Error",
-        description: "Could not generate speech. Please try again.",
+        description: `Could not generate speech: ${(error as Error).message || "Unknown error"}`,
         variant: "destructive",
       });
     }
