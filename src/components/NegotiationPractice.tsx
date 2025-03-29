@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Building } from "lucide-react";
+import { ArrowLeft, Building, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ApiKeyInput } from "@/components/ApiKeyInput";
 import { useVoiceNegotiation } from "@/hooks/useVoiceNegotiation";
@@ -10,10 +10,12 @@ import { VoiceChat } from "@/components/negotiation/VoiceChat";
 import { NegotiationControls } from "@/components/negotiation/NegotiationControls";
 import { ScenarioSelector } from "@/components/negotiation/ScenarioSelector";
 import { QuickTips } from "@/components/negotiation/QuickTips";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 export const NegotiationPractice = () => {
   const [selectedScenario, setSelectedScenario] = useState("standard");
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const [useElevenLabsWidget, setUseElevenLabsWidget] = useState(false);
   
   const {
     messages,
@@ -36,6 +38,10 @@ export const NegotiationPractice = () => {
   
   const openSettings = () => setShowApiKeyInput(true);
   
+  const toggleElevenLabsWidget = () => {
+    setUseElevenLabsWidget(!useElevenLabsWidget);
+  };
+  
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
@@ -45,12 +51,35 @@ export const NegotiationPractice = () => {
             Improve your rental negotiation skills with interactive voice practice
           </p>
         </div>
-        <Link to="/">
-          <Button variant="outline" size="sm" className="gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Dashboard
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <ExternalLink className="h-4 w-4" />
+                ElevenLabs Demo
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl h-[80vh]">
+              <DialogHeader>
+                <DialogTitle>ElevenLabs Voice Chat Demo</DialogTitle>
+              </DialogHeader>
+              <div className="h-full">
+                <iframe 
+                  src="https://elevenlabs.io/voice-lab/voice-chat" 
+                  className="w-full h-full rounded-md border border-gray-200"
+                  title="ElevenLabs Voice Chat Demo"
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+          
+          <Link to="/">
+            <Button variant="outline" size="sm" className="gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Dashboard
+            </Button>
+          </Link>
+        </div>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -105,6 +134,16 @@ export const NegotiationPractice = () => {
                 selectedScenario={selectedScenario}
                 onScenarioChange={setSelectedScenario}
               />
+              
+              <div className="mt-6 bg-amber-50 border border-amber-200 rounded-md p-4">
+                <h3 className="font-medium text-amber-800 mb-2 flex items-center gap-2">
+                  <ExternalLink className="h-4 w-4" />
+                  Having trouble with voice input?
+                </h3>
+                <p className="text-sm text-amber-700 mb-3">
+                  If you're experiencing issues with voice input, try the ElevenLabs demo button at the top of the page for an alternative voice chat experience.
+                </p>
+              </div>
             </CardContent>
           </Card>
           

@@ -28,10 +28,12 @@ export function useVoiceNegotiation(scenario: string) {
   const [availableVoices, setAvailableVoices] = useState<any[]>([]);
   const [hasBackendApiKey, setHasBackendApiKey] = useState(false);
   const [microphoneAccessState, setMicrophoneAccessState] = useState<'granted' | 'denied' | 'prompt' | 'error' | null>(null);
+  const [recordingTimeoutId, setRecordingTimeoutId] = useState<number | null>(null);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
   
   // Check if the backend has an ElevenLabs API key configured
   useEffect(() => {
@@ -98,6 +100,17 @@ export function useVoiceNegotiation(scenario: string) {
     };
     
     checkMicrophonePermission();
+    
+    // Cleanup function to ensure we stop any active recording when component unmounts
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      
+      if (recordingTimeoutId) {
+        window.clearTimeout(recordingTimeoutId);
+      }
+    };
   }, []);
   
   // Initialize audio element and start negotiation if call is active
@@ -255,6 +268,11 @@ export function useVoiceNegotiation(scenario: string) {
       audioRef.current.pause();
     }
     
+    // Clean up any recording
+    if (isListening) {
+      stopListening();
+    }
+    
     toast({
       title: "Call Ended",
       description: "Your practice session has ended.",
@@ -286,6 +304,9 @@ export function useVoiceNegotiation(scenario: string) {
         text: msg.text,
         timestamp: msg.timestamp
       }));
+      
+      console.log("Sending message to Gemini:", input);
+      console.log("With history:", JSON.stringify(history, null, 2));
       
       // Send to Gemini through Supabase function
       const response = await chatService.sendMessageToGemini(input, history);
@@ -340,6 +361,9 @@ export function useVoiceNegotiation(scenario: string) {
         } 
       });
       
+      // Store the stream in the ref for cleanup
+      streamRef.current = stream;
+      
       // If we get here, permission was granted
       setMicrophoneAccessState('granted');
       
@@ -393,10 +417,7 @@ export function useVoiceNegotiation(scenario: string) {
             description: "Processing your voice input...",
           });
           
-          // Simulate processing delay
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          // Set some placeholder text based on the scenario
+          // For now, use dummy text based on the scenario
           const placeholderTexts = {
             'standard': "I think $1,800 is a bit high for this area. Would you consider $1,700 per month?",
             'luxury': "I'm definitely interested in the premium amenities, but I'd like to discuss the possibility of including the utilities in the rent.",
@@ -404,6 +425,11 @@ export function useVoiceNegotiation(scenario: string) {
           };
           
           setInput(placeholderTexts[scenario as keyof typeof placeholderTexts] || "I'd like to discuss the rent amount. Is there any flexibility?");
+          
+          // Auto-send the message after a short delay
+          setTimeout(() => {
+            handleSend();
+          }, 500);
           
         } catch (error) {
           console.error("Error processing audio:", error);
@@ -427,6 +453,17 @@ export function useVoiceNegotiation(scenario: string) {
           title: "Voice Input Activated",
           description: "Speak clearly into your microphone",
         });
+        
+        // Automatically stop recording after 5 seconds
+        const timeoutId = window.setTimeout(() => {
+          if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+            console.log("Automatically stopping recording after 5 seconds");
+            stopListening();
+          }
+        }, 5000);
+        
+        setRecordingTimeoutId(timeoutId);
+        
       } catch (e) {
         console.error("Error starting MediaRecorder:", e);
         toast({
@@ -461,6 +498,12 @@ export function useVoiceNegotiation(scenario: string) {
   const stopListening = () => {
     console.log("Stopping MediaRecorder");
     
+    // Clear any timeout
+    if (recordingTimeoutId) {
+      window.clearTimeout(recordingTimeoutId);
+      setRecordingTimeoutId(null);
+    }
+    
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       try {
         mediaRecorderRef.current.stop();
@@ -473,6 +516,12 @@ export function useVoiceNegotiation(scenario: string) {
       } catch (e) {
         console.error("Error stopping MediaRecorder:", e);
       }
+    }
+    
+    // Also stop any tracks in the stored stream
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
     }
     
     setIsListening(false);

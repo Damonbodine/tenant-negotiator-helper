@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Headphones, Mic, MicOff, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Headphones, Mic, MicOff, ShieldAlert, ShieldCheck, Volume2 } from "lucide-react";
 import { Message } from "@/hooks/useVoiceNegotiation";
 
 interface VoiceChatProps {
@@ -145,6 +145,18 @@ export function VoiceChat({
               </Card>
             </div>
           )}
+          {isListening && (
+            <div className="flex justify-end">
+              <Card className="max-w-[80%] p-3 bg-red-50 border border-red-200">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+                  <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse delay-150" />
+                  <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse delay-300" />
+                  <span className="text-sm text-red-500">Listening...</span>
+                </div>
+              </Card>
+            </div>
+          )}
         </div>
       </ScrollArea>
       
@@ -170,7 +182,7 @@ export function VoiceChat({
               size="icon" 
               disabled={isLoading || !input.trim() || !isCallActive}
             >
-              <Headphones className="h-4 w-4" />
+              <Volume2 className="h-4 w-4" />
             </Button>
           </div>
         </div>
