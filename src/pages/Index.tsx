@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { AgentChat } from "@/components/AgentChat";
 import { Link } from "react-router-dom";
@@ -232,7 +233,7 @@ const Index = () => {
                 to="/practice"
                 className="journey-bubble flex flex-col items-center justify-center p-8 bg-[#FEF7CD] hover:bg-[#fcf4b8] border-2 border-[#f0e9b0] rounded-full h-64 w-64 mx-auto transition-all hover:shadow-lg hover:scale-105"
               >
-                <div className="text-black text-4xl font-bold mb-2">Should I negotiate</div>
+                <div className="text-black text-4xl font-bold mb-2">Rent Analysis</div>
                 <p className="text-black text-center">Analyze apartment pricing to strengthen your position</p>
               </Link>
               
