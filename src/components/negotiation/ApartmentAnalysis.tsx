@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { 
   Loader2, ArrowDown, ArrowUp, DollarSign, 
   Home, MapPin, BedDouble, Bath, Info, AlertTriangle, Bug, 
-  SquareFootage, ActivitySquare
+  SquareIcon, ActivitySquare
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -116,7 +115,6 @@ export function ApartmentAnalysis() {
       console.log("Sending request to apartment-analysis function with URL:", zillowUrl);
       console.log("Test mode:", testMode || "disabled");
       
-      // Add a timestamp to log when the request starts
       console.log("Request started at:", requestStartTime);
       
       const response = await supabase.functions.invoke('apartment-analysis', {
@@ -126,7 +124,6 @@ export function ApartmentAnalysis() {
         }
       });
       
-      // Log the full response for debugging
       console.log("Full response from apartment-analysis function:", JSON.stringify(response, null, 2));
       
       const { data, error } = response;
@@ -187,7 +184,6 @@ export function ApartmentAnalysis() {
         variant: "destructive"
       });
     } finally {
-      // Add a timestamp to log when the request completes
       const endTime = new Date().toISOString();
       setRequestEndTime(endTime);
       console.log("Request completed at:", endTime);
