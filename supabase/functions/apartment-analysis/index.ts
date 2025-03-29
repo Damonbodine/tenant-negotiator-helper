@@ -172,8 +172,7 @@ async function extractPropertyDetails(url: string) {
         "Authorization": `Bearer ${apifyApiKey}`
       },
       body: JSON.stringify({
-        "propertyUrls": [url],
-        "includeSellerInfo": true
+        "propertyUrls": [url]
       })
     });
     
@@ -212,9 +211,8 @@ async function extractPropertyDetails(url: string) {
         "Authorization": `Bearer ${apifyApiKey}`
       },
       body: JSON.stringify({
-        "searchUrls": [{ "url": url }],
-        "maxItems": 1,
-        "includeSellerInfo": true
+        "searchUrls": [url],
+        "maxItems": 1
       })
     });
     
