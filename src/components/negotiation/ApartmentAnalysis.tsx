@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 
 interface PropertyDetails {
   address: string;
@@ -61,6 +62,7 @@ export function ApartmentAnalysis() {
   const [showDebugInfo, setShowDebugInfo] = useState(false);
   const [requestStartTime, setRequestStartTime] = useState<string | null>(null);
   const [requestEndTime, setRequestEndTime] = useState<string | null>(null);
+  const [usingFallbackData, setUsingFallbackData] = useState(false);
 
   const formatPrice = (price: number | null) => {
     if (price === null) return "N/A";
@@ -110,6 +112,7 @@ export function ApartmentAnalysis() {
     setHttpStatus(null);
     setRequestStartTime(new Date().toISOString());
     setRequestEndTime(null);
+    setUsingFallbackData(false);
 
     try {
       console.log("Sending request to apartment-analysis function with URL:", zillowUrl);
@@ -145,6 +148,15 @@ export function ApartmentAnalysis() {
         console.error("Function returned error:", data.error);
         setRawErrorResponse(JSON.stringify(data, null, 2));
         throw new Error(data.error || "Failed to analyze apartment");
+      }
+
+      if (data.message && (
+        data.message.includes("Using estimated data") ||
+        data.message.includes("Using mock data") ||
+        data.message.includes("fallback") ||
+        data.message.includes("estimates")
+      )) {
+        setUsingFallbackData(true);
       }
 
       if (data.message) {
@@ -267,6 +279,7 @@ export function ApartmentAnalysis() {
                 <div><strong>HTTP Status:</strong> {httpStatus || "N/A"}</div>
                 <div><strong>URL:</strong> {zillowUrl || "N/A"}</div>
                 <div><strong>Function:</strong> apartment-analysis</div>
+                <div><strong>Using Fallback Data:</strong> {usingFallbackData ? "Yes" : "No"}</div>
                 {requestStartTime && (
                   <div><strong>Request Start:</strong> {requestStartTime}</div>
                 )}
@@ -304,7 +317,12 @@ export function ApartmentAnalysis() {
         )}
 
         {!isLoading && analysis && (
-          <AnalysisResults analysis={analysis} formatPrice={formatPrice} formatSqFt={formatSqFt} />
+          <AnalysisResults 
+            analysis={analysis} 
+            formatPrice={formatPrice} 
+            formatSqFt={formatSqFt} 
+            usingFallbackData={usingFallbackData}
+          />
         )}
 
         {!isLoading && !analysis && !errorMessage && !rawErrorResponse && <EmptyState />}
@@ -345,15 +363,28 @@ function EmptyState() {
 function AnalysisResults({ 
   analysis, 
   formatPrice,
-  formatSqFt
+  formatSqFt,
+  usingFallbackData
 }: { 
   analysis: AnalysisResult;
   formatPrice: (price: number | null) => string;
   formatSqFt: (sqft: number | null) => string;
+  usingFallbackData: boolean;
 }) {
   return (
     <ScrollArea className="flex-1 pr-4 -mr-4">
       <div className="space-y-6">
+        {usingFallbackData && (
+          <Alert className="bg-blue-50 border-blue-100 mb-4">
+            <Info className="h-4 w-4 text-blue-500" />
+            <AlertTitle>Using Estimated Data</AlertTitle>
+            <AlertDescription className="text-sm">
+              We're showing estimated market data because we couldn't retrieve actual comparable listings.
+              This analysis provides general guidance but may not reflect current market conditions with full accuracy.
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <PropertyDetailsSection 
           property={analysis.subjectProperty} 
           formatPrice={formatPrice}
@@ -370,6 +401,7 @@ function AnalysisResults({
           comparables={analysis.comparables}
           formatPrice={formatPrice}
           formatSqFt={formatSqFt}
+          usingFallbackData={usingFallbackData}
         />
       </div>
     </ScrollArea>
@@ -526,17 +558,26 @@ function NegotiationStrategySection({ strategy }: { strategy: string }) {
 function ComparablePropertiesSection({ 
   comparables,
   formatPrice,
-  formatSqFt
+  formatSqFt,
+  usingFallbackData
 }: { 
   comparables: Comparable[];
   formatPrice: (price: number | null) => string;
   formatSqFt: (sqft: number | null) => string;
+  usingFallbackData: boolean;
 }) {
   if (!comparables || comparables.length === 0) return null;
   
   return (
     <div>
-      <h3 className="font-medium text-lg mb-3">Comparable Properties</h3>
+      <div className="flex justify-between items-center mb-3">
+        <h3 className="font-medium text-lg">Comparable Properties</h3>
+        {usingFallbackData && (
+          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+            Estimated
+          </Badge>
+        )}
+      </div>
       <div className="space-y-3">
         {comparables.slice(0, 5).map((comp, index) => (
           <div key={index} className="border rounded-lg p-3 bg-white">

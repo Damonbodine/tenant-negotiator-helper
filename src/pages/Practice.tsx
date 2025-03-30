@@ -1,6 +1,5 @@
 
 import { ApartmentAnalysis } from "@/components/negotiation/ApartmentAnalysis";
-import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Building, LinkIcon, ExternalLink } from "lucide-react";
@@ -12,7 +11,7 @@ const Practice = () => {
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-blue-600">Apartment Analysis</h2>
+            <h2 className="text-2xl font-bold text-blue-600">Rent Analysis</h2>
             <p className="text-muted-foreground mt-1">
               Analyze apartment pricing to strengthen your negotiation position
             </p>
@@ -33,7 +32,7 @@ const Practice = () => {
           <div className="space-y-6">
             <Card className="shadow-md border-blue-100">
               <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent border-b">
-                <CardTitle>Why Analyze Apartments?</CardTitle>
+                <CardTitle>Why Analyze Rentals?</CardTitle>
                 <CardDescription>
                   Data-driven negotiation starts with market research
                 </CardDescription>
