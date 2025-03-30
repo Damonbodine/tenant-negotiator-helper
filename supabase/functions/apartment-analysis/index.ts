@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -8,140 +9,6 @@ const corsHeaders = {
 // Function to sanitize a URL parameter
 function sanitizeUrlParam(url: string): string {
   return encodeURIComponent(url.trim());
-}
-
-// Function to generate realistic but synthetic data for testing or fallback
-function generateFallbackData(zipCode: string, address: string) {
-  console.log(`Created fallback property with zip: ${zipCode}, area: ${address}`);
-  
-  // Extract base price from the zip code (making it somewhat realistic per area)
-  const basePrice = parseInt(zipCode) % 100 * 20 + 1500;
-  
-  // Create synthetic property
-  const subjectProperty = {
-    address: `297 Main St, ${address}, Austin, TX`,
-    zipCode: zipCode || "78705",
-    bedrooms: 1,
-    bathrooms: 1,
-    price: basePrice + 63,
-    propertyType: "Condo",
-    squareFootage: 730
-  };
-  
-  // Create synthetic comparables
-  const comparables = [
-    {
-      address: "100 Cypress Ave, Austin, TX 78731",
-      price: basePrice - 264,
-      bedrooms: 1,
-      bathrooms: 1,
-      propertyType: "Condo",
-      distance: 0.1,
-      url: "https://www.zillow.com/homedetails/sample",
-      squareFootage: 660
-    },
-    {
-      address: "200 Willow Way, Austin, TX 78731",
-      price: basePrice - 176,
-      bedrooms: 2,
-      bathrooms: 1,
-      propertyType: "Condo",
-      distance: 0.6,
-      url: "https://www.zillow.com/homedetails/sample",
-      squareFootage: 805
-    },
-    {
-      address: "300 Maple Dr, Austin, TX 78731",
-      price: basePrice - 88,
-      bedrooms: 2,
-      bathrooms: 1.5,
-      propertyType: "Condo",
-      distance: 2.4,
-      url: "https://www.zillow.com/homedetails/sample",
-      squareFootage: 689
-    },
-    {
-      address: "400 Spruce St, Austin, TX 78731",
-      price: basePrice + 35,
-      bedrooms: 1,
-      bathrooms: 1,
-      propertyType: "Condo",
-      distance: 0.4,
-      url: "https://www.zillow.com/homedetails/sample",
-      squareFootage: 819
-    },
-    {
-      address: "500 Magnolia Ct, Austin, TX 78731",
-      price: basePrice + 88,
-      bedrooms: 1,
-      bathrooms: 1,
-      propertyType: "Condo",
-      distance: 2.1,
-      url: "https://www.zillow.com/homedetails/sample",
-      squareFootage: 717
-    },
-    {
-      address: "600 Spruce St, Austin, TX 78731",
-      price: basePrice + 176,
-      bedrooms: 1,
-      bathrooms: 1.5,
-      propertyType: "Condo",
-      distance: 2.6,
-      url: "https://www.zillow.com/homedetails/sample",
-      squareFootage: 681
-    },
-    {
-      address: "700 Aspen Ln, Austin, TX 78731",
-      price: basePrice + 264,
-      bedrooms: 2,
-      bathrooms: 1,
-      propertyType: "Condo",
-      distance: 2.5,
-      url: "https://www.zillow.com/homedetails/sample",
-      squareFootage: 703
-    }
-  ];
-  
-  // Calculate analysis metrics
-  const prices = comparables.map(comp => comp.price || 0);
-  const averagePrice = Math.round(prices.reduce((sum, price) => sum + price, 0) / prices.length);
-  const higherPriced = comparables.filter(comp => (comp.price || 0) > (subjectProperty.price || 0)).length;
-  const lowerPriced = comparables.filter(comp => (comp.price || 0) < (subjectProperty.price || 0)).length;
-  
-  // Calculate where the property stands in the price range
-  const minPrice = Math.min(...prices);
-  const maxPrice = Math.max(...prices);
-  const priceRange = maxPrice - minPrice;
-  const relativePricePosition = priceRange > 0 
-    ? Math.round(((subjectProperty.price || 0) - minPrice) / priceRange * 100) 
-    : 50;
-  
-  // Generate analysis text based on the price position
-  let priceAssessment = "";
-  let negotiationStrategy = "";
-  
-  if (relativePricePosition < 33) {
-    priceAssessment = "This property is priced on the lower end compared to similar properties in this area. It appears to be a good value.";
-    negotiationStrategy = "Given the property's already competitive pricing, focus on non-price negotiation points like move-in date flexibility or amenities. The landlord may be less willing to lower the price since it's already below market.";
-  } else if (relativePricePosition < 66) {
-    priceAssessment = "This property is priced slightly below the market average for similar properties in this area. It appears to be reasonably priced.";
-    negotiationStrategy = "While this property is well-priced, you could still make a slightly lower offer (1-3% below asking). Emphasize your stability as a tenant and readiness to sign a lease quickly.";
-  } else {
-    priceAssessment = "This property is priced on the higher end compared to similar properties in the area. There may be room for negotiation.";
-    negotiationStrategy = "Given the higher relative price, you have leverage to negotiate. Consider offering 5-7% below asking and highlighting comparable properties at lower price points. Emphasize any periods of vacancy as a cost to the landlord.";
-  }
-  
-  return {
-    subjectProperty,
-    averagePrice,
-    higherPriced,
-    lowerPriced,
-    totalComparables: comparables.length,
-    comparables,
-    priceRank: relativePricePosition,
-    priceAssessment,
-    negotiationStrategy
-  };
 }
 
 // Extract property details from URL using the Zillow scraper
@@ -249,8 +116,8 @@ async function extractPropertyDetails(url: string) {
   }
 }
 
-// NEW function to find comparables
-async function findComparableProperties(zipCode: string, propertyType?: string, bedrooms?: number | null /* add other criteria? */) {
+// Function to find comparables
+async function findComparableProperties(zipCode: string, propertyType?: string, bedrooms?: number | null) {
   console.log(`Attempting to find comparable properties for zip: ${zipCode}`);
   const apifyApiKey = Deno.env.get("APIFY_API_KEY");
   if (!apifyApiKey) {
@@ -259,27 +126,11 @@ async function findComparableProperties(zipCode: string, propertyType?: string, 
 
   const searchScraperUrl = "https://api.apify.com/v2/acts/maxcopell~zillow-scraper/run-sync-get-dataset-items";
 
-  // === INPUT CONSTRUCTION - CRITICAL - Needs verification from Apify Docs ===
-  // Option A: If scraper takes parameters (Hypothetical - USE ACTUAL SCHEMA)
+  const searchZillowUrl = `https://www.zillow.com/homes/for_rent/${zipCode}_rb/`;
   const searchInput = {
-     // What parameters does it REALLY take? zipcode? city? search? query? statusForSaleForRent?
-     zipcode: zipCode, // Or maybe 'query': zipCode, or 'location': zipCode ?
-     // Add other filters if possible based on actor docs and subject property
-     // propertyType: propertyType, // Does it support this?
-     // beds: bedrooms,          // Does it support this?
-     statusForSaleForRent: "forRent", // Or maybe 'listing_type'? Check docs!
-     maxItems: 15, // Get a decent number of comps
-     // ... other necessary parameters from actor docs
+    searchUrls: [searchZillowUrl],
+    maxItems: 15
   };
-
-  // Option B: If scraper takes search URLs
-  // const searchZillowUrl = `https://www.zillow.com/homes/for_rent/${zipCode}_rb/`; // Adjust URL structure as needed
-  // const searchInput = {
-  //   searchUrls: [searchZillowUrl],
-  //   maxItems: 15
-  // };
-  // === END INPUT CONSTRUCTION ===
-
 
   console.log("Calling zillow-scraper with input:", JSON.stringify(searchInput));
 
@@ -300,7 +151,7 @@ async function findComparableProperties(zipCode: string, propertyType?: string, 
 
   const data = await response.json();
   console.log(`Received ${data.length} items from search scraper for comps`);
-  return data || []; // Return the array of property objects found
+  return data || [];
 }
 
 serve(async (req) => {
@@ -311,32 +162,22 @@ serve(async (req) => {
 
   try {
     const requestData = await req.json();
-    const { zillowUrl, testMode } = requestData;
+    const { zillowUrl } = requestData;
 
     if (!zillowUrl) {
       return new Response(JSON.stringify({ success: false, error: "Zillow URL is required" }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
     }
 
-    // --- Test Mode Handling (Keep as is) ---
-    if (testMode === "mock") {
-      console.log("Using mock data as requested");
-      const zipMatch = zillowUrl.match(/-(\d{5})\//) || ["", "78705"];
-      const addressMatch = zillowUrl.match(/\/([^\/]+?)\//) || ["", "Unknown Address"];
-      const mockAnalysis = generateFallbackData(zipMatch[1], addressMatch[1]); // Use existing mock generator
-      return new Response(JSON.stringify({ success: true, message: "Using mock data as requested", analysis: mockAnalysis }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-    }
-
-    // --- API Key Check (Keep as is) ---
+    // --- API Key Check ---
     const apifyApiKey = Deno.env.get("APIFY_API_KEY");
     if (!apifyApiKey) {
        return new Response(JSON.stringify({ success: false, error: "APIFY_API_KEY is not configured" }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
     }
 
-
     let subjectPropertyDetails;
     let realComparablesData = [];
     let analysis;
-    let message = null; // Optional message for frontend
+    let message = null;
 
     // --- Step 1: Extract Subject Property Details ---
     try {
@@ -344,14 +185,11 @@ serve(async (req) => {
       subjectPropertyDetails = await extractPropertyDetails(zillowUrl);
     } catch (error) {
       console.error(`Error extracting subject property details: ${error.message}`);
-      // Fallback to mock data if subject extraction fails
-      console.log(`Using fallback data due to subject extraction error: ${error.message}`);
-      const zipMatch = zillowUrl.match(/-(\d{5})\//) || ["", "78705"];
-      const addressMatch = zillowUrl.match(/\/([^\/]+?)-/) || ["", "Unknown Address"];
-      analysis = generateFallbackData(zipMatch[1], addressMatch[1]);
-      message = `Zillow data extraction error: ${error.message}. Using estimated data.`;
-
-      return new Response(JSON.stringify({ success: true, message, analysis, technicalError: error.message }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: `Failed to extract property details: ${error.message}`,
+        technicalError: error.message
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
     }
 
     // --- Step 2: Find Real Comparable Properties ---
@@ -365,11 +203,18 @@ serve(async (req) => {
           );
        } else {
           console.warn("Cannot search for comps, missing zip code from subject property.");
+          return new Response(JSON.stringify({ 
+            success: false, 
+            error: "Missing zip code from property details"
+          }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 });
        }
     } catch(error) {
-       console.error(`Error finding comparable properties: ${error.message}. Will use fallback analysis.`);
-       message = `Could not fetch real comparable properties: ${error.message}. Analysis is based on estimates.`;
-       // Keep subject details, but use fallback for comps/analysis if desired, or return error
+       console.error(`Error finding comparable properties: ${error.message}`);
+       return new Response(JSON.stringify({ 
+         success: false, 
+         error: `Failed to find comparable properties: ${error.message}`,
+         technicalError: error.message
+       }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
     }
 
     // --- Step 3: Process Results and Generate Analysis ---
@@ -378,18 +223,16 @@ serve(async (req) => {
       // Filter out the subject property itself if it appears in comps
       const filteredComps = realComparablesData.filter(comp => comp.address !== subjectPropertyDetails.address);
 
-       // Transform raw comp data to the structure frontend expects (Comparable interface)
-       // NOTE: This mapping DEPENDS HEAVILY on the actual fields returned by maxcopell~zillow-scraper
+       // Transform raw comp data to the structure frontend expects
        const processedComparables = filteredComps.map(comp => ({
          address: comp.address || "Unknown Address",
-         // Adjust price parsing based on scraper output
          price: comp.unformattedPrice || parseInt(comp.price?.replace(/[^0-9]/g, "")) || null,
          bedrooms: comp.beds || comp.bedrooms || null,
          bathrooms: comp.baths || comp.bathrooms || null,
-         propertyType: comp.homeType || comp.propertyType || "Unknown", // Adjust field names
-         distance: comp.distance || 0, // Distance is likely NOT available, set to 0 or calculate if possible
-         url: comp.url || comp.detailUrl || "", // Adjust field names
-         squareFootage: comp.livingArea || comp.area || null // Adjust field names
+         propertyType: comp.homeType || comp.propertyType || "Unknown",
+         distance: comp.distance || 0,
+         url: comp.url || comp.detailUrl || "",
+         squareFootage: comp.livingArea || comp.area || null
        }));
 
        // Calculate analysis metrics based on REAL comparables
@@ -404,10 +247,11 @@ serve(async (req) => {
        const priceRange = maxPrice - minPrice;
        const priceRank = (priceRange > 0 && subjectPrice >= minPrice)
          ? Math.round(((subjectPrice - minPrice) / priceRange) * 100)
-         : (prices.length > 0 ? (subjectPrice < minPrice ? 0 : 100) : 50); // Handle edge cases
+         : (prices.length > 0 ? (subjectPrice < minPrice ? 0 : 100) : 50);
 
        let priceAssessment = "";
        let negotiationStrategy = "";
+       
        // Generate assessment/strategy based on REAL priceRank
         if (priceRank < 33) {
            priceAssessment = "This property is priced competitively compared to recent listings.";
@@ -420,7 +264,6 @@ serve(async (req) => {
            negotiationStrategy = "There's likely room for negotiation (3-7%+ below asking). Reference lower-priced comparable properties found.";
         }
 
-
        analysis = {
          subjectProperty: subjectPropertyDetails,
          averagePrice,
@@ -432,16 +275,12 @@ serve(async (req) => {
          priceAssessment,
          negotiationStrategy
        };
-
     } else {
-       // If no real comps found OR comp search failed previously, use fallback data
-       console.log("No real comparables found or error occurred, using fallback analysis.");
-       // Use the original fallback generator, but ensure subject property is the real one
-       analysis = generateFallbackData(subjectPropertyDetails.zipCode || "78705", subjectPropertyDetails.address || "Unknown");
-       analysis.subjectProperty = subjectPropertyDetails; // Override subject property
-       if (!message) { // Add message if not already set by comp search error
-         message = "Could not find sufficient comparable properties. Analysis is based on estimates.";
-       }
+       // If no real comps found, return error
+       return new Response(JSON.stringify({ 
+         success: false, 
+         error: "No comparable properties found for this listing",
+       }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 });
     }
 
     // --- Step 4: Return Response ---
@@ -451,10 +290,15 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    // --- Outer Error Handling (Keep mostly as is) ---
+    // --- Outer Error Handling ---
     console.error(`Unhandled error in apartment-analysis function: ${error.message}`);
     console.error(`Stack trace: ${error.stack}`);
-    // Consider if generating fallback data here is appropriate or just return error
-    return new Response(JSON.stringify({ success: false, error: `An unexpected error occurred: ${error.message}` }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 });
+    return new Response(
+      JSON.stringify({ 
+        success: false, 
+        error: `An unexpected error occurred: ${error.message}`
+      }), 
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+    );
   }
 });
