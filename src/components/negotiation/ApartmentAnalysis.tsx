@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -51,7 +50,7 @@ interface AnalysisResult {
 
 export function ApartmentAnalysis() {
   const { toast } = useToast();
-  const [zillowUrl, setZillowUrl] = useState("");
+  const [rentalUrl, setRentalUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -81,19 +80,19 @@ export function ApartmentAnalysis() {
   };
 
   const handleAnalyze = async () => {
-    if (!zillowUrl) {
+    if (!rentalUrl) {
       toast({
         title: "URL Required",
-        description: "Please enter a Zillow listing URL",
+        description: "Please enter a rental listing URL",
         variant: "destructive"
       });
       return;
     }
 
-    if (!zillowUrl.includes("zillow.com")) {
+    if (!rentalUrl.includes(".com")) {
       toast({
         title: "Invalid URL",
-        description: "Please enter a valid Zillow URL",
+        description: "Please enter a valid rental listing URL",
         variant: "destructive"
       });
       return;
@@ -109,12 +108,12 @@ export function ApartmentAnalysis() {
     setRequestEndTime(null);
 
     try {
-      console.log("Sending request to apartment-analysis function with URL:", zillowUrl);
+      console.log("Sending request to apartment-analysis function with URL:", rentalUrl);
       console.log("Request started at:", requestStartTime);
       
       const response = await supabase.functions.invoke('apartment-analysis', {
         body: { 
-          zillowUrl
+          zillowUrl: rentalUrl
         }
       });
       
@@ -215,15 +214,15 @@ export function ApartmentAnalysis() {
         
         <div className="flex gap-2 mb-6">
           <Input
-            placeholder="Paste Zillow listing URL here..."
-            value={zillowUrl}
-            onChange={(e) => setZillowUrl(e.target.value)}
+            placeholder="Enter a rental listing URL here..."
+            value={rentalUrl}
+            onChange={(e) => setRentalUrl(e.target.value)}
             className="flex-1"
             disabled={isLoading}
           />
           <Button 
             onClick={handleAnalyze} 
-            disabled={isLoading || !zillowUrl}
+            disabled={isLoading || !rentalUrl}
           >
             {isLoading ? (
               <>
@@ -247,7 +246,7 @@ export function ApartmentAnalysis() {
             <AlertDescription>
               <div className="mt-2 space-y-2 text-xs">
                 <div><strong>HTTP Status:</strong> {httpStatus || "N/A"}</div>
-                <div><strong>URL:</strong> {zillowUrl || "N/A"}</div>
+                <div><strong>URL:</strong> {rentalUrl || "N/A"}</div>
                 <div><strong>Function:</strong> apartment-analysis</div>
                 {requestStartTime && (
                   <div><strong>Request Start:</strong> {requestStartTime}</div>
@@ -330,9 +329,9 @@ function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center flex-1 text-center p-8">
       <Home className="h-12 w-12 text-slate-300 mb-4" />
-      <h3 className="font-medium text-lg">Enter a Zillow Rental Listing URL</h3>
+      <h3 className="font-medium text-lg">Enter a Rental Listing URL</h3>
       <p className="text-muted-foreground mt-2">
-        Paste a Zillow URL to see how the price compares to similar rentals in the area.
+        Paste a rental listing URL to see how the price compares to similar rentals in the area.
       </p>
     </div>
   );

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -165,10 +164,6 @@ export const NegotiationPractice = () => {
         <TabsContent value="analysis" className="mt-0">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
-              <ApartmentAnalysis />
-            </div>
-            
-            <div className="space-y-6">
               <Card className="shadow-md border-blue-100">
                 <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent border-b">
                   <CardTitle>Why Analyze Apartments?</CardTitle>
@@ -181,8 +176,8 @@ export const NegotiationPractice = () => {
                     <div className="flex items-start gap-2">
                       <LinkIcon className="h-5 w-5 text-blue-500 mt-0.5" />
                       <div>
-                        <h3 className="font-medium">Enter a Zillow Link</h3>
-                        <p className="text-sm text-muted-foreground">Paste the URL of any Zillow rental listing to get started</p>
+                        <h3 className="font-medium">Enter a Rental Listing</h3>
+                        <p className="text-sm text-muted-foreground">Paste the URL of any rental listing to get started</p>
                       </div>
                     </div>
                     
