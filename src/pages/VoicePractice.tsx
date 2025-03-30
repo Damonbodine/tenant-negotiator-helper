@@ -13,7 +13,7 @@ import { QuickTips } from "@/components/negotiation/QuickTips";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const VoicePractice = () => {
-  const [selectedScenario, setSelectedScenario] = useState("standard");
+  const [selectedScenario, setSelectedScenario] = useState("random");
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   
   const {

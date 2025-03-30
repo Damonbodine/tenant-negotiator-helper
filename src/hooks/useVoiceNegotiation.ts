@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { agentService } from "@/utils/agentService";
@@ -14,7 +13,6 @@ export interface Message {
   timestamp: Date;
 }
 
-// This hook handles all voice interaction logic
 export function useVoiceNegotiation(scenario: string) {
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -35,7 +33,6 @@ export function useVoiceNegotiation(scenario: string) {
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   
-  // Check if the backend has an ElevenLabs API key configured
   useEffect(() => {
     const checkBackendApiKey = async () => {
       try {
@@ -56,17 +53,14 @@ export function useVoiceNegotiation(scenario: string) {
     checkBackendApiKey();
   }, []);
   
-  // Check microphone permissions when the component mounts
   useEffect(() => {
     const checkMicrophonePermission = async () => {
       try {
-        // Check if the browser supports navigator.permissions
         if (navigator.permissions) {
           const permissionStatus = await navigator.permissions.query({ name: 'microphone' as PermissionName });
           
           setMicrophoneAccessState(permissionStatus.state as 'granted' | 'denied' | 'prompt');
           
-          // Listen for permission changes
           permissionStatus.onchange = () => {
             setMicrophoneAccessState(permissionStatus.state as 'granted' | 'denied' | 'prompt');
             
@@ -82,14 +76,12 @@ export function useVoiceNegotiation(scenario: string) {
                 variant: "destructive",
               });
               
-              // Stop listening if it was active
               if (isListening) {
                 stopListening();
               }
             }
           };
         } else {
-          // Fallback for browsers that don't support permissions API
           console.log("Browser doesn't support permissions API, will check on first use");
           setMicrophoneAccessState('prompt');
         }
@@ -101,7 +93,6 @@ export function useVoiceNegotiation(scenario: string) {
     
     checkMicrophonePermission();
     
-    // Cleanup function to ensure we stop any active recording when component unmounts
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
@@ -113,7 +104,6 @@ export function useVoiceNegotiation(scenario: string) {
     };
   }, []);
   
-  // Initialize audio element and start negotiation if call is active
   useEffect(() => {
     audioRef.current = new Audio();
     
@@ -125,7 +115,6 @@ export function useVoiceNegotiation(scenario: string) {
   const loadVoices = async () => {
     try {
       if (hasBackendApiKey) {
-        // Fetch voices from the backend
         const { data, error } = await supabase.functions.invoke('get-elevenlabs-voices');
         if (error) {
           console.error("Error invoking get-elevenlabs-voices:", error);
@@ -133,14 +122,12 @@ export function useVoiceNegotiation(scenario: string) {
         }
         setAvailableVoices(data?.voices || []);
       } else {
-        // Fall back to using the client-side service if backend key isn't available
         const voices = await agentService.getVoices();
         setAvailableVoices(voices);
       }
       console.log("Available voices loaded");
     } catch (error) {
       console.error("Error loading voices:", error);
-      // Don't show error toast here, as it might be normal when API key isn't set
     }
   };
   
@@ -149,8 +136,6 @@ export function useVoiceNegotiation(scenario: string) {
       let audioBuffer;
       
       if (hasBackendApiKey) {
-        // Use backend to generate speech
-        console.log("Using backend edge function to generate speech");
         const { data, error } = await supabase.functions.invoke('generate-speech', {
           body: { text, voiceId: selectedVoice }
         });
@@ -165,7 +150,6 @@ export function useVoiceNegotiation(scenario: string) {
           throw new Error("Failed to generate speech: No audio content returned");
         }
         
-        // Convert base64 to ArrayBuffer
         const binaryString = atob(data.audioContent);
         const bytes = new Uint8Array(binaryString.length);
         for (let i = 0; i < binaryString.length; i++) {
@@ -173,8 +157,6 @@ export function useVoiceNegotiation(scenario: string) {
         }
         audioBuffer = bytes.buffer;
       } else {
-        // Fall back to client-side service
-        console.log("Using client-side service to generate speech");
         agentService.setVoice(selectedVoice);
         audioBuffer = await agentService.generateSpeech(text);
       }
@@ -204,20 +186,23 @@ export function useVoiceNegotiation(scenario: string) {
   
   const startNegotiationPractice = async () => {
     try {
-      // Get the system prompt for the selected scenario
       const systemPrompt = await chatService.getPracticeNegotiationPrompt(scenario);
       
-      // Set initial landlord message
+      let welcomeMessage = "Hello! I'm the landlord for the property you're interested in. What aspects of the lease would you like to discuss today?";
+      
+      if (scenario === "random") {
+        welcomeMessage = "Hello! I'm the property manager for the unit you inquired about. I see you're interested in discussing some details about the lease. What specific aspects would you like to negotiate today?";
+      }
+      
       const initialMessage: Message = {
         id: "welcome",
         type: "agent",
-        text: `Hello! I'm the landlord for the property you're interested in. What aspects of the lease would you like to discuss today?`,
+        text: welcomeMessage,
         timestamp: new Date()
       };
       
       setMessages([initialMessage]);
       
-      // If not muted, speak the welcome message
       if (!isMuted) {
         speakText(initialMessage.text);
       }
@@ -263,12 +248,10 @@ export function useVoiceNegotiation(scenario: string) {
     setIsCallActive(false);
     setMessages([]);
     
-    // Stop any ongoing audio
     if (audioRef.current) {
       audioRef.current.pause();
     }
     
-    // Clean up any recording
     if (isListening) {
       stopListening();
     }
@@ -294,10 +277,8 @@ export function useVoiceNegotiation(scenario: string) {
     setIsLoading(true);
     
     try {
-      // Get the system prompt for the selected scenario
       const systemPrompt = await chatService.getPracticeNegotiationPrompt(scenario);
       
-      // Prepare conversation history for the model
       const history = messages.map(msg => ({
         id: msg.id,
         type: msg.type,
@@ -308,7 +289,6 @@ export function useVoiceNegotiation(scenario: string) {
       console.log("Sending message to Gemini:", input);
       console.log("With history:", JSON.stringify(history, null, 2));
       
-      // Send to Gemini through Supabase function
       const response = await chatService.sendMessageToGemini(input, history);
       
       const agentMessage: Message = {
@@ -320,7 +300,6 @@ export function useVoiceNegotiation(scenario: string) {
       
       setMessages(prev => [...prev, agentMessage]);
       
-      // If not muted, speak the response
       if (!isMuted) {
         speakText(response);
       }
@@ -346,13 +325,11 @@ export function useVoiceNegotiation(scenario: string) {
   
   const startListening = async () => {
     try {
-      // Display toast to show we're requesting microphone access
       toast({
         title: "Requesting Microphone Access",
         description: "Please allow microphone access when prompted by your browser.",
       });
       
-      // Request microphone access with explicit options for compatibility
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
@@ -361,13 +338,10 @@ export function useVoiceNegotiation(scenario: string) {
         } 
       });
       
-      // Store the stream in the ref for cleanup
       streamRef.current = stream;
       
-      // If we get here, permission was granted
       setMicrophoneAccessState('granted');
       
-      // Create MediaRecorder instance with specific MIME type for better compatibility
       const options = { mimeType: 'audio/webm' };
       let mediaRecorder;
       
@@ -381,14 +355,12 @@ export function useVoiceNegotiation(scenario: string) {
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
       
-      // Handle audio data
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
       
-      // Log MediaRecorder state to help with debugging
       mediaRecorder.onstart = () => {
         console.log("MediaRecorder started");
       };
@@ -403,7 +375,6 @@ export function useVoiceNegotiation(scenario: string) {
         stopListening();
       };
       
-      // Handle recording stop
       mediaRecorder.onstop = async () => {
         console.log("MediaRecorder stopped, processing audio chunks");
         
@@ -411,13 +382,11 @@ export function useVoiceNegotiation(scenario: string) {
         console.log(`Audio blob created with size: ${audioBlob.size} bytes`);
         
         try {
-          // In a real implementation, this would send the audio to a speech-to-text service
           toast({
             title: "Voice Input",
             description: "Processing your voice input...",
           });
           
-          // For now, use dummy text based on the scenario
           const placeholderTexts = {
             'standard': "I think $1,800 is a bit high for this area. Would you consider $1,700 per month?",
             'luxury': "I'm definitely interested in the premium amenities, but I'd like to discuss the possibility of including the utilities in the rent.",
@@ -426,11 +395,9 @@ export function useVoiceNegotiation(scenario: string) {
           
           setInput(placeholderTexts[scenario as keyof typeof placeholderTexts] || "I'd like to discuss the rent amount. Is there any flexibility?");
           
-          // Auto-send the message after a short delay
           setTimeout(() => {
             handleSend();
           }, 500);
-          
         } catch (error) {
           console.error("Error processing audio:", error);
           toast({
@@ -443,10 +410,9 @@ export function useVoiceNegotiation(scenario: string) {
         setIsListening(false);
       };
       
-      // Start recording - use a try/catch here to capture any errors during start
       try {
         console.log("Starting MediaRecorder with timeSlice of 1000ms");
-        mediaRecorder.start(1000); // Collect data in 1-second chunks
+        mediaRecorder.start(1000);
         setIsListening(true);
         
         toast({
@@ -454,7 +420,6 @@ export function useVoiceNegotiation(scenario: string) {
           description: "Speak clearly into your microphone",
         });
         
-        // Automatically stop recording after 5 seconds
         const timeoutId = window.setTimeout(() => {
           if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
             console.log("Automatically stopping recording after 5 seconds");
@@ -463,7 +428,6 @@ export function useVoiceNegotiation(scenario: string) {
         }, 5000);
         
         setRecordingTimeoutId(timeoutId);
-        
       } catch (e) {
         console.error("Error starting MediaRecorder:", e);
         toast({
@@ -475,7 +439,6 @@ export function useVoiceNegotiation(scenario: string) {
     } catch (error) {
       console.error("Error accessing microphone:", error);
       
-      // If permission is denied, update our state
       if ((error as Error).name === 'NotAllowedError' || (error as Error).name === 'PermissionDeniedError') {
         setMicrophoneAccessState('denied');
         toast({
@@ -484,7 +447,6 @@ export function useVoiceNegotiation(scenario: string) {
           variant: "destructive",
         });
       } else {
-        // Handle other types of errors
         setMicrophoneAccessState('error');
         toast({
           title: "Microphone Error",
@@ -498,7 +460,6 @@ export function useVoiceNegotiation(scenario: string) {
   const stopListening = () => {
     console.log("Stopping MediaRecorder");
     
-    // Clear any timeout
     if (recordingTimeoutId) {
       window.clearTimeout(recordingTimeoutId);
       setRecordingTimeoutId(null);
@@ -508,7 +469,6 @@ export function useVoiceNegotiation(scenario: string) {
       try {
         mediaRecorderRef.current.stop();
         
-        // Stop all tracks of the stream
         if (mediaRecorderRef.current.stream) {
           console.log("Stopping all media tracks");
           mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
@@ -518,7 +478,6 @@ export function useVoiceNegotiation(scenario: string) {
       }
     }
     
-    // Also stop any tracks in the stored stream
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
@@ -530,7 +489,6 @@ export function useVoiceNegotiation(scenario: string) {
   const toggleMute = () => {
     setIsMuted(!isMuted);
     
-    // If currently playing, stop it
     if (!isMuted && audioRef.current) {
       audioRef.current.pause();
     }
