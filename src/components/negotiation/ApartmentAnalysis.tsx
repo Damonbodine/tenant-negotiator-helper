@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { 
@@ -14,16 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-
-interface PropertyDetails {
-  address: string;
-  zipCode: string;
-  bedrooms: number | null;
-  bathrooms: number | null;
-  price: number | null;
-  propertyType: string;
-  squareFootage: number | null;
-}
+import { PropertyInputForm, PropertyDetails } from "./PropertyInputForm";
 
 interface Comparable {
   address: string;
@@ -50,7 +40,6 @@ interface AnalysisResult {
 
 export function ApartmentAnalysis() {
   const { toast } = useToast();
-  const [rentalUrl, setRentalUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -79,25 +68,7 @@ export function ApartmentAnalysis() {
     setShowDebugInfo(!showDebugInfo);
   };
 
-  const handleAnalyze = async () => {
-    if (!rentalUrl) {
-      toast({
-        title: "URL Required",
-        description: "Please enter a rental listing URL",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!rentalUrl.includes(".com")) {
-      toast({
-        title: "Invalid URL",
-        description: "Please enter a valid rental listing URL",
-        variant: "destructive"
-      });
-      return;
-    }
-
+  const handleAnalyze = async (propertyDetails: PropertyDetails) => {
     setIsLoading(true);
     setErrorMessage(null);
     setAnalysis(null);
@@ -108,12 +79,12 @@ export function ApartmentAnalysis() {
     setRequestEndTime(null);
 
     try {
-      console.log("Sending request to apartment-analysis function with URL:", rentalUrl);
+      console.log("Sending request to apartment-analysis function with details:", propertyDetails);
       console.log("Request started at:", requestStartTime);
       
       const response = await supabase.functions.invoke('apartment-analysis', {
         body: { 
-          zillowUrl: rentalUrl
+          propertyDetails
         }
       });
       
@@ -212,28 +183,9 @@ export function ApartmentAnalysis() {
           </Button>
         </div>
         
-        <div className="flex gap-2 mb-6">
-          <Input
-            placeholder="Enter a rental listing URL here..."
-            value={rentalUrl}
-            onChange={(e) => setRentalUrl(e.target.value)}
-            className="flex-1"
-            disabled={isLoading}
-          />
-          <Button 
-            onClick={handleAnalyze} 
-            disabled={isLoading || !rentalUrl}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
-                Analyzing
-              </>
-            ) : (
-              "Analyze"
-            )}
-          </Button>
-        </div>
+        {!analysis && !isLoading && (
+          <PropertyInputForm onSubmit={handleAnalyze} isLoading={isLoading} />
+        )}
 
         {isLoading && <LoadingState />}
 
@@ -246,8 +198,6 @@ export function ApartmentAnalysis() {
             <AlertDescription>
               <div className="mt-2 space-y-2 text-xs">
                 <div><strong>HTTP Status:</strong> {httpStatus || "N/A"}</div>
-                <div><strong>URL:</strong> {rentalUrl || "N/A"}</div>
-                <div><strong>Function:</strong> apartment-analysis</div>
                 {requestStartTime && (
                   <div><strong>Request Start:</strong> {requestStartTime}</div>
                 )}
@@ -295,14 +245,28 @@ export function ApartmentAnalysis() {
         )}
 
         {!isLoading && analysis && (
-          <AnalysisResults 
-            analysis={analysis} 
-            formatPrice={formatPrice} 
-            formatSqFt={formatSqFt} 
-          />
+          <div className="mt-4">
+            <div className="flex justify-between mb-4">
+              <h3 className="font-medium">Analysis Results</h3>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setAnalysis(null)}
+              >
+                New Analysis
+              </Button>
+            </div>
+            <AnalysisResults 
+              analysis={analysis} 
+              formatPrice={formatPrice} 
+              formatSqFt={formatSqFt} 
+            />
+          </div>
         )}
 
-        {!isLoading && !analysis && !errorMessage && !rawErrorResponse && <EmptyState />}
+        {!isLoading && !analysis && !errorMessage && !rawErrorResponse && (
+          <EmptyState />
+        )}
       </CardContent>
     </Card>
   );
@@ -329,9 +293,9 @@ function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center flex-1 text-center p-8">
       <Home className="h-12 w-12 text-slate-300 mb-4" />
-      <h3 className="font-medium text-lg">Enter a Rental Listing URL</h3>
+      <h3 className="font-medium text-lg">Enter Property Details</h3>
       <p className="text-muted-foreground mt-2">
-        Paste a rental listing URL to see how the price compares to similar rentals in the area.
+        Fill out the property information to see how the price compares to similar rentals in the area.
       </p>
     </div>
   );

@@ -42,8 +42,8 @@ const Practice = () => {
                   <div className="flex items-start gap-2">
                     <LinkIcon className="h-5 w-5 text-blue-500 mt-0.5" />
                     <div>
-                      <h3 className="font-medium">Enter a Rental Listing</h3>
-                      <p className="text-sm text-muted-foreground">Paste the URL of any rental listing to get started</p>
+                      <h3 className="font-medium">Enter Property Details</h3>
+                      <p className="text-sm text-muted-foreground">Fill in the details about the rental property you're considering</p>
                     </div>
                   </div>
                   
