@@ -97,25 +97,29 @@ const Index = () => {
   };
   
   return (
-    <div className="min-h-screen flex flex-col bg-[#da7756]">
+    <div className="min-h-screen flex flex-col bg-background">
       <header className="w-full bg-background/80 backdrop-blur-md border-b border-border py-3">
         <div className="container flex items-center justify-between">
           <div className="flex-1 flex items-center gap-4">
           </div>
-          <div className="flex items-center gap-3">
-            <Building className="h-8 w-8 text-blue-600" />
-            <h1 className="text-2xl font-bold text-blue-600 uppercase tracking-wider">RENTCOACH</h1>
+          <div className="flex items-center gap-4">
+            <img 
+              src="/lovable-uploads/34dcbc44-8a1c-4f73-8f2d-c65b665a74b8.png" 
+              alt="RentCoach.ai Logo" 
+              className="h-12 w-auto"
+            />
+            <h1 className="text-2xl font-bold text-cyan-400 uppercase tracking-wider">RentCoach.ai</h1>
           </div>
           <div className="flex-1 flex justify-end">
-            <Button variant="outline" className="flex items-center gap-2">
-              <Mail className="h-4 w-4" />
-              <span>Contact Us</span>
+            <Button variant="outline" className="flex items-center gap-2 border-cyan-400/30 hover:bg-cyan-400/10">
+              <Mail className="h-4 w-4 text-cyan-400" />
+              <span className="text-cyan-400">Contact Us</span>
             </Button>
           </div>
         </div>
       </header>
       
-      <main className="flex-1 container flex flex-col items-center justify-center py-6">
+      <main className="flex-1 container flex flex-col items-center justify-center py-12">
         {activeJourney ? (
           <>
             {activeJourney === "market" && (
@@ -214,41 +218,45 @@ const Index = () => {
             )}
           </>
         ) : (
-          <div className="space-y-12 w-full max-w-4xl">
+          <div className="space-y-16 w-full max-w-4xl">
             <div className="text-center">
-              <h2 className="text-4xl font-bold text-white mb-4">Don't overpay for your next apartment.</h2>
-              <p className="text-xl text-white font-semibold">Arm yourself with data to get the best price on rent</p>
+              <h2 className="text-5xl font-bold mb-6 gradient-heading">
+                Don't overpay for your next apartment.
+              </h2>
+              <p className="text-xl text-cyan-400/90 font-medium">
+                Arm yourself with data to get the best price on rent
+              </p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <button
                 onClick={() => setActiveJourney("market")}
-                className="journey-bubble flex flex-col items-center justify-center p-8 bg-[#FEF7CD] hover:bg-[#fcf4b8] border-2 border-[#f0e9b0] rounded-full h-64 w-64 mx-auto transition-all hover:shadow-lg hover:scale-105"
+                className="journey-bubble flex flex-col items-center justify-center p-8 bg-cyan-950/30 hover:bg-cyan-950/40 border border-cyan-400/20 rounded-xl h-64 w-full mx-auto transition-all hover:shadow-lg hover:scale-105"
               >
-                <div className="text-black text-4xl font-bold mb-2">Market Tips</div>
-                <p className="text-black text-center">Get insights on rental prices and market trends</p>
+                <div className="text-cyan-400 text-3xl font-bold mb-3">Market Tips</div>
+                <p className="text-cyan-100/70 text-center">Get insights on rental prices and market trends</p>
               </button>
               
               <Link
                 to="/practice"
-                className="journey-bubble flex flex-col items-center justify-center p-8 bg-[#FEF7CD] hover:bg-[#fcf4b8] border-2 border-[#f0e9b0] rounded-full h-64 w-64 mx-auto transition-all hover:shadow-lg hover:scale-105"
+                className="journey-bubble flex flex-col items-center justify-center p-8 bg-cyan-950/30 hover:bg-cyan-950/40 border border-cyan-400/20 rounded-xl h-64 w-full mx-auto transition-all hover:shadow-lg hover:scale-105"
               >
-                <div className="text-black text-4xl font-bold mb-2">Rent Analysis</div>
-                <p className="text-black text-center">Analyze apartment pricing to strengthen your position</p>
+                <div className="text-cyan-400 text-3xl font-bold mb-3">Rent Analysis</div>
+                <p className="text-cyan-100/70 text-center">Analyze apartment pricing to strengthen your position</p>
               </Link>
               
               <Link
                 to="/practice/voice"
-                className="journey-bubble flex flex-col items-center justify-center p-8 bg-[#FEF7CD] hover:bg-[#fcf4b8] border-2 border-[#f0e9b0] rounded-full h-64 w-64 mx-auto transition-all hover:shadow-lg hover:scale-105"
+                className="journey-bubble flex flex-col items-center justify-center p-8 bg-cyan-950/30 hover:bg-cyan-950/40 border border-cyan-400/20 rounded-xl h-64 w-full mx-auto transition-all hover:shadow-lg hover:scale-105"
               >
-                <div className="text-black text-4xl font-bold mb-2 text-center">Practice Call</div>
-                <p className="text-black text-center">Rehearse your negotiation with an AI landlord</p>
+                <div className="text-cyan-400 text-3xl font-bold mb-3">Practice Call</div>
+                <p className="text-cyan-100/70 text-center">Rehearse your negotiation with an AI landlord</p>
               </Link>
             </div>
             
-            <div className="mx-auto max-w-md w-full mt-6">
-              <div className="text-center mb-3">
-                <h3 className="text-xl font-semibold text-white">Join our email list and get a free book</h3>
+            <div className="mx-auto max-w-md w-full mt-12">
+              <div className="text-center mb-4">
+                <h3 className="text-xl font-semibold text-cyan-400">Join our email list and get a free book</h3>
               </div>
               <form onSubmit={handleEmailSubmit} className="flex gap-2">
                 <Input
@@ -256,9 +264,11 @@ const Index = () => {
                   placeholder="Enter your email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="flex-1"
+                  className="flex-1 bg-cyan-950/30 border-cyan-400/20 placeholder:text-cyan-400/50"
                 />
-                <Button type="submit">Subscribe</Button>
+                <Button type="submit" className="bg-cyan-400 hover:bg-cyan-500 text-cyan-950">
+                  Subscribe
+                </Button>
               </form>
             </div>
           </div>

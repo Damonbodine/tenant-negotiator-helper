@@ -5,33 +5,33 @@
 
 @layer base {
   :root {
-    --background: 222 47% 11%;
+    --background: 200 24% 8%;
     --foreground: 0 0% 100%;
     
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 200 24% 8%;
+    --card-foreground: 0 0% 100%;
     
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 200 24% 8%;
+    --popover-foreground: 0 0% 100%;
     
-    --primary: 221 83% 53%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 174 100% 50%;
+    --primary-foreground: 200 24% 8%;
     
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 200 24% 16%;
+    --secondary-foreground: 0 0% 100%;
     
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 200 24% 16%;
+    --muted-foreground: 0 0% 70%;
     
-    --accent: 262 83% 74%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 174 100% 50%;
+    --accent-foreground: 200 24% 8%;
     
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 98%;
     
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221 83% 53%;
+    --border: 200 24% 16%;
+    --input: 200 24% 16%;
+    --ring: 174 100% 50%;
     
     --radius: 0.75rem;
   }
@@ -43,17 +43,18 @@
   }
   
   body {
-    @apply bg-gradient-to-br from-[#1a1f2c] to-[#2d1b4b] text-foreground min-h-screen;
+    @apply bg-background text-foreground min-h-screen;
+    background: linear-gradient(135deg, hsl(200 24% 8%) 0%, hsl(200 24% 12%) 100%);
   }
 }
 
 @layer utilities {
   .gradient-heading {
-    @apply bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent font-bold;
+    @apply bg-gradient-to-r from-cyan-400 to-cyan-200 bg-clip-text text-transparent font-bold;
   }
   
   .glass-card {
-    @apply backdrop-blur-lg bg-white/10 border border-white/20 shadow-lg transition-all duration-300 hover:shadow-xl hover:bg-white/15;
+    @apply backdrop-blur-lg bg-white/5 border border-white/10 shadow-lg transition-all duration-300 hover:shadow-xl hover:bg-white/10;
   }
   
   .journey-bubble {
@@ -62,7 +63,7 @@
   
   .journey-bubble::before {
     content: '';
-    @apply absolute inset-0 bg-gradient-to-br from-purple-400/20 to-blue-400/20 opacity-0 transition-opacity duration-500;
+    @apply absolute inset-0 bg-gradient-to-br from-cyan-400/20 to-cyan-300/20 opacity-0 transition-opacity duration-500;
   }
   
   .journey-bubble:hover::before {
