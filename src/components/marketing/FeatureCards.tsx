@@ -1,7 +1,11 @@
 
 import { Link } from "react-router-dom";
 
-export function FeatureCards() {
+interface FeatureCardsProps {
+  setActiveJourney: (journey: string) => void;
+}
+
+export function FeatureCards({ setActiveJourney }: FeatureCardsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
       <button

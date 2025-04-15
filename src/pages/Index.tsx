@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { AgentChat } from "@/components/AgentChat";
 import { Header } from "@/components/layout/Header";
@@ -9,6 +10,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Send } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [activeJourney, setActiveJourney] = useState<string | null>(null);
@@ -190,7 +192,7 @@ const Index = () => {
               </p>
             </div>
             
-            <FeatureCards />
+            <FeatureCards setActiveJourney={setActiveJourney} />
             <NewsletterSignup />
           </div>
         )}
