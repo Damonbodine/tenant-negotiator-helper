@@ -91,13 +91,30 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-gradient-to-br from-[#1a1f2c] to-[#2d1b4b] min-h-screen text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
 @layer utilities {
   .gradient-heading {
-    @apply bg-gradient-to-r from-blue-700 to-blue-500 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent;
+  }
+
+  .glass-card {
+    @apply backdrop-blur-lg bg-white/10 border border-white/20 shadow-lg;
+  }
+
+  .journey-bubble {
+    @apply relative overflow-hidden transition-all duration-500;
+  }
+
+  .journey-bubble::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-br from-purple-400/20 to-blue-400/20 opacity-0 transition-opacity duration-500;
+  }
+
+  .journey-bubble:hover::before {
+    @apply opacity-100;
   }
 }
