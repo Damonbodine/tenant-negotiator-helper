@@ -84,7 +84,7 @@
 
 /* Enhance nav bar */
 .w3-top .w3-bar {
-  @apply bg-white border-b border-border shadow-sm;
+  @apply bg-background/80 backdrop-blur-sm border-b border-cyan-400/20;
 }
 
 /* Project cards enhancement */
@@ -97,11 +97,11 @@
   @apply transition-all duration-300 hover:shadow-lg;
 }
 
-/* Add drone.io inspired styles */
+/* Add ditchmyrent.com inspired styles */
 .gradient-heading {
-  @apply bg-gradient-to-r from-primary to-blue-500 bg-clip-text text-transparent;
+  @apply bg-gradient-to-r from-cyan-400 to-cyan-300 bg-clip-text text-transparent;
 }
 
 .journey-bubble {
-  @apply bg-white shadow-md hover:shadow-lg border border-border;
+  @apply bg-background/50 border border-cyan-400/20;
 }

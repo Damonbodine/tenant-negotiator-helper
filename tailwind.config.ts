@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 export default {
@@ -67,12 +66,12 @@ export default {
           border: 'hsl(var(--sidebar-border))',
           ring: 'hsl(var(--sidebar-ring))'
         },
-        // Custom drone.io inspired colors
-        blue: {
-          400: '#0096D6',
-          500: '#0074A2',
-          600: '#005D82',
-          700: '#00435E'
+        cyan: {
+          300: '#5CFFFF',
+          400: '#00FFFF',
+          500: '#00E5E5',
+          600: '#00CCCC',
+          700: '#00B3B3'
         }
       },
       borderRadius: {
