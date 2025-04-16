@@ -16,74 +16,81 @@ serve(async (req) => {
     const apiKey = Deno.env.get('ELEVENLABS_API_KEY');
     
     if (!apiKey) {
-      console.error('ElevenLabs API key is not configured');
-      throw new Error('ElevenLabs API key is not configured');
+      console.error('CRITICAL: ElevenLabs API key is not configured');
+      return new Response(
+        JSON.stringify({ 
+          error: 'ElevenLabs API key is missing', 
+          details: 'No API key found in environment variables' 
+        }), 
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
     
     console.log('ELEVENLABS_API_KEY is present and has length:', apiKey.length);
     
     // Get request body
-    const { text, voiceId = "21m00Tcm4TlvDq8ikWAM" } = await req.json();
+    const requestBody = await req.json();
+    const { text, voiceId = "21m00Tcm4TlvDq8ikWAM" } = requestBody;
     
     if (!text) {
-      throw new Error('Text is required');
+      console.error('ERROR: Text is required in the request');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Text parameter is required', 
+          details: 'No text provided in the generate speech request' 
+        }), 
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
     
-    console.log(`Generating speech for text: "${text.substring(0, 50)}..." with voice ID: ${voiceId}`);
-    
-    // Debugging the URL and headers
-    const ttsUrl = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
-    console.log(`Making request to: ${ttsUrl}`);
-    
-    // Full logging of the headers and the beginning of the request body
-    const requestBody = JSON.stringify({
-      text,
-      model_id: "eleven_monolingual_v1",
-      voice_settings: {
-        stability: 0.5,
-        similarity_boost: 0.5
-      }
-    });
-    console.log('Request headers:', {
-      'xi-api-key': `${apiKey.substring(0, 3)}...${apiKey.substring(apiKey.length - 3)}`, // Masked for security
-      'Content-Type': 'application/json',
-      'Accept': 'audio/mpeg',
-    });
-    console.log('Request body (truncated):', requestBody.substring(0, 100) + (requestBody.length > 100 ? '...' : ''));
+    console.log(`Attempting to generate speech for text: "${text.substring(0, 50)}..." with voice ID: ${voiceId}`);
     
     // Call ElevenLabs API to generate speech
-    const response = await fetch(ttsUrl, {
+    const elevenLabsResponse = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
       method: 'POST',
       headers: {
         'xi-api-key': apiKey,
         'Content-Type': 'application/json',
         'Accept': 'audio/mpeg',
       },
-      body: requestBody
+      body: JSON.stringify({
+        text,
+        model_id: "eleven_monolingual_v1",
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.5
+        }
+      })
     });
     
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("ElevenLabs API error response:", errorText);
-      console.error("ElevenLabs API response status:", response.status, response.statusText);
-      let errorMessage;
+    console.log('ElevenLabs API Response Status:', elevenLabsResponse.status);
+    
+    if (!elevenLabsResponse.ok) {
+      const errorText = await elevenLabsResponse.text();
+      console.error("ElevenLabs API Error Response:", errorText);
+      console.error("ElevenLabs API Response Status:", elevenLabsResponse.status);
       
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage = errorData.detail?.message || errorData.detail || errorData.message || response.statusText;
-        console.error("Parsed error detail:", JSON.stringify(errorData.detail || {}));
-      } catch (e) {
-        errorMessage = errorText || response.statusText;
-        console.error("Error parsing error response:", e);
-      }
-      
-      throw new Error(`ElevenLabs API error: ${errorMessage}`);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to generate speech', 
+          details: errorText,
+          status: elevenLabsResponse.status 
+        }), 
+        {
+          status: elevenLabsResponse.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
     
-    console.log("Got successful response from ElevenLabs API");
-    
     // Get audio as arrayBuffer
-    const arrayBuffer = await response.arrayBuffer();
+    const arrayBuffer = await elevenLabsResponse.arrayBuffer();
     console.log("Successfully got array buffer with byte length:", arrayBuffer.byteLength);
     
     // Convert audio buffer to base64
@@ -100,9 +107,12 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Error generating speech:", error);
+    console.error("Unexpected error in generate speech function:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: 'Unexpected server error', 
+        details: error.message 
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -110,3 +120,4 @@ serve(async (req) => {
     );
   }
 });
+

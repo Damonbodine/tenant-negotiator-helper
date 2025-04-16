@@ -16,8 +16,17 @@ serve(async (req) => {
     const apiKey = Deno.env.get('ELEVENLABS_API_KEY');
     
     if (!apiKey) {
-      console.error('ElevenLabs API key is not configured');
-      throw new Error('ElevenLabs API key is not configured');
+      console.error('CRITICAL: ElevenLabs API key is not configured');
+      return new Response(
+        JSON.stringify({ 
+          error: 'ElevenLabs API key is missing', 
+          details: 'No API key found in environment variables' 
+        }), 
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
     
     console.log('ELEVENLABS_API_KEY is present and has length:', apiKey.length);
@@ -32,25 +41,24 @@ serve(async (req) => {
       },
     });
     
-    // Log the request details for debugging
-    console.log("Request made to ElevenLabs API with masked key:", `${apiKey.substring(0, 3)}...${apiKey.substring(apiKey.length - 3)}`);
+    console.log('ElevenLabs API Response Status:', response.status);
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("ElevenLabs API error response:", errorText);
-      console.error("ElevenLabs API response status:", response.status, response.statusText);
-      let errorMessage;
+      console.error("ElevenLabs API Error Response:", errorText);
+      console.error("ElevenLabs API Response Status:", response.status);
       
-      try {
-        const errorData = JSON.parse(errorText);
-        errorMessage = errorData.detail?.message || errorData.detail || errorData.message || response.statusText;
-        console.error("Parsed error detail:", JSON.stringify(errorData.detail || {}));
-      } catch (e) {
-        errorMessage = errorText || response.statusText;
-        console.error("Error parsing error response:", e);
-      }
-      
-      throw new Error(`ElevenLabs API error: ${errorMessage}`);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to fetch voices', 
+          details: errorText,
+          status: response.status 
+        }), 
+        {
+          status: response.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
     
     const data = await response.json();
@@ -63,9 +71,12 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Error fetching voices:", error);
+    console.error("Unexpected error in get voices function:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: 'Unexpected server error', 
+        details: error.message 
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -73,3 +84,4 @@ serve(async (req) => {
     );
   }
 });
+
