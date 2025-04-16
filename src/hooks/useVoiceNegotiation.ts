@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useVoiceAudio } from "./useVoiceAudio";
 import { useMicrophoneRecording } from "./useMicrophoneRecording";
@@ -15,6 +14,7 @@ export interface Message {
 }
 
 export function useVoiceNegotiation(scenario: string) {
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isCallActive, setIsCallActive] = useState(false);
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [hasBackendApiKey, setHasBackendApiKey] = useState(false);
@@ -40,7 +40,6 @@ export function useVoiceNegotiation(scenario: string) {
   } = useMicrophoneRecording();
 
   const {
-    messages,
     input,
     setInput,
     isLoading,
