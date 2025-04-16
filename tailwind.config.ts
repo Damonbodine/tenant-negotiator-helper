@@ -20,6 +20,7 @@ export default {
     extend: {
       fontFamily: {
         raleway: ["Raleway", "Arial", "sans-serif"],
+        playfair: ["Playfair Display", "serif"],
       },
       colors: {
         border: 'hsl(var(--border))',
