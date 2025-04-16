@@ -5,7 +5,7 @@ import { marketService } from './marketService';
 
 class AgentService {
   private conversationId: string | null = null;
-  
+
   async startConversation(): Promise<void> {
     if (!(await voiceClient.hasApiKey())) {
       throw new Error("API key not set");
@@ -32,20 +32,13 @@ class AgentService {
     
     return simulationService.simulateResponse(message);
   }
-  
-  async speechToText(audioBlob: Blob): Promise<string> {
-    try {
-      return "Speech to text not implemented yet";
-    } catch (error) {
-      console.error("Error in speech to text:", error);
-      throw error;
-    }
-  }
 }
 
+// Combine all services into one exported object
 export const agentService = {
   ...new AgentService(),
   ...voiceClient,
   ...simulationService,
   ...marketService
 };
+
