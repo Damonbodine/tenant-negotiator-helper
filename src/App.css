@@ -1,3 +1,4 @@
+
 #root {
   max-width: 1280px;
   margin: 0 auto;
@@ -15,7 +16,6 @@
 }
 
 .w3-main {
-  @apply glass-panel;
   transition: margin-left .4s;
   background: transparent;
 }
@@ -84,7 +84,7 @@
 
 /* Enhance nav bar */
 .w3-top .w3-bar {
-  @apply glass-panel border-b border-white/10;
+  @apply bg-white border-b border-border shadow-sm;
 }
 
 /* Project cards enhancement */
@@ -95,4 +95,13 @@
 /* Add subtle animation to buttons */
 .w3-button {
   @apply transition-all duration-300 hover:shadow-lg;
+}
+
+/* Add drone.io inspired styles */
+.gradient-heading {
+  @apply bg-gradient-to-r from-primary to-blue-500 bg-clip-text text-transparent;
+}
+
+.journey-bubble {
+  @apply bg-white shadow-md hover:shadow-lg border border-border;
 }
