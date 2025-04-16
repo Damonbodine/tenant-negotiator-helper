@@ -1,0 +1,39 @@
+
+import { Card } from "@/components/ui/card";
+
+interface Message {
+  id: string;
+  type: "user" | "agent";
+  text: string;
+  timestamp: Date;
+  isAudio?: boolean;
+}
+
+interface ChatMessageProps {
+  message: Message;
+}
+
+export function ChatMessage({ message }: ChatMessageProps) {
+  return (
+    <div className={`flex ${message.type === "user" ? "justify-end" : "justify-start"}`}>
+      <Card 
+        className={`
+          max-w-[80%] p-3
+          ${message.type === "user" 
+            ? "bg-blue-500 text-white" 
+            : "bg-card border border-border"}
+        `}
+      >
+        <p>{message.text}</p>
+        <div 
+          className={`
+            text-xs mt-1 
+            ${message.type === "user" ? "text-blue-100" : "text-muted-foreground"}
+          `}
+        >
+          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </div>
+      </Card>
+    </div>
+  );
+}

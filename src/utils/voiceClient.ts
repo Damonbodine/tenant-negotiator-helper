@@ -1,7 +1,7 @@
-
 import { getApiKey, hasApiKey, saveApiKey } from './keyManager';
+import { VoiceService } from './types';
 
-export class VoiceClient {
+export class VoiceClient implements VoiceService {
   private baseUrl: string = "https://api.elevenlabs.io/v1";
   private voiceId: string = "21m00Tcm4TlvDq8ikWAM"; // Default voice - Rachel
   
@@ -85,4 +85,5 @@ export class VoiceClient {
   }
 }
 
-export const voiceClient = new VoiceClient();
+// Export a properly typed instance of VoiceClient
+export const voiceClient: VoiceService = new VoiceClient();
