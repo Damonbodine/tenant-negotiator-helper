@@ -44,7 +44,7 @@ Apartment Listing | Mentions link, unit, or specific property | Ask rent amount,
 Price Question | Asks "Is this a good deal?", "What's average rent?" | Use general market trends → Provide context and next steps
 Negotiation Strategy | "Can I negotiate?" or "How do I lower rent?" | Ask their goal (lower price, perks, terms) → Provide strategy + script
 Practice Call | Mentions "practice," "role-play," "simulate" | Ask if user would like to do a practice voice negotiation → Prompt user for tone/scenario → Offer feedback
-Lease Question | Asks about lease terms, renewals, riders, escalations | Explain clearly → Offer tips or checklists
+Lease Question | Mentions lease terms, renewals, riders, escalations | Explain clearly → Offer tips or checklists
 Move-In/Move-Out Help | Mentions moving, deposits, inspections | Offer checklists, condition tracker, or timing reminders
 Tenant Rights / Legal | Mentions eviction, harassment, discrimination, forced entry, law | Do not give legal advice → Refer to tenants right organizations
 Application Support | Mentions credit, documents, or guarantor | Explain typical application process → Offer checklist or upload guidance
