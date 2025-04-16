@@ -1,5 +1,6 @@
+
 import { Button } from "@/components/ui/button";
-import { Form } from "@/components/ui/form";
+import { Form, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -63,76 +64,76 @@ export function PropertyInputForm({ onSubmit, isLoading }: PropertyInputFormProp
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Form.Item>
-              <Form.Label>Address</Form.Label>
-              <Form.Control>
+            <FormItem>
+              <FormLabel>Address</FormLabel>
+              <FormControl>
                 <Input placeholder="123 Main St" {...form.register("address")} />
-              </Form.Control>
-              <Form.Message />
-            </Form.Item>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
           </div>
 
           <div>
-            <Form.Item>
-              <Form.Label>Zip Code</Form.Label>
-              <Form.Control>
+            <FormItem>
+              <FormLabel>Zip Code</FormLabel>
+              <FormControl>
                 <Input placeholder="90210" {...form.register("zipCode")} />
-              </Form.Control>
-              <Form.Message />
-            </Form.Item>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <Form.Item>
-              <Form.Label>Bedrooms</Form.Label>
-              <Form.Control>
+            <FormItem>
+              <FormLabel>Bedrooms</FormLabel>
+              <FormControl>
                 <Input
                   type="number"
                   placeholder="1"
                   {...form.register("bedrooms", { valueAsNumber: true })}
                 />
-              </Form.Control>
-              <Form.Message />
-            </Form.Item>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
           </div>
 
           <div>
-            <Form.Item>
-              <Form.Label>Bathrooms</Form.Label>
-              <Form.Control>
+            <FormItem>
+              <FormLabel>Bathrooms</FormLabel>
+              <FormControl>
                 <Input
                   type="number"
                   placeholder="1"
                   {...form.register("bathrooms", { valueAsNumber: true })}
                 />
-              </Form.Control>
-              <Form.Message />
-            </Form.Item>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
           </div>
 
           <div>
-            <Form.Item>
-              <Form.Label>Price</Form.Label>
-              <Form.Control>
+            <FormItem>
+              <FormLabel>Price</FormLabel>
+              <FormControl>
                 <Input
                   type="number"
                   placeholder="2500"
                   {...form.register("price", { valueAsNumber: true })}
                 />
-              </Form.Control>
-              <Form.Message />
-            </Form.Item>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Form.Item>
-              <Form.Label>Property Type</Form.Label>
-              <Form.Control>
-                <Select onValueChange={form.setValue("propertyType")}>
+            <FormItem>
+              <FormLabel>Property Type</FormLabel>
+              <FormControl>
+                <Select onValueChange={(value) => form.setValue("propertyType", value)}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select a type" />
                   </SelectTrigger>
@@ -145,23 +146,23 @@ export function PropertyInputForm({ onSubmit, isLoading }: PropertyInputFormProp
                     <SelectItem value="Studio">Studio</SelectItem>
                   </SelectContent>
                 </Select>
-              </Form.Control>
-              <Form.Message />
-            </Form.Item>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
           </div>
 
           <div>
-            <Form.Item>
-              <Form.Label>Square Footage</Form.Label>
-              <Form.Control>
+            <FormItem>
+              <FormLabel>Square Footage</FormLabel>
+              <FormControl>
                 <Input
                   type="number"
                   placeholder="800"
                   {...form.register("squareFootage", { valueAsNumber: true })}
                 />
-              </Form.Control>
-              <Form.Message />
-            </Form.Item>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
           </div>
         </div>
         
