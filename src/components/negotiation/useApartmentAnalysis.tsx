@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { PropertyDetails, AnalysisResult } from "./types";
+import { marketService } from "@/utils/marketService";
 
 export function useApartmentAnalysis() {
   const { toast } = useToast();
@@ -40,73 +41,35 @@ export function useApartmentAnalysis() {
     setRequestEndTime(null);
 
     try {
-      console.log("Sending request to apartment-analysis function with details:", propertyDetails);
+      console.log("Sending request to rental-analysis function with details:", propertyDetails);
       console.log("Request started at:", requestStartTime);
       
-      const response = await supabase.functions.invoke('apartment-analysis', {
-        body: { 
-          propertyDetails
-        }
-      });
+      const result = await marketService.analyzeProperty(propertyDetails);
       
-      console.log("Full response from apartment-analysis function:", JSON.stringify(response, null, 2));
+      console.log("Analysis result from rental-analysis function:", result);
       
-      const { data, error } = response;
-      
-      if (error) {
-        console.error("Supabase function error:", error);
-        setHttpStatus(error.context?.status || 500);
-        setRawErrorResponse(JSON.stringify(error, null, 2));
-        throw new Error("Failed to connect to analysis service. Please try again later.");
-      }
-
-      if (!data) {
+      if (!result) {
         console.error("No data returned from function");
         setRawErrorResponse("No data returned from function call");
         throw new Error("No data returned from analysis service");
       }
       
-      if (data.success === false) {
-        console.error("Function returned error:", data.error);
-        setRawErrorResponse(JSON.stringify(data, null, 2));
-        throw new Error(data.error || "Failed to analyze apartment");
-      }
-
-      if (data.message) {
-        setErrorMessage(data.message);
-      }
-
-      if (data.technicalError) {
-        console.warn("Technical error from function:", data.technicalError);
-        setApiError(data.technicalError);
-        setRawErrorResponse(JSON.stringify({
-          technicalError: data.technicalError,
-          apiStatus: data.apiStatus
-        }, null, 2));
-      }
-
-      if (data.analysis) {
-        setAnalysis(data.analysis);
+      setAnalysis(result);
         
-        // Only show toast if we actually got data
-        if (data.analysis.comparables && data.analysis.comparables.length > 0) {
-          toast({
-            title: "Analysis Complete",
-            description: `Found ${data.analysis.comparables.length} comparable properties`,
-            variant: "default"
-          });
-        } else {
-          setApiError("No comparable properties found. Please try a different listing.");
-          toast({
-            title: "No Comparables Found",
-            description: "We couldn't find comparable properties for this listing",
-            variant: "destructive"
-          });
-        }
+      // Only show toast if we actually got data
+      if (result.comparables && result.comparables.length > 0) {
+        toast({
+          title: "Analysis Complete",
+          description: `Found ${result.comparables.length} comparable properties`,
+          variant: "default"
+        });
       } else {
-        console.error("No analysis data in response:", data);
-        setRawErrorResponse(JSON.stringify(data, null, 2));
-        throw new Error("No analysis data returned");
+        setApiError("No comparable properties found. Please try a different listing.");
+        toast({
+          title: "No Comparables Found",
+          description: "We couldn't find comparable properties for this listing",
+          variant: "destructive"
+        });
       }
     } catch (error) {
       console.error("Error analyzing apartment:", error);

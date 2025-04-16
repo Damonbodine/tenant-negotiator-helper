@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 export const marketService = {
@@ -36,13 +37,24 @@ export const marketService = {
     bathrooms: number;
     squareFootage: number;
     price: number;
+    propertyType: string;
   }) {
     try {
+      console.log("Sending property details to rental-analysis function:", propertyDetails);
+      
       const { data, error } = await supabase.functions.invoke('rental-analysis', {
         body: { propertyDetails }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase function error:", error);
+        throw error;
+      }
+
+      if (!data) {
+        throw new Error("No data returned from analysis service");
+      }
+      
       return data?.analysis || null;
     } catch (error) {
       console.error("Error analyzing property:", error);
