@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export const marketService = {
@@ -26,6 +25,27 @@ export const marketService = {
       return data?.advice || "Negotiation advice not available at the moment.";
     } catch (error) {
       console.error("Error getting negotiation advice:", error);
+      throw error;
+    }
+  },
+
+  async analyzeProperty(propertyDetails: {
+    address: string;
+    zipCode: string;
+    bedrooms: number;
+    bathrooms: number;
+    squareFootage: number;
+    price: number;
+  }) {
+    try {
+      const { data, error } = await supabase.functions.invoke('rental-analysis', {
+        body: { propertyDetails }
+      });
+
+      if (error) throw error;
+      return data?.analysis || null;
+    } catch (error) {
+      console.error("Error analyzing property:", error);
       throw error;
     }
   }
