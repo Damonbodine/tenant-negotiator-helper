@@ -2,6 +2,8 @@
   max-width: 1280px;
   margin: 0 auto;
   text-align: center;
+  position: relative;
+  z-index: 1;
 }
 
 /* W3.CSS-inspired styles */
@@ -15,6 +17,7 @@
 .w3-main {
   @apply glass-panel;
   transition: margin-left .4s;
+  background: transparent;
 }
 
 .w3-opacity { 
