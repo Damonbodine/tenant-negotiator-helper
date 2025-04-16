@@ -341,3 +341,4 @@ export const PromptManager = () => {
     </Card>
   );
 };
+

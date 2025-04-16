@@ -1,4 +1,3 @@
-import { supabase } from '@/integrations/supabase/client';
 
 export interface ChatMessage {
   id: string;
@@ -325,3 +324,4 @@ Start by introducing yourself as the landlord/property manager and asking how yo
     }
   }
 };
+

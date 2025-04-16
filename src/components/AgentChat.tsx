@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Send, Mic, MicOff, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -37,7 +36,7 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
   const [selectedVoice, setSelectedVoice] = useState("21m00Tcm4TlvDq8ikWAM"); // Rachel voice
   const [availableVoices, setAvailableVoices] = useState<any[]>([]);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   
@@ -60,15 +59,15 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
           welcomeMessage = "Hello! I'm your Rent Negotiator Assistant. How can I help you today?";
       }
       
-      setMessages([
-        {
-          id: "welcome",
-          type: "agent",
-          text: welcomeMessage,
-          timestamp: new Date()
-        }
-      ]);
-
+      const initialMessage: Message = {
+        id: "welcome",
+        type: "agent",
+        text: welcomeMessage,
+        timestamp: new Date()
+      };
+      
+      setMessages([initialMessage]);
+      
       // Check if API key is set, if not, prompt user
       const checkApiKey = async () => {
         if (!(await agentService.hasApiKey())) {
