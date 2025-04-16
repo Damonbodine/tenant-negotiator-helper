@@ -2,93 +2,78 @@
 #root {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 2rem;
   text-align: center;
 }
 
-body {
-  min-height: 100vh;
-  background: linear-gradient(135deg, #1a1f2c 0%, #2d1b4b 100%);
-  color: #fff;
+/* W3.CSS-inspired styles */
+.w3-content {
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-.glass-card {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 16px;
-  padding: 20px;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+.w3-main {
+  transition: margin-left .4s;
 }
 
-.glass-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+.w3-opacity { 
+  opacity: 0.60;
 }
 
-.gradient-text {
-  background: linear-gradient(90deg, #9b87f5 0%, #54abff 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.journey-bubble {
-  background: linear-gradient(135deg, #2b8aff 0%, #9b87f5 100%);
-  transition: all 0.3s ease;
-  border: none;
-  position: relative;
-  overflow: hidden;
-}
-
-.journey-bubble::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.journey-bubble:hover::before {
+.w3-hover-opacity-off:hover {
   opacity: 1;
 }
 
-.journey-bubble:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+.w3-top {
+  position: fixed;
+  width: 100%;
+  z-index: 1;
 }
 
-@keyframes gradientBG {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
+.demo {
+  cursor: pointer;
+}
+
+.w3-display-bottomleft {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 992px) {
+  .w3-hide-large {
+    display: none !important;
   }
 }
 
-.gradient-bg {
-  background: linear-gradient(-45deg, #1a1f2c, #2d1b4b, #1a4091, #172954);
-  background-size: 400% 400%;
-  animation: gradientBG 15s ease infinite;
+@media (max-width: 600px) {
+  .w3-hide-small {
+    display: none !important;
+  }
 }
 
-.loading-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+/* Grid system */
+.w3-row-padding {
+  padding: 0 8px;
 }
 
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
+.w3-row-padding > .w3-col {
+  padding: 0 8px;
+}
+
+.w3-col {
+  float: left;
+  width: 100%;
+}
+
+.w3-col.s3 {
+  width: 24.99999%;
+}
+
+/* Clear floats */
+.w3-row-padding::after {
+  content: "";
+  display: table;
+  clear: both;
 }

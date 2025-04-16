@@ -5,35 +5,35 @@
 
 @layer base {
   :root {
-    --background: 200 24% 8%;
-    --foreground: 0 0% 100%;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
     
-    --card: 200 24% 8%;
-    --card-foreground: 0 0% 100%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
     
-    --popover: 200 24% 8%;
-    --popover-foreground: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
     
-    --primary: 174 100% 50%;
-    --primary-foreground: 200 24% 8%;
+    --primary: 120 61% 34%;
+    --primary-foreground: 0 0% 100%;
     
-    --secondary: 200 24% 16%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 0%;
     
-    --muted: 200 24% 16%;
-    --muted-foreground: 0 0% 70%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
     
-    --accent: 174 100% 50%;
-    --accent-foreground: 200 24% 8%;
+    --accent: 120 61% 34%;
+    --accent-foreground: 0 0% 100%;
     
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
     
-    --border: 200 24% 16%;
-    --input: 200 24% 16%;
-    --ring: 174 100% 50%;
+    --border: 0 0% 89%;
+    --input: 0 0% 89%;
+    --ring: 120 61% 34%;
     
-    --radius: 0.75rem;
+    --radius: 0.5rem;
   }
 }
 
@@ -43,34 +43,55 @@
   }
   
   body {
-    @apply bg-background text-foreground min-h-screen;
-    background: linear-gradient(135deg, hsl(200 24% 8%) 0%, hsl(200 24% 12%) 100%);
+    @apply bg-background text-foreground font-raleway min-h-screen;
+  }
+
+  .mySlides {
+    display: none;
+  }
+}
+
+@layer components {
+  .w3-sidebar {
+    @apply h-full fixed z-30 top-0 overflow-x-hidden bg-secondary pt-4;
+  }
+
+  .w3-button {
+    @apply py-2 px-4 text-center cursor-pointer hover:bg-primary hover:text-white transition-colors;
+  }
+
+  .w3-input {
+    @apply py-2 px-4 border border-border w-full;
+  }
+
+  .w3-modal {
+    @apply fixed left-0 top-0 w-full h-full bg-black/50 hidden z-50;
+  }
+
+  .w3-modal-content {
+    @apply mx-auto my-8 bg-white max-w-2xl;
+  }
+
+  .w3-display-container {
+    @apply relative;
+  }
+
+  .w3-overlay {
+    @apply fixed hidden w-full h-full top-0 left-0 right-0 bottom-0 bg-black/50 z-20;
   }
 }
 
 @layer utilities {
-  .gradient-heading {
-    @apply bg-gradient-to-r from-cyan-400 to-cyan-200 bg-clip-text text-transparent font-bold;
+  .w3-animate-zoom {
+    animation: animatezoom 0.6s;
   }
-  
-  .glass-card {
-    @apply backdrop-blur-lg bg-white/5 border border-white/10 shadow-lg transition-all duration-300 hover:shadow-xl hover:bg-white/10;
-  }
-  
-  .journey-bubble {
-    @apply relative overflow-hidden transition-all duration-500;
-  }
-  
-  .journey-bubble::before {
-    content: '';
-    @apply absolute inset-0 bg-gradient-to-br from-cyan-400/20 to-cyan-300/20 opacity-0 transition-opacity duration-500;
-  }
-  
-  .journey-bubble:hover::before {
-    @apply opacity-100;
-  }
-  
-  .loading-animation {
-    @apply animate-pulse;
+
+  @keyframes animatezoom {
+    from {
+      transform: scale(0);
+    }
+    to {
+      transform: scale(1);
+    }
   }
 }
