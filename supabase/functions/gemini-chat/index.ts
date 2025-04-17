@@ -19,6 +19,15 @@ serve(async (req) => {
   try {
     const { message, history, systemPrompt } = await req.json();
     
+    // Check if OpenAI API key is available
+    if (!OPENAI_API_KEY) {
+      console.error("OPENAI_API_KEY environment variable is not set");
+      return new Response(
+        JSON.stringify({ error: "OpenAI API key is not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
     // Convert history to OpenAI format
     const formattedHistory = history.map((msg: any) => ({
       role: msg.type === 'user' ? 'user' : 'assistant',
