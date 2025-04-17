@@ -22,16 +22,19 @@ export const chatClient = {
       const templates = promptService.getPromptTemplates();
       const activeTemplate = templates.find(t => t.id === activePromptTemplateId) || templates[0];
       
+      // Check if any subPrompts are triggered by the current message
       const activatedSubPrompts = activeTemplate.subPrompts?.filter(
         sp => message.toLowerCase().includes(sp.trigger.toLowerCase())
       ) || [];
       
+      // Build the enhanced system prompt with any triggered sub-prompts
       let enhancedSystemPrompt = activeTemplate.systemPrompt;
       if (activatedSubPrompts.length > 0) {
-        enhancedSystemPrompt += "\n\nAdditional context: " + 
+        enhancedSystemPrompt += "\n\n## ACTIVATED CONTEXT MODULES:\n" + 
           activatedSubPrompts.map(sp => sp.content).join("\n\n");
       }
       
+      // Call the OpenAI API through our edge function
       const { data, error } = await supabase.functions.invoke('gemini-chat', {
         body: { 
           message, 
