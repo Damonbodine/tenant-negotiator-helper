@@ -19,11 +19,20 @@ serve(async (req) => {
   try {
     const { message, history, systemPrompt } = await req.json();
     
+    console.log("Received request with payload:", JSON.stringify({
+      messageLength: message.length,
+      historyLength: history.length,
+      systemPromptLength: systemPrompt ? systemPrompt.length : 'N/A'
+    }, null, 2));
+
     // Check if OpenAI API key is available
     if (!OPENAI_API_KEY) {
-      console.error("OPENAI_API_KEY environment variable is not set");
+      console.error("CRITICAL: OPENAI_API_KEY environment variable is not set");
       return new Response(
-        JSON.stringify({ error: "OpenAI API key is not configured" }),
+        JSON.stringify({ 
+          error: "OpenAI API key is not configured", 
+          details: "No API key found in environment" 
+        }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -53,7 +62,7 @@ serve(async (req) => {
       }
     ];
 
-    console.log("Sending request to OpenAI API:", JSON.stringify(messages));
+    console.log("Sending request to OpenAI API with messages:", JSON.stringify(messages, null, 2));
 
     // Make the API call to OpenAI
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -63,21 +72,23 @@ serve(async (req) => {
         "Authorization": `Bearer ${OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: "gpt-4o", // Using gpt-4o instead of gpt-4.1-preview
+        model: "gpt-4o", // Confirmed latest model
         messages: messages,
         temperature: 0.7,
         max_tokens: 800
       })
     });
 
+    console.log("OpenAI API Response Status:", response.status);
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("OpenAI API error:", errorText);
+      console.error("OpenAI API error response:", errorText);
       throw new Error(`OpenAI API responded with ${response.status}: ${errorText}`);
     }
 
     const data = await response.json();
-    console.log("OpenAI API response:", JSON.stringify(data));
+    console.log("Full OpenAI API response:", JSON.stringify(data, null, 2));
 
     let responseText = "";
     if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
@@ -97,9 +108,13 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Error in chat function:", error);
+    console.error("Comprehensive error in chat function:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        details: error.toString(),
+        stack: error.stack
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -107,3 +122,4 @@ serve(async (req) => {
     );
   }
 });
+
