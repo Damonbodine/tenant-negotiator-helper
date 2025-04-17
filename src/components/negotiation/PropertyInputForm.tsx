@@ -4,11 +4,14 @@ import { Form, FormItem, FormLabel, FormControl, FormMessage } from "@/component
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Dices } from "lucide-react";
+import { Dices, Search } from "lucide-react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { PropertyDetails } from "./types";
 import { generateRandomProperty } from "@/utils/randomPropertyGenerator";
+import { useEffect, useState, useRef } from "react";
+import { Command, CommandInput, CommandList, CommandItem, CommandEmpty } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const formSchema = z.object({
   address: z.string().min(3, {
@@ -39,7 +42,21 @@ interface PropertyInputFormProps {
   isLoading: boolean;
 }
 
+interface AddressPrediction {
+  description: string;
+  place_id: string;
+  zipCode?: string;
+}
+
 export function PropertyInputForm({ onSubmit, isLoading }: PropertyInputFormProps) {
+  const [addressQuery, setAddressQuery] = useState("");
+  const [predictions, setPredictions] = useState<AddressPrediction[]>([]);
+  const [isAddressSearchOpen, setIsAddressSearchOpen] = useState(false);
+  const [selectedAddress, setSelectedAddress] = useState("");
+  const autocompleteSessionTokenRef = useRef<any>(null);
+  const geocoderRef = useRef<google.maps.Geocoder | null>(null);
+  const autocompleteServiceRef = useRef<google.maps.places.AutocompleteService | null>(null);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -53,9 +70,94 @@ export function PropertyInputForm({ onSubmit, isLoading }: PropertyInputFormProp
     }
   });
 
+  // Initialize Google Maps services
+  useEffect(() => {
+    // Check if Google Maps script is already loaded
+    if (!window.google) {
+      const script = document.createElement("script");
+      script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyD_iuAHDMlLbjKk5dZKl69nHB7TvwV3jn0&libraries=places`;
+      script.async = true;
+      script.defer = true;
+      
+      script.onload = initializeServices;
+      document.head.appendChild(script);
+    } else {
+      initializeServices();
+    }
+
+    return () => {
+      // Clean up session token when component unmounts
+      autocompleteSessionTokenRef.current = null;
+    };
+  }, []);
+
+  const initializeServices = () => {
+    if (window.google) {
+      autocompleteServiceRef.current = new google.maps.places.AutocompleteService();
+      geocoderRef.current = new google.maps.Geocoder();
+      autocompleteSessionTokenRef.current = new google.maps.places.AutocompleteSessionToken();
+      console.log("Google Maps services initialized");
+    }
+  };
+
+  // Address autocomplete search
+  useEffect(() => {
+    if (!addressQuery || addressQuery.length < 3 || !autocompleteServiceRef.current) {
+      setPredictions([]);
+      return;
+    }
+
+    const searchTimer = setTimeout(() => {
+      autocompleteServiceRef.current!.getPlacePredictions({
+        input: addressQuery,
+        types: ["address"],
+        componentRestrictions: { country: "us" },
+        sessionToken: autocompleteSessionTokenRef.current
+      }, (results, status) => {
+        if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+          console.log("Autocomplete results:", results);
+          setPredictions(results as AddressPrediction[]);
+        } else {
+          setPredictions([]);
+        }
+      });
+    }, 300);
+
+    return () => clearTimeout(searchTimer);
+  }, [addressQuery]);
+
+  const handleAddressSelect = (prediction: AddressPrediction) => {
+    setSelectedAddress(prediction.description);
+    form.setValue("address", prediction.description);
+    setIsAddressSearchOpen(false);
+
+    // Get ZIP code using Geocoder
+    if (geocoderRef.current && prediction.place_id) {
+      geocoderRef.current.geocode({ placeId: prediction.place_id }, (results, status) => {
+        if (status === google.maps.GeocoderStatus.OK && results && results[0]) {
+          // Extract zip code from address components
+          const addressComponents = results[0].address_components;
+          const zipComponent = addressComponents.find(component => 
+            component.types.includes("postal_code")
+          );
+
+          if (zipComponent) {
+            const zipCode = zipComponent.short_name;
+            console.log("Found ZIP code:", zipCode);
+            form.setValue("zipCode", zipCode);
+            
+            // Create a new session token for the next search
+            autocompleteSessionTokenRef.current = new google.maps.places.AutocompleteSessionToken();
+          }
+        }
+      });
+    }
+  };
+
   const handleGenerateRandom = () => {
     const randomProperty = generateRandomProperty();
     form.reset(randomProperty);
+    setSelectedAddress(randomProperty.address);
     onSubmit(randomProperty);
   };
 
@@ -67,7 +169,53 @@ export function PropertyInputForm({ onSubmit, isLoading }: PropertyInputFormProp
             <FormItem>
               <FormLabel>Address</FormLabel>
               <FormControl>
-                <Input placeholder="123 Main St" {...form.register("address")} />
+                <Popover open={isAddressSearchOpen} onOpenChange={setIsAddressSearchOpen}>
+                  <PopoverTrigger asChild>
+                    <div className="flex">
+                      <Input
+                        placeholder="123 Main St"
+                        value={selectedAddress || form.watch("address")}
+                        onChange={(e) => {
+                          setAddressQuery(e.target.value);
+                          setSelectedAddress(e.target.value);
+                          form.setValue("address", e.target.value);
+                          setIsAddressSearchOpen(true);
+                        }}
+                        className="flex-1 rounded-r-none"
+                      />
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={() => setIsAddressSearchOpen(true)}
+                        className="rounded-l-none border-l-0"
+                      >
+                        <Search className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-0" align="start" side="bottom" sideOffset={5}>
+                    <Command className="rounded-lg border shadow-md">
+                      <CommandInput 
+                        placeholder="Search for an address..." 
+                        value={addressQuery}
+                        onValueChange={setAddressQuery}
+                        className="h-9"
+                      />
+                      <CommandList>
+                        <CommandEmpty>No addresses found.</CommandEmpty>
+                        {predictions.map((prediction) => (
+                          <CommandItem
+                            key={prediction.place_id}
+                            onSelect={() => handleAddressSelect(prediction)}
+                            className="cursor-pointer"
+                          >
+                            {prediction.description}
+                          </CommandItem>
+                        ))}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </FormControl>
               <FormMessage />
             </FormItem>
