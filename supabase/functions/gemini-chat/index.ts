@@ -49,7 +49,7 @@ serve(async (req) => {
     // Use provided system prompt or default
     const finalSystemPrompt = systemPrompt || defaultSystemPrompt;
 
-    // Add system prompt and latest message
+    // Create messages array with system prompt and history
     const messages = [
       {
         role: "system",
@@ -64,7 +64,8 @@ serve(async (req) => {
 
     console.log("Sending request to OpenAI API with messages:", JSON.stringify(messages, null, 2));
 
-    // Make the API call to OpenAI
+    // Make the API call to OpenAI using the chat completions API with gpt-4o
+    // This is more reliable than the new responses API during transition
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -72,7 +73,7 @@ serve(async (req) => {
         "Authorization": `Bearer ${OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: "gpt-4o", // Confirmed latest model
+        model: "gpt-4o", // Using a stable, available model
         messages: messages,
         temperature: 0.7,
         max_tokens: 800
@@ -122,4 +123,3 @@ serve(async (req) => {
     );
   }
 });
-
