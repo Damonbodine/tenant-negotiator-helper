@@ -4,12 +4,16 @@ import { supabase } from '@/integrations/supabase/client';
 export const marketService = {
   async getMarketInsights(query: string): Promise<string> {
     try {
-      const { data, error } = await supabase.functions.invoke('market-insights', {
-        body: { query }
+      const { data, error } = await supabase.functions.invoke('gemini-chat', {
+        body: { 
+          message: query,
+          history: [],
+          systemPrompt: "You are a rental market expert. Focus on providing accurate, data-driven insights about rental markets, pricing trends, and neighborhood information. Keep your responses concise, factual, and helpful for renters making decisions."
+        }
       });
 
       if (error) throw error;
-      return data?.insights || "Market data not available at the moment.";
+      return data?.text || "Market data not available at the moment.";
     } catch (error) {
       console.error("Error getting market insights:", error);
       throw error;
@@ -18,12 +22,16 @@ export const marketService = {
 
   async getNegotiationAdvice(query: string): Promise<string> {
     try {
-      const { data, error } = await supabase.functions.invoke('negotiation-advice', {
-        body: { query }
+      const { data, error } = await supabase.functions.invoke('gemini-chat', {
+        body: { 
+          message: query,
+          history: [],
+          systemPrompt: "You are a rental negotiation expert. Provide tactical, practical advice to help renters negotiate better terms and prices. Be specific about negotiation strategies, timing, leverage points, and communication techniques. Keep advice actionable and realistic."
+        }
       });
 
       if (error) throw error;
-      return data?.advice || "Negotiation advice not available at the moment.";
+      return data?.text || "Negotiation advice not available at the moment.";
     } catch (error) {
       console.error("Error getting negotiation advice:", error);
       throw error;

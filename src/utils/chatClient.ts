@@ -16,7 +16,7 @@ export const chatClient = {
 
   async sendMessageToGemini(message: string, history: ChatMessage[]): Promise<string> {
     try {
-      console.log("Sending message to Gemini:", message);
+      console.log("Sending message to AI model:", message);
       console.log("With history:", history);
       
       const templates = promptService.getPromptTemplates();
@@ -41,14 +41,14 @@ export const chatClient = {
       });
 
       if (error) {
-        console.error('Error calling Gemini API:', error);
+        console.error('Error calling AI API:', error);
         throw new Error('Failed to get response from AI service');
       }
 
-      console.log("Response from Gemini:", data);
+      console.log("Response from AI model:", data);
       
       if (!data || !data.text) {
-        console.error('Invalid response from Gemini API:', data);
+        console.error('Invalid response from AI API:', data);
         throw new Error('Received an invalid response from the AI service');
       }
 
