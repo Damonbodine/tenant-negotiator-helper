@@ -19,10 +19,8 @@ interface PropertyDetails {
   propertyType: string;
 }
 
-async function getPropertyDetails(details: PropertyDetails) {
-  console.log("Searching for property details:", details);
-  
-  // Format property type for RentCast API
+// Utility function to map property types
+function mapPropertyType(propertyType: string): string {
   const propertyTypeMap: Record<string, string> = {
     "Apartment": "apartment",
     "Condo": "condo",
@@ -32,18 +30,12 @@ async function getPropertyDetails(details: PropertyDetails) {
     "Duplex": "apartment"
   };
   
-  const mappedPropertyType = propertyTypeMap[details.propertyType] || "apartment";
-  
-  const queryParams = new URLSearchParams({
-    zip: details.zipCode,
-    bedrooms: details.bedrooms.toString(),
-    bathrooms: details.bathrooms.toString(),
-    propertyType: mappedPropertyType,
-    limit: "10"
-  });
-  
-  const url = `${RENTCAST_API_URL}/properties?${queryParams}`;
-  console.log("Calling RentCast properties API with URL:", url);
+  return propertyTypeMap[propertyType] || "apartment";
+}
+
+// Function to handle RentCast API requests with error handling
+async function fetchRentCastData(url: string): Promise<any> {
+  console.log(`Calling RentCast API with URL: ${url}`);
   
   try {
     const response = await fetch(url, {
@@ -57,22 +49,33 @@ async function getPropertyDetails(details: PropertyDetails) {
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`RentCast API error (${response.status}):`, errorText);
-      
-      // Try alternative search if property search fails
-      if (response.status === 404 || response.status === 400) {
-        console.log("Attempting fallback property search by zip code only");
-        return getFallbackPropertiesByZip(details.zipCode, details.bedrooms);
-      }
-      
-      throw new Error(`RentCast search API error: ${response.status}`);
+      return null;
     }
 
     return await response.json();
   } catch (error) {
-    console.error("Error in getPropertyDetails:", error);
-    // Try alternative search if property search fails
-    return getFallbackPropertiesByZip(details.zipCode, details.bedrooms);
+    console.error("Error in RentCast API call:", error);
+    return null;
   }
+}
+
+async function getPropertyDetails(details: PropertyDetails) {
+  console.log("Searching for property details:", details);
+  
+  const mappedPropertyType = mapPropertyType(details.propertyType);
+  
+  const queryParams = new URLSearchParams({
+    zip: details.zipCode,
+    bedrooms: details.bedrooms.toString(),
+    bathrooms: details.bathrooms.toString(),
+    propertyType: mappedPropertyType,
+    limit: "10"
+  });
+  
+  const url = `${RENTCAST_API_URL}/properties?${queryParams}`;
+  const data = await fetchRentCastData(url);
+  
+  return data || await getFallbackPropertiesByZip(details.zipCode, details.bedrooms);
 }
 
 async function getFallbackPropertiesByZip(zipCode: string, bedrooms: number) {
@@ -84,84 +87,33 @@ async function getFallbackPropertiesByZip(zipCode: string, bedrooms: number) {
   });
   
   const url = `${RENTCAST_API_URL}/properties?${queryParams}`;
+  const data = await fetchRentCastData(url);
   
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'X-API-KEY': RENTCAST_API_KEY,
-      'Content-Type': 'application/json',
-    }
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`Fallback RentCast API error (${response.status}):`, errorText);
-    return { properties: [] };  // Return empty array as fallback
-  }
-
-  const data = await response.json();
+  if (!data || !data.properties) return { properties: [] };
   
-  // Filter by bedrooms if we have results
-  if (data && data.properties && data.properties.length > 0) {
-    data.properties = data.properties.filter((p: any) => {
-      // Allow properties with the same number of bedrooms or +/- 1
-      return !p.bedrooms || Math.abs(p.bedrooms - bedrooms) <= 1;
-    });
-  }
-  
-  return data;
+  return {
+    ...data,
+    properties: data.properties.filter((p: any) => 
+      !p.bedrooms || Math.abs(p.bedrooms - bedrooms) <= 1
+    )
+  };
 }
 
 async function getRentEstimate(details: PropertyDetails) {
   console.log("Getting rent estimate:", details);
   
-  try {
-    // Format the address for the API call
-    const formattedAddress = encodeURIComponent(
-      `${details.address}, ${details.zipCode}`
-    );
-    
-    // Format property type for RentCast API
-    const propertyTypeMap: Record<string, string> = {
-      "Apartment": "apartment",
-      "Condo": "condo",
-      "House": "single_family",
-      "Townhouse": "townhome",
-      "Loft": "apartment",
-      "Duplex": "apartment"
-    };
-    
-    const mappedPropertyType = propertyTypeMap[details.propertyType] || "apartment";
-    
-    const url = `${RENTCAST_API_URL}/rental-estimate?address=${formattedAddress}&bedrooms=${details.bedrooms}&bathrooms=${details.bathrooms}&propertyType=${mappedPropertyType}`;
-    console.log("Calling RentCast rental-estimate API with URL:", url);
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'X-API-KEY': RENTCAST_API_KEY,
-        'Content-Type': 'application/json',
-      }
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`RentCast estimate API error (${response.status}):`, errorText);
-      return null; // Return null instead of throwing to allow the function to continue
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error("Error in getRentEstimate:", error);
-    return null; // Return null instead of throwing to allow the function to continue
-  }
+  const formattedAddress = encodeURIComponent(
+    `${details.address}, ${details.zipCode}`
+  );
+  
+  const mappedPropertyType = mapPropertyType(details.propertyType);
+  
+  const url = `${RENTCAST_API_URL}/rental-estimate?address=${formattedAddress}&bedrooms=${details.bedrooms}&bathrooms=${details.bathrooms}&propertyType=${mappedPropertyType}`;
+  
+  return await fetchRentCastData(url);
 }
 
-function analyzePrice(inputPrice: number, comparables: any[]): {
-  assessment: 'overpriced' | 'fair' | 'underpriced';
-  percentDiff: number;
-  averagePrice: number;
-} {
+function analyzePrice(inputPrice: number, comparables: any[]) {
   if (!comparables || comparables.length === 0) {
     return {
       assessment: 'fair',
@@ -205,7 +157,7 @@ function getNegotiationStrategy(analysis: {
   assessment: 'overpriced' | 'fair' | 'underpriced';
   percentDiff: number;
   averagePrice: number;
-}): string {
+}) {
   switch (analysis.assessment) {
     case 'overpriced':
       return `This unit appears to be overpriced by ${Math.abs(analysis.percentDiff).toFixed(1)}%. 
@@ -242,9 +194,8 @@ serve(async (req) => {
     const { propertyDetails } = await req.json();
     console.log("Analyzing property:", propertyDetails);
 
-    // Check if required API key is available
+    // Validate inputs
     if (!RENTCAST_API_KEY) {
-      console.error("Missing required RENTCAST_API_KEY");
       return new Response(JSON.stringify({
         success: false,
         error: "API configuration error: Missing RentCast API key"
@@ -254,9 +205,7 @@ serve(async (req) => {
       });
     }
 
-    // Check for required property details
     if (!propertyDetails || !propertyDetails.zipCode || !propertyDetails.bedrooms) {
-      console.error("Missing required property details");
       return new Response(JSON.stringify({
         success: false,
         error: "Missing required property details. ZIP code and bedrooms are required."
@@ -267,38 +216,11 @@ serve(async (req) => {
     }
 
     // Fetch property details and rent estimate
-    let propertySearchData;
-    try {
-      propertySearchData = await getPropertyDetails(propertyDetails);
-      console.log("Property search results received, properties count:", 
-        propertySearchData?.properties?.length || 0);
-    } catch (error) {
-      console.error("Error fetching RentCast property data:", error);
-      return new Response(JSON.stringify({
-        success: false,
-        error: `Failed to fetch property data: ${error.message}`,
-        technicalError: error.message
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    
-    // Get rent estimate (optional - might be null)
+    const propertySearchData = await getPropertyDetails(propertyDetails);
     const rentEstimateData = await getRentEstimate(propertyDetails);
-    if (rentEstimateData) {
-      console.log("Rent estimate results received:", 
-        JSON.stringify(rentEstimateData).substring(0, 200) + "...");
-    } else {
-      console.log("No rent estimate available for this property");
-    }
 
-    // Map comparable properties from the search results
+    // Process results and generate analysis
     const properties = propertySearchData?.properties || [];
-    if (properties.length === 0) {
-      console.log("No comparable properties found");
-    }
-    
     const comparables = properties.map(prop => ({
       address: prop.formattedAddress || prop.address || 'Unknown Address',
       price: prop.rentalPrice || prop.price || null,
@@ -308,10 +230,7 @@ serve(async (req) => {
       distance: prop.distance || 0,
       url: prop.detailUrl || '',
       squareFootage: prop.squareFootage || null
-    }))
-    .filter(c => c.price !== null);
-
-    console.log(`Processed ${comparables.length} comparable properties`);
+    })).filter(c => c.price !== null);
 
     // Analyze price
     const priceAnalysis = analyzePrice(propertyDetails.price, comparables);
@@ -350,3 +269,4 @@ serve(async (req) => {
     });
   }
 });
+
