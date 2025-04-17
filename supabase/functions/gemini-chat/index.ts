@@ -63,7 +63,7 @@ serve(async (req) => {
         "Authorization": `Bearer ${OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: "gpt-4.1-preview", // Updated to use GPT-4.1
+        model: "gpt-4o", // Using gpt-4o instead of gpt-4.1-preview
         messages: messages,
         temperature: 0.7,
         max_tokens: 800
