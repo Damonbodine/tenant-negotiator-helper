@@ -19,38 +19,10 @@ interface PropertyDetails {
   propertyType: string;
 }
 
-async function getLongTermRentEstimate(details: PropertyDetails) {
-  console.log("Getting rent estimate for:", details);
+async function getPropertyDetails(details: PropertyDetails) {
+  console.log("Searching for property details:", details);
   
-  const response = await fetch(`${RENTCAST_API_URL}/ltRentEstimate`, {
-    method: 'POST',
-    headers: {
-      'X-API-KEY': RENTCAST_API_KEY,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      address: details.address,
-      bedrooms: details.bedrooms,
-      bathrooms: details.bathrooms,
-      propertyType: details.propertyType,
-      squareFootage: details.squareFootage
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error(`RentCast API error (${response.status}):`, errorText);
-    throw new Error(`RentCast rent estimate API error: ${response.status}`);
-  }
-
-  return response.json();
-}
-
-async function getComparableProperties(details: PropertyDetails) {
-  console.log("Finding comparable properties for zip:", details.zipCode);
-  
-  // Using the rentcast search API instead of rental-comps
-  const response = await fetch(`${RENTCAST_API_URL}/properties`, {
+  const response = await fetch(`${RENTCAST_API_URL}/properties/search`, {
     method: 'POST',
     headers: {
       'X-API-KEY': RENTCAST_API_KEY,
@@ -60,7 +32,7 @@ async function getComparableProperties(details: PropertyDetails) {
       zip: details.zipCode,
       bedrooms: details.bedrooms,
       bathrooms: details.bathrooms,
-      status: "Rental",
+      propertyType: details.propertyType,
       limit: 10
     }),
   });
@@ -74,31 +46,59 @@ async function getComparableProperties(details: PropertyDetails) {
   return response.json();
 }
 
-function analyzePrice(price: number, comps: any[]): {
+async function getRentEstimate(details: PropertyDetails) {
+  console.log("Getting rent estimate:", details);
+  
+  const response = await fetch(`${RENTCAST_API_URL}/estimate/rental`, {
+    method: 'POST',
+    headers: {
+      'X-API-KEY': RENTCAST_API_KEY,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      address: details.address,
+      bedrooms: details.bedrooms,
+      bathrooms: details.bathrooms,
+      propertyType: details.propertyType,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`RentCast estimate API error (${response.status}):`, errorText);
+    throw new Error(`RentCast estimate API error: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+function analyzePrice(inputPrice: number, comparables: any[]): {
   assessment: 'overpriced' | 'fair' | 'underpriced';
   percentDiff: number;
   averagePrice: number;
 } {
-  if (!comps || comps.length === 0) {
+  if (!comparables || comparables.length === 0) {
     return {
       assessment: 'fair',
       percentDiff: 0,
-      averagePrice: price
+      averagePrice: inputPrice
     };
   }
   
-  const compPrices = comps.map(c => c.price || 0).filter(p => p > 0);
+  const compPrices = comparables
+    .map(c => c.rentalPrice || c.price || 0)
+    .filter(p => p > 0);
   
   if (compPrices.length === 0) {
     return {
       assessment: 'fair',
       percentDiff: 0,
-      averagePrice: price
+      averagePrice: inputPrice
     };
   }
   
   const averagePrice = compPrices.reduce((a, b) => a + b, 0) / compPrices.length;
-  const percentDiff = ((price - averagePrice) / averagePrice) * 100;
+  const percentDiff = ((inputPrice - averagePrice) / averagePrice) * 100;
 
   let assessment: 'overpriced' | 'fair' | 'underpriced';
   if (percentDiff > 5) {
@@ -147,22 +147,8 @@ function getNegotiationStrategy(analysis: {
   }
 }
 
-function mapComparablesToResponseFormat(comps: any[]) {
-  if (!comps) return [];
-  
-  return comps.map(comp => ({
-    address: comp.formattedAddress || comp.address || 'Address unknown',
-    price: comp.price || null,
-    bedrooms: comp.bedrooms || null,
-    bathrooms: comp.bathrooms || null,
-    propertyType: comp.propertyType || 'Apartment',
-    distance: comp.distance || 0,
-    url: comp.detailUrl || '',
-    squareFootage: comp.squareFootage || null
-  })).filter(c => c.price !== null);
-}
-
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -171,17 +157,16 @@ serve(async (req) => {
     const { propertyDetails } = await req.json();
     console.log("Analyzing property:", propertyDetails);
 
-    // First try to get comparable properties
-    let compsData, comparables;
+    // Fetch property details and rent estimate
+    let propertySearchData, rentEstimateData;
     try {
-      compsData = await getComparableProperties(propertyDetails);
-      console.log("Got comparable properties:", compsData);
-      comparables = mapComparablesToResponseFormat(compsData.properties || []);
+      propertySearchData = await getPropertyDetails(propertyDetails);
+      rentEstimateData = await getRentEstimate(propertyDetails);
     } catch (error) {
-      console.error("Error getting comparable properties:", error);
+      console.error("Error fetching RentCast data:", error);
       return new Response(JSON.stringify({
         success: false,
-        error: `Failed to find comparable properties: ${error.message}`,
+        error: `Failed to fetch property data: ${error.message}`,
         technicalError: error.message
       }), {
         status: 500,
@@ -189,56 +174,37 @@ serve(async (req) => {
       });
     }
 
-    // If we have no comps, return early with an error
-    if (!comparables || comparables.length === 0) {
-      return new Response(JSON.stringify({
-        success: false,
-        error: "No comparable properties found",
-        technicalError: "Search returned zero properties"
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    // Map comparable properties
+    const comparables = (propertySearchData.properties || [])
+      .map(prop => ({
+        address: prop.formattedAddress || prop.address || 'Unknown Address',
+        price: prop.rentalPrice || prop.price || null,
+        bedrooms: prop.bedrooms || null,
+        bathrooms: prop.bathrooms || null,
+        propertyType: prop.propertyType || 'Apartment',
+        distance: prop.distance || 0,
+        url: prop.detailUrl || '',
+        squareFootage: prop.squareFootage || null
+      }))
+      .filter(c => c.price !== null);
 
-    // Get rent estimate
-    let rentEstimate;
-    try {
-      rentEstimate = await getLongTermRentEstimate(propertyDetails);
-      console.log("Got rent estimate:", rentEstimate);
-    } catch (error) {
-      console.error("Error getting rent estimate, continuing with comps only:", error);
-      // We'll continue with just the comps data
-    }
-
-    // Analyze the price
+    // Analyze price
     const priceAnalysis = analyzePrice(propertyDetails.price, comparables);
     const negotiationStrategy = getNegotiationStrategy(priceAnalysis);
 
-    // Count higher/lower priced properties
-    const higherPriced = comparables.filter(c => (c.price || 0) > propertyDetails.price).length;
-    const lowerPriced = comparables.filter(c => (c.price || 0) < propertyDetails.price).length;
-    
-    // Calculate price rank if possible
-    let priceRank = null;
-    if (comparables.length > 0) {
-      const allPrices = [...comparables.map(c => c.price || 0), propertyDetails.price].sort((a, b) => a - b);
-      const index = allPrices.indexOf(propertyDetails.price);
-      priceRank = index !== -1 ? (index / allPrices.length) * 100 : null;
-    }
-
+    // Prepare response
     const response = {
       analysis: {
         subjectProperty: propertyDetails,
         averagePrice: priceAnalysis.averagePrice,
-        higherPriced,
-        lowerPriced,
+        higherPriced: comparables.filter(c => (c.price || 0) > propertyDetails.price).length,
+        lowerPriced: comparables.filter(c => (c.price || 0) < propertyDetails.price).length,
         totalComparables: comparables.length,
         comparables,
-        priceRank,
+        priceRank: null, // TODO: Implement price rank calculation
         priceAssessment: `${propertyDetails.propertyType} in this area typically rent for ${priceAnalysis.assessment === 'overpriced' ? 'less' : priceAnalysis.assessment === 'underpriced' ? 'more' : 'around this price'}. ${priceAnalysis.assessment === 'fair' ? 'Your price is competitive with the market.' : `The price is ${Math.abs(priceAnalysis.percentDiff).toFixed(1)}% ${priceAnalysis.assessment === 'overpriced' ? 'above' : 'below'} the average comparable rental in this area.`}`,
         negotiationStrategy,
-        rentEstimate: rentEstimate || null
+        rentEstimate: rentEstimateData || null
       }
     };
 
@@ -246,10 +212,11 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error("Error in rental-analysis function:", error);
+    console.error("Unexpected error in rental-analysis function:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
+
