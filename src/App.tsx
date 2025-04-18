@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 
 // Lazy load pages for better performance
@@ -12,6 +11,7 @@ const Practice = lazy(() => import("@/pages/Practice"));
 const VoicePractice = lazy(() => import("@/pages/VoicePractice"));
 const Auth = lazy(() => import("@/pages/Auth"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
+const PromptManager = lazy(() => import("@/components/PromptManager"));
 
 function AppRoutes() {
   return (
@@ -20,6 +20,7 @@ function AppRoutes() {
         <Route path="/" element={<Index />} />
         <Route path="/practice" element={<Practice />} />
         <Route path="/practice/voice" element={<VoicePractice />} />
+        <Route path="/prompts" element={<PromptManager />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

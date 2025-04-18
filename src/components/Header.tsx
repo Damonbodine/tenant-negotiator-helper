@@ -1,6 +1,5 @@
-
 import { useState } from 'react';
-import { Building, DollarSign, MessagesSquare, PieChart, Headphones, Key } from "lucide-react";
+import { Building, DollarSign, MessagesSquare, PieChart, Headphones, Key, Settings } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ApiKeyInput } from "@/components/ApiKeyInput";
@@ -14,7 +13,7 @@ interface HeaderProps {
 
 export const Header = ({ activeTab, setActiveTab }: HeaderProps) => {
   const [showApiModal, setShowApiModal] = useState(false);
-  const { user } = useAuth(); // We still use useAuth but don't enforce authentication
+  const { user } = useAuth();
   
   return (
     <header className="sticky top-0 z-10 w-full bg-background/80 backdrop-blur-md border-b border-border py-3">
@@ -48,6 +47,12 @@ export const Header = ({ activeTab, setActiveTab }: HeaderProps) => {
                 <span>Practice</span>
               </Link>
             </TabsTrigger>
+            <TabsTrigger value="prompts" className="flex items-center gap-1 data-[state=active]:bg-blue-500 data-[state=active]:text-white" asChild>
+              <Link to="/prompts">
+                <Settings className="h-4 w-4" />
+                <span>Prompts</span>
+              </Link>
+            </TabsTrigger>
           </TabsList>
         </Tabs>
         
@@ -61,8 +66,6 @@ export const Header = ({ activeTab, setActiveTab }: HeaderProps) => {
             <Key className="h-4 w-4" />
             <span>Manage API Keys</span>
           </Button>
-          
-          {/* Removed authentication-related UI elements */}
         </div>
         
         {showApiModal && <ApiKeyInput onClose={() => setShowApiModal(false)} />}
@@ -70,7 +73,7 @@ export const Header = ({ activeTab, setActiveTab }: HeaderProps) => {
       
       <div className="md:hidden container mt-2">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full grid grid-cols-4 bg-blue-50/50 dark:bg-blue-900/20">
+          <TabsList className="w-full grid grid-cols-5 bg-blue-50/50 dark:bg-blue-900/20">
             <TabsTrigger value="chat" className="data-[state=active]:bg-blue-500 data-[state=active]:text-white">
               <MessagesSquare className="h-4 w-4" />
               <span className="sr-only">AI Agent</span>
@@ -87,6 +90,12 @@ export const Header = ({ activeTab, setActiveTab }: HeaderProps) => {
               <Building className="h-4 w-4" />
               <span className="sr-only">Knowledge Base</span>
             </TabsTrigger>
+            <TabsTrigger value="prompts" className="data-[state=active]:bg-blue-500 data-[state=active]:text-white" asChild>
+              <Link to="/prompts">
+                <Settings className="h-4 w-4" />
+                <span className="sr-only">Prompts</span>
+              </Link>
+            </TabsTrigger>
           </TabsList>
         </Tabs>
         
@@ -100,8 +109,6 @@ export const Header = ({ activeTab, setActiveTab }: HeaderProps) => {
             <Key className="h-4 w-4" />
             <span>API Keys</span>
           </Button>
-          
-          {/* Removed authentication-related UI elements */}
         </div>
       </div>
     </header>
