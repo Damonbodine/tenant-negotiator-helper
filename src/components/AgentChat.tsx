@@ -1,4 +1,3 @@
-
 import { useAgentChat, ChatType } from "@/hooks/useAgentChat";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ApiKeyInput } from "@/components/ApiKeyInput";
@@ -9,6 +8,7 @@ import { LoadingIndicator } from "./chat/LoadingIndicator";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SuggestedQuestions } from "./chat/SuggestedQuestions";
 
 interface AgentChatProps {
   chatType?: ChatType;
@@ -32,6 +32,7 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
     toggleMute,
     handleVoiceChange,
     retryLastMessage,
+    suggestions
   } = useAgentChat({ chatType });
 
   return (
@@ -68,6 +69,17 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
                 </div>
               </AlertDescription>
             </Alert>
+          )}
+          
+          {suggestions.length > 0 && !isLoading && (
+            <SuggestedQuestions
+              suggestions={suggestions}
+              onSelect={(question) => {
+                setInput(question);
+                handleSend();
+              }}
+              className="mt-4"
+            />
           )}
         </div>
       </ScrollArea>

@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { useToast } from "./use-toast";
 import { agentService } from "@/utils/agentService";
@@ -29,7 +28,8 @@ export function useAgentChat({ chatType = "general" }: UseAgentChatProps) {
   const [availableVoices, setAvailableVoices] = useState<any[]>([]);
   const [errorState, setErrorState] = useState<ErrorState | null>(null);
   const [lastUserInput, setLastUserInput] = useState<string>("");
-  
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -114,6 +114,7 @@ export function useAgentChat({ chatType = "general" }: UseAgentChatProps) {
     setInput("");
     setIsLoading(true);
     setErrorState(null);
+    setSuggestions([]);
     
     try {
       if (!(await voiceClient.hasApiKey())) {
@@ -138,31 +139,33 @@ export function useAgentChat({ chatType = "general" }: UseAgentChatProps) {
       const agentMessage: ChatMessage = {
         id: Date.now().toString(),
         type: "agent",
-        text: response,
+        text: response.text,
         timestamp: new Date()
       };
       
       setMessages(prev => [...prev, agentMessage]);
       
-      if (!isMuted) {
-        try {
-          agentService.setVoice(selectedVoice);
-          const audioBuffer = await agentService.generateSpeech(response);
-          const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
-          const audioUrl = URL.createObjectURL(audioBlob);
-          
-          if (audioRef.current) {
-            audioRef.current.src = audioUrl;
-            audioRef.current.play();
-          }
-        } catch (error) {
-          console.error("Error generating speech:", error);
-          toast({
-            title: "Speech Error",
-            description: "Could not generate speech. Check your API key and try again.",
-            variant: "destructive",
-          });
+      if (response.suggestions) {
+        setSuggestions(response.suggestions);
+      }
+      
+      try {
+        agentService.setVoice(selectedVoice);
+        const audioBuffer = await agentService.generateSpeech(response.text);
+        const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
+        const audioUrl = URL.createObjectURL(audioBlob);
+        
+        if (audioRef.current) {
+          audioRef.current.src = audioUrl;
+          audioRef.current.play();
         }
+      } catch (error) {
+        console.error("Error generating speech:", error);
+        toast({
+          title: "Speech Error",
+          description: "Could not generate speech. Check your API key and try again.",
+          variant: "destructive",
+        });
       }
     } catch (error: any) {
       console.error("Error sending message:", error);
@@ -226,6 +229,8 @@ export function useAgentChat({ chatType = "general" }: UseAgentChatProps) {
     toggleMute,
     handleVoiceChange,
     retryLastMessage,
-    audioRef
+    audioRef,
+    suggestions,
+    setSuggestions
   };
 }

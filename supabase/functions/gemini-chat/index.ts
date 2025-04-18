@@ -81,6 +81,7 @@ serve(async (req) => {
 
     console.log("🔍 GPT-4.1 API Response Status:", response.status);
 
+    let mainResponse;
     if (!response.ok) {
       console.error("❌ GPT-4.1 API Call Failed. Falling back to GPT-4o.");
       
@@ -112,32 +113,56 @@ serve(async (req) => {
       const fallbackData = await fallbackResponse.json();
       console.log("✅ Successfully received response from fallback API (GPT-4o)");
       
-      return new Response(
-        JSON.stringify({ 
-          text: fallbackData.choices[0].message.content,
-          model: "gpt-4o (fallback)" 
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const data = await response.json();
-    console.log("Full OpenAI API response structure:", JSON.stringify(data, null, 2));
-
-    // Extract text from the new response format
-    let responseText = "";
-    if (data.result && data.result.output && data.result.output.text) {
-      responseText = data.result.output.text;
-      console.log("✅ Successfully used GPT-4.1 Responses API");
+      mainResponse = fallbackData.choices[0].message.content;
     } else {
-      console.error("❌ Unexpected OpenAI API response structure:", JSON.stringify(data));
-      throw new Error("Could not extract response text from OpenAI API");
+      const data = await response.json();
+      if (data.result?.output?.text) {
+        mainResponse = data.result.output.text;
+        console.log("✅ Successfully used GPT-4.1 Responses API");
+      } else {
+        throw new Error("Could not extract response text from OpenAI API");
+      }
     }
+
+    // Second API call for generating follow-up questions
+    console.log("🎯 Generating follow-up suggestions");
+    const suggestionsResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${OPENAI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "You are a helpful assistant that generates relevant follow-up questions. Given the conversation context and the latest response, suggest 3 natural follow-up questions that would help explore the topic further. Keep questions concise and directly related to the conversation."
+          },
+          ...formattedHistory,
+          { role: "assistant", content: mainResponse },
+          { role: "user", content: "Based on this conversation, what are 3 relevant follow-up questions a user might want to ask?" }
+        ],
+        temperature: 0.7,
+        max_tokens: 200
+      })
+    });
+
+    const suggestionsData = await suggestionsResponse.json();
+    const suggestionsText = suggestionsData.choices[0].message.content;
+    
+    // Parse the suggestions into an array (assuming they're numbered or bullet-pointed)
+    const suggestions = suggestionsText
+      .split(/\d\.\s+/)
+      .filter(Boolean)
+      .map(s => s.trim())
+      .slice(0, 3);
 
     return new Response(
       JSON.stringify({ 
-        text: responseText,
-        model: "gpt-4.1" 
+        text: mainResponse,
+        suggestions,
+        model: response.ok ? "gpt-4.1" : "gpt-4o (fallback)" 
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
