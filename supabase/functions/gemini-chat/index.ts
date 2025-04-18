@@ -62,21 +62,27 @@ serve(async (req) => {
       }
     ];
 
-    console.log("Sending request to OpenAI API with messages:", JSON.stringify(messages, null, 2));
-
-    // Make the API call to OpenAI using the chat completions API with gpt-4o
-    // This is more reliable than the new responses API during transition
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    console.log("Sending request to OpenAI API using the new responses API with GPT-4.1 model");
+    
+    // Make the API call to OpenAI using the new responses API endpoint for GPT-4.1
+    const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`
+        "Authorization": `Bearer ${OPENAI_API_KEY}`,
+        "OpenAI-Beta": "responses=v2" // Required for the responses API
       },
       body: JSON.stringify({
-        model: "gpt-4o", // Using a stable, available model
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 800
+        model: "gpt-4.1",
+        input: {
+          role: "user",
+          content: message,
+          context: {
+            system: finalSystemPrompt,
+            messages: formattedHistory
+          }
+        },
+        response_format: { type: "text" }
       })
     });
 
@@ -85,22 +91,58 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("OpenAI API error response:", errorText);
-      throw new Error(`OpenAI API responded with ${response.status}: ${errorText}`);
+      
+      // Fallback to GPT-4o using the chat completions API if responses API fails
+      console.log("Falling back to GPT-4o with chat completions API");
+      
+      const fallbackResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: "gpt-4o",
+          messages: messages,
+          temperature: 0.7,
+          max_tokens: 800
+        })
+      });
+      
+      if (!fallbackResponse.ok) {
+        const fallbackErrorText = await fallbackResponse.text();
+        console.error("Fallback API error response:", fallbackErrorText);
+        throw new Error(`Both APIs failed. Latest error: ${fallbackErrorText}`);
+      }
+      
+      const fallbackData = await fallbackResponse.json();
+      console.log("Successfully received response from fallback API");
+      
+      return new Response(
+        JSON.stringify({ 
+          text: fallbackData.choices[0].message.content,
+          model: "gpt-4o (fallback)" 
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const data = await response.json();
-    console.log("Full OpenAI API response:", JSON.stringify(data, null, 2));
+    console.log("Full OpenAI API response structure:", JSON.stringify(data, null, 2));
 
     let responseText = "";
-    if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
-      responseText = data.choices[0].message.content;
+    if (data.output && data.output.content) {
+      responseText = data.output.content;
     } else {
       console.error("Unexpected OpenAI API response structure:", JSON.stringify(data));
       throw new Error("Could not extract response text from OpenAI API");
     }
 
     return new Response(
-      JSON.stringify({ text: responseText }),
+      JSON.stringify({ 
+        text: responseText,
+        model: "gpt-4.1" 
+      }),
       { 
         headers: { 
           ...corsHeaders, 

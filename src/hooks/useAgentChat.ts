@@ -12,6 +12,11 @@ interface UseAgentChatProps {
   chatType?: ChatType;
 }
 
+interface ErrorState {
+  message: string;
+  details?: string;
+}
+
 export function useAgentChat({ chatType = "general" }: UseAgentChatProps) {
   const { toast } = useToast();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -22,6 +27,8 @@ export function useAgentChat({ chatType = "general" }: UseAgentChatProps) {
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState("21m00Tcm4TlvDq8ikWAM");
   const [availableVoices, setAvailableVoices] = useState<any[]>([]);
+  const [errorState, setErrorState] = useState<ErrorState | null>(null);
+  const [lastUserInput, setLastUserInput] = useState<string>("");
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -74,19 +81,39 @@ export function useAgentChat({ chatType = "general" }: UseAgentChatProps) {
     }
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const resetError = () => {
+    setErrorState(null);
+  };
+
+  const retryLastMessage = async () => {
+    if (lastUserInput) {
+      resetError();
+      await processUserMessage(lastUserInput);
+    } else {
+      toast({
+        title: "Nothing to retry",
+        description: "There is no previous message to retry",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const processUserMessage = async (messageText: string) => {
+    if (!messageText.trim() || isLoading) return;
+    
+    setLastUserInput(messageText);
     
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       type: "user",
-      text: input,
+      text: messageText,
       timestamp: new Date()
     };
     
     setMessages(prev => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
+    setErrorState(null);
     
     try {
       if (!(await voiceClient.hasApiKey())) {
@@ -99,13 +126,13 @@ export function useAgentChat({ chatType = "general" }: UseAgentChatProps) {
       
       switch(chatType) {
         case "market":
-          response = await agentService.getMarketInsights(input);
+          response = await agentService.getMarketInsights(messageText);
           break;
         case "negotiation":
-          response = await agentService.getNegotiationAdvice(input);
+          response = await agentService.getNegotiationAdvice(messageText);
           break;
         default:
-          response = await agentService.simulateResponse(input);
+          response = await agentService.simulateResponse(messageText);
       }
       
       const agentMessage: ChatMessage = {
@@ -137,16 +164,26 @@ export function useAgentChat({ chatType = "general" }: UseAgentChatProps) {
           });
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error sending message:", error);
+      
+      setErrorState({
+        message: "Failed to get a response from the AI service. Please try again.",
+        details: error?.toString()
+      });
+      
       toast({
-        title: "Error",
-        description: "Failed to get response from the agent",
+        title: "Communication Error",
+        description: "Failed to get response from the agent. Please try again.",
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSend = async () => {
+    await processUserMessage(input);
   };
 
   const toggleMute = () => {
@@ -179,6 +216,8 @@ export function useAgentChat({ chatType = "general" }: UseAgentChatProps) {
     isListening,
     isMuted,
     isLoading,
+    errorState,
+    resetError,
     showApiKeyInput,
     setShowApiKeyInput,
     selectedVoice,
@@ -186,6 +225,7 @@ export function useAgentChat({ chatType = "general" }: UseAgentChatProps) {
     handleSend,
     toggleMute,
     handleVoiceChange,
+    retryLastMessage,
     audioRef
   };
 }

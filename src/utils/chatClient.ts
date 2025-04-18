@@ -55,6 +55,11 @@ export const chatClient = {
         throw new Error('Received an invalid response from the AI service');
       }
 
+      // If the response includes model information, log it
+      if (data.model) {
+        console.log(`Response generated using model: ${data.model}`);
+      }
+
       return data.text;
     } catch (error) {
       console.error('Error in sendMessageToGemini:', error);

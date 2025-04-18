@@ -1,56 +1,97 @@
 
-import { Button } from "@/components/ui/button";
-import { Volume2, VolumeX } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Volume2, VolumeX, Info } from "lucide-react";
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
+import { ChatType } from "@/hooks/useAgentChat";
 
 interface ChatHeaderProps {
   selectedVoice: string;
   availableVoices: any[];
   isMuted: boolean;
-  onVoiceChange: (voiceId: string) => void;
+  chatType?: ChatType;
   onMuteToggle: () => void;
+  onVoiceChange: (voiceId: string) => void;
 }
 
-export function ChatHeader({
+export function ChatHeader({ 
   selectedVoice,
   availableVoices,
   isMuted,
-  onVoiceChange,
-  onMuteToggle
+  chatType,
+  onMuteToggle,
+  onVoiceChange
 }: ChatHeaderProps) {
+  const getChatTypeLabel = () => {
+    switch(chatType) {
+      case "market": return "Market Analysis";
+      case "negotiation": return "Negotiation Coach";
+      default: return "General Assistant";
+    }
+  };
+  
   return (
-    <div className="p-3 border-b border-border flex justify-between items-center bg-slate-50 dark:bg-slate-900">
-      <h3 className="font-medium">AI Assistant</h3>
+    <div className="border-b p-4 flex items-center justify-between bg-white dark:bg-slate-800">
+      <div className="flex items-center gap-3">
+        <h2 className="font-semibold">AI Assistant</h2>
+        {chatType && (
+          <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300">
+            {getChatTypeLabel()}
+          </Badge>
+        )}
+      </div>
       
       <div className="flex items-center gap-2">
-        <Select 
-          value={selectedVoice}
-          onValueChange={onVoiceChange}
-        >
-          <SelectTrigger className="w-[140px] h-8">
-            <SelectValue placeholder="Select voice" />
-          </SelectTrigger>
-          <SelectContent>
-            {availableVoices.length > 0 ? (
-              availableVoices.map((voice) => (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" onClick={onMuteToggle}>
+                {isMuted ? (
+                  <VolumeX className="h-5 w-5" />
+                ) : (
+                  <Volume2 className="h-5 w-5" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {isMuted ? 'Unmute responses' : 'Mute responses'}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        {availableVoices.length > 0 && (
+          <Select value={selectedVoice} onValueChange={onVoiceChange}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select voice" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableVoices.map((voice: any) => (
                 <SelectItem key={voice.voice_id} value={voice.voice_id}>
                   {voice.name}
                 </SelectItem>
-              ))
-            ) : (
-              <SelectItem value="21m00Tcm4TlvDq8ikWAM">Default Voice</SelectItem>
-            )}
-          </SelectContent>
-        </Select>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         
-        <Button 
-          onClick={onMuteToggle}
-          variant="outline" 
-          size="icon"
-          className={isMuted ? "bg-red-100 text-red-500" : ""}
-        >
-          {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="icon">
+                <Info className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              <p>Using GPT-4.1 with automatic fallback to GPT-4o if needed.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
     </div>
   );

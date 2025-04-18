@@ -6,6 +6,9 @@ import { ChatMessage } from "./chat/ChatMessage";
 import { ChatInput } from "./chat/ChatInput";
 import { ChatHeader } from "./chat/ChatHeader";
 import { LoadingIndicator } from "./chat/LoadingIndicator";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface AgentChatProps {
   chatType?: ChatType;
@@ -19,6 +22,8 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
     isListening,
     isMuted,
     isLoading,
+    errorState,
+    resetError,
     showApiKeyInput,
     setShowApiKeyInput,
     selectedVoice,
@@ -26,6 +31,7 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
     handleSend,
     toggleMute,
     handleVoiceChange,
+    retryLastMessage,
   } = useAgentChat({ chatType });
 
   return (
@@ -36,6 +42,7 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
         isMuted={isMuted}
         onVoiceChange={handleVoiceChange}
         onMuteToggle={toggleMute}
+        chatType={chatType}
       />
       
       <ScrollArea className="flex-1">
@@ -44,6 +51,24 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
             <ChatMessage key={message.id} message={message} />
           ))}
           {isLoading && <LoadingIndicator />}
+          
+          {errorState && (
+            <Alert variant="destructive" className="mt-4 animate-appear">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error communicating with AI service</AlertTitle>
+              <AlertDescription className="mt-2">
+                {errorState.message}
+                <div className="mt-3 flex space-x-3">
+                  <Button size="sm" variant="outline" onClick={resetError}>
+                    Dismiss
+                  </Button>
+                  <Button size="sm" onClick={retryLastMessage} className="flex items-center gap-1">
+                    <RefreshCw className="h-3 w-3" /> Retry
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
       </ScrollArea>
       

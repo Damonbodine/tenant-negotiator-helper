@@ -22,7 +22,21 @@ Always prioritize accuracy and clarity in your market analysis.`
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase function error:", error);
+        throw error;
+      }
+      
+      if (!data) {
+        console.error("No data returned from AI service");
+        throw new Error("No response data received");
+      }
+      
+      // Log model information if available
+      if (data.model) {
+        console.log(`Market insights generated using model: ${data.model}`);
+      }
+
       return data?.text || "Market data not available at the moment.";
     } catch (error) {
       console.error("Error getting market insights:", error);
@@ -50,7 +64,21 @@ Remember to balance assertiveness with professionalism in all negotiation advice
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase function error:", error);
+        throw error;
+      }
+      
+      if (!data) {
+        console.error("No data returned from AI service");
+        throw new Error("No response data received");
+      }
+      
+      // Log model information if available
+      if (data.model) {
+        console.log(`Negotiation advice generated using model: ${data.model}`);
+      }
+
       return data?.text || "Negotiation advice not available at the moment.";
     } catch (error) {
       console.error("Error getting negotiation advice:", error);
