@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +10,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { PromptTemplate, chatService } from "@/utils/chatService";
 
-export const PromptManager = () => {
+const PromptManager = () => {
   const { toast } = useToast();
   const [templates, setTemplates] = useState<PromptTemplate[]>([]);
   const [activeTemplateId, setActiveTemplateId] = useState<string>('');
@@ -19,7 +18,6 @@ export const PromptManager = () => {
   const [currentTemplate, setCurrentTemplate] = useState<PromptTemplate | null>(null);
   const [newSubPrompt, setNewSubPrompt] = useState({ trigger: '', content: '' });
 
-  // Load templates on component mount
   useEffect(() => {
     const loadedTemplates = chatService.getPromptTemplates();
     setTemplates(loadedTemplates);
@@ -342,3 +340,4 @@ export const PromptManager = () => {
   );
 };
 
+export default PromptManager;

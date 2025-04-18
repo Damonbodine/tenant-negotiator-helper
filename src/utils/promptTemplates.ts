@@ -439,5 +439,21 @@ export const promptService = {
     const templates = this.getPromptTemplates();
     const filteredTemplates = templates.filter(t => t.id !== templateId);
     this.savePromptTemplates(filteredTemplates);
+  },
+
+  // Add these missing functions
+  setActivePromptTemplate(templateId: string): void {
+    localStorage.setItem('activePromptTemplateId', templateId);
+  },
+
+  getActivePromptTemplateId(): string {
+    return localStorage.getItem('activePromptTemplateId') || 'rental-agent';
+  },
+
+  async sendMessageToGemini(message: string, history: any[]): Promise<string> {
+    console.log("Using promptService to send message to AI", message);
+    // This is just a stub - the actual implementation is likely in chatClient.ts
+    // Return a placeholder response
+    return "This is a placeholder response from the promptService. The full implementation should be connected to the actual AI service.";
   }
 };
