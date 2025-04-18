@@ -1,3 +1,4 @@
+
 import { useAgentChat, ChatType } from "@/hooks/useAgentChat";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ApiKeyInput } from "@/components/ApiKeyInput";
@@ -35,6 +36,11 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
     suggestions
   } = useAgentChat({ chatType });
 
+  const handleSelectSuggestion = (question: string) => {
+    setInput(question);
+    setTimeout(() => handleSend(), 100); // Small timeout to ensure state is updated
+  };
+
   return (
     <div className="flex flex-col h-full border rounded-xl overflow-hidden shadow-md bg-white dark:bg-slate-800">
       <ChatHeader 
@@ -71,13 +77,10 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
             </Alert>
           )}
           
-          {suggestions.length > 0 && !isLoading && (
+          {!isLoading && suggestions.length > 0 && (
             <SuggestedQuestions
               suggestions={suggestions}
-              onSelect={(question) => {
-                setInput(question);
-                handleSend();
-              }}
+              onSelect={handleSelectSuggestion}
               className="mt-4"
             />
           )}
