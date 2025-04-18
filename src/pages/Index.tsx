@@ -5,7 +5,7 @@ import { Header } from "@/components/layout/Header";
 import { FeatureCards } from "@/components/marketing/FeatureCards";
 import { NewsletterSignup } from "@/components/marketing/NewsletterSignup";
 import { Button } from "@/components/ui/button";
-import { ChatMessage, chatService } from "@/utils/chatService";
+import { chatService, ChatMessage } from "@/utils/chatService";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";

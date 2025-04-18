@@ -1,8 +1,10 @@
 
-// Create this file to ensure imports are working correctly
-
 import { PromptTemplate, ChatMessage } from './types';
 import { promptService } from './promptTemplates';
+import { chatClient } from './chatClient';
+
+// Export these types so they can be imported from chatService
+export type { PromptTemplate, ChatMessage };
 
 export const chatService = {
   getPromptTemplates(): PromptTemplate[] {
@@ -10,11 +12,11 @@ export const chatService = {
   },
 
   setActivePromptTemplate(templateId: string): void {
-    promptService.setActivePromptTemplate?.(templateId) ?? null;
+    promptService.setActivePromptTemplate(templateId);
   },
 
   getActivePromptTemplateId(): string {
-    return promptService.getActivePromptTemplateId?.() ?? 'rental-agent';
+    return promptService.getActivePromptTemplateId();
   },
 
   updatePromptTemplate(template: PromptTemplate): void {
@@ -30,6 +32,7 @@ export const chatService = {
   },
 
   async sendMessageToGemini(message: string, history: ChatMessage[]): Promise<string> {
-    return promptService.sendMessageToGemini?.(message, history) ?? "Error: Message sending not implemented";
+    // Use the actual chatClient implementation instead of the placeholder
+    return chatClient.sendMessageToGemini(message, history);
   }
 };
