@@ -5,7 +5,7 @@ import { voiceClient } from "@/utils/voiceClient";
 import { ChatType } from "./useAgentChat";
 
 interface UseMessageProcessingProps {
-  setMessages: (messages: ChatMessage[]) => void;
+  setMessages: (messages: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => void;
   setInput: (input: string) => void;
   setIsLoading: (loading: boolean) => void;
   setShowApiKeyInput: (show: boolean) => void;
@@ -36,7 +36,7 @@ export async function processUserMessage(messageText: string, {
     timestamp: new Date()
   };
   
-  setMessages(prev => [...prev, userMessage]);
+  setMessages((prev: ChatMessage[]) => [...prev, userMessage]);
   setInput("");
   setIsLoading(true);
   setSuggestions([]);
@@ -68,7 +68,7 @@ export async function processUserMessage(messageText: string, {
       timestamp: new Date()
     };
     
-    setMessages(prev => [...prev, agentMessage]);
+    setMessages((prev: ChatMessage[]) => [...prev, agentMessage]);
     
     if (response.suggestions) {
       setSuggestions(response.suggestions);

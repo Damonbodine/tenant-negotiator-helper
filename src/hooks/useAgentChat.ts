@@ -6,6 +6,7 @@ import { useAgentState } from "./useAgentState";
 import { useErrorHandling } from "./useErrorHandling";
 import { useVoiceSettings } from "./useVoiceSettings";
 import { processUserMessage } from "./useMessageProcessing";
+import { ChatMessage } from "@/utils/types";
 
 export type ChatType = "market" | "negotiation" | "general";
 
@@ -35,9 +36,9 @@ export function useAgentChat({ chatType = "general" }: UseAgentChatProps) {
           welcomeMessage = "Hello! I'm your Rent Negotiator Assistant. How can I help you today?";
       }
       
-      const initialMessage = {
+      const initialMessage: ChatMessage = {
         id: "welcome",
-        type: "agent",
+        type: "agent", // Explicitly typed as "agent" to match ChatMessage type
         text: welcomeMessage,
         timestamp: new Date()
       };
