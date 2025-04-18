@@ -49,20 +49,7 @@ serve(async (req) => {
     // Use provided system prompt or default
     const finalSystemPrompt = systemPrompt || defaultSystemPrompt;
 
-    // Create messages array with system prompt and history
-    const messages = [
-      {
-        role: "system",
-        content: finalSystemPrompt
-      },
-      ...formattedHistory,
-      {
-        role: "user",
-        content: message
-      }
-    ];
-
-    console.log("Sending request to OpenAI API using the new responses API with GPT-4.1 model");
+    console.log("Sending request to OpenAI API using the Responses API with GPT-4.1 model");
     
     // Make the API call to OpenAI using the new responses API endpoint for GPT-4.1
     const response = await fetch("https://api.openai.com/v1/responses", {
@@ -70,7 +57,7 @@ serve(async (req) => {
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "OpenAI-Beta": "responses=v2" // Required for the responses API
+        "OpenAI-Beta": "responses=v1" // Updated to responses=v1 as per documentation
       },
       body: JSON.stringify({
         model: "gpt-4.1",
@@ -82,7 +69,9 @@ serve(async (req) => {
             messages: formattedHistory
           }
         },
-        response_format: { type: "text" }
+        output: {
+          format: { type: "text" } // Correct format specification as per docs
+        }
       })
     });
 
@@ -103,7 +92,17 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           model: "gpt-4o",
-          messages: messages,
+          messages: [
+            {
+              role: "system",
+              content: finalSystemPrompt
+            },
+            ...formattedHistory,
+            {
+              role: "user",
+              content: message
+            }
+          ],
           temperature: 0.7,
           max_tokens: 800
         })
