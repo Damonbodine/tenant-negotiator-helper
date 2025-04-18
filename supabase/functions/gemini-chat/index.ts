@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -48,7 +47,12 @@ serve(async (req) => {
     // Use provided system prompt or default
     const finalSystemPrompt = systemPrompt || defaultSystemPrompt;
 
-    console.log("Sending request to OpenAI using the Responses API with GPT-4.1");
+    console.log("🚀 Attempting to use GPT-4.1 Responses API");
+    console.log("Request Details:", {
+      messageLength: message.length,
+      historyLength: history.length,
+      systemPromptLength: finalSystemPrompt.length
+    });
     
     // Build the proper context containing system prompt and conversation history
     const context = {
@@ -62,7 +66,7 @@ serve(async (req) => {
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "OpenAI-Beta": "responses=v1" // Required header for the Responses API
+        "OpenAI-Beta": "responses=v1"
       },
       body: JSON.stringify({
         model: "gpt-4.1",
@@ -71,19 +75,16 @@ serve(async (req) => {
           content: message,
           context: context
         },
-        text: { format: "plain" } // Correct format specification for plain text
+        text: { format: "plain" }
       })
     });
 
-    console.log("OpenAI API Response Status:", response.status);
+    console.log("🔍 GPT-4.1 API Response Status:", response.status);
 
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error("OpenAI API error response:", JSON.stringify(errorData, null, 2));
+      console.error("❌ GPT-4.1 API Call Failed. Falling back to GPT-4o.");
       
-      // Fallback to GPT-4o using the chat completions API if responses API fails
-      console.log("Falling back to GPT-4o with chat completions API");
-      
+      // Fallback to GPT-4o logging added
       const fallbackResponse = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -93,15 +94,9 @@ serve(async (req) => {
         body: JSON.stringify({
           model: "gpt-4o",
           messages: [
-            {
-              role: "system",
-              content: finalSystemPrompt
-            },
+            { role: "system", content: finalSystemPrompt },
             ...formattedHistory,
-            {
-              role: "user",
-              content: message
-            }
+            { role: "user", content: message }
           ],
           temperature: 0.7,
           max_tokens: 800
@@ -110,12 +105,12 @@ serve(async (req) => {
       
       if (!fallbackResponse.ok) {
         const fallbackErrorText = await fallbackResponse.text();
-        console.error("Fallback API error response:", fallbackErrorText);
+        console.error("❌ Fallback API Error:", fallbackErrorText);
         throw new Error(`Both APIs failed. Latest error: ${fallbackErrorText}`);
       }
       
       const fallbackData = await fallbackResponse.json();
-      console.log("Successfully received response from fallback API");
+      console.log("✅ Successfully received response from fallback API (GPT-4o)");
       
       return new Response(
         JSON.stringify({ 
@@ -133,8 +128,9 @@ serve(async (req) => {
     let responseText = "";
     if (data.result && data.result.output && data.result.output.text) {
       responseText = data.result.output.text;
+      console.log("✅ Successfully used GPT-4.1 Responses API");
     } else {
-      console.error("Unexpected OpenAI API response structure:", JSON.stringify(data));
+      console.error("❌ Unexpected OpenAI API response structure:", JSON.stringify(data));
       throw new Error("Could not extract response text from OpenAI API");
     }
 
@@ -143,12 +139,7 @@ serve(async (req) => {
         text: responseText,
         model: "gpt-4.1" 
       }),
-      { 
-        headers: { 
-          ...corsHeaders, 
-          "Content-Type": "application/json" 
-        } 
-      }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Comprehensive error in chat function:", error);
@@ -156,7 +147,7 @@ serve(async (req) => {
       JSON.stringify({ 
         error: error.message,
         details: error.toString(),
-        stack: error.stack
+        model: "error" 
       }),
       {
         status: 500,
