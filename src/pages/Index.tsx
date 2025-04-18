@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { AgentChat } from "@/components/AgentChat";
 import { Header } from "@/components/layout/Header";
@@ -9,7 +8,7 @@ import { chatService, ChatMessage } from "@/utils/chatService";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Send } from "lucide-react";
+import { Send, MessageSquare } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 const Index = () => {
@@ -18,6 +17,17 @@ const Index = () => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  const quickActions = [
+    "Am I paying too much?",
+    "How much are rentals in this area?",
+    "Help me negotiate"
+  ];
+
+  const handleQuickAction = (text: string) => {
+    setInput(text);
+    handleSendMessage();
+  };
 
   useEffect(() => {
     if (activeJourney === "market" && messages.length === 0) {
@@ -104,6 +114,21 @@ const Index = () => {
                   
                   <ScrollArea className="flex-1" ref={scrollAreaRef}>
                     <div className="p-4 space-y-4">
+                      {messages.length === 1 && (
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {quickActions.map((action) => (
+                            <Button
+                              key={action}
+                              variant="outline"
+                              className="flex items-center gap-2"
+                              onClick={() => handleQuickAction(action)}
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                              {action}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
                       {messages.map((message) => (
                         <div 
                           key={message.id} 
