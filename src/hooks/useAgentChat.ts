@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect } from "react";
-import { useToast } from "./use-toast";
+
+import { useEffect } from "react";
 import { agentService } from "@/utils/agentService";
 import { voiceClient } from "@/utils/voiceClient";
-import { knowledgeBaseService } from "@/utils/knowledgeBase";
-import { ChatMessage } from "@/utils/types";
+import { useAgentState } from "./useAgentState";
+import { useErrorHandling } from "./useErrorHandling";
+import { useVoiceSettings } from "./useVoiceSettings";
+import { processUserMessage } from "./useMessageProcessing";
 
 export type ChatType = "market" | "negotiation" | "general";
 
@@ -11,33 +13,15 @@ interface UseAgentChatProps {
   chatType?: ChatType;
 }
 
-interface ErrorState {
-  message: string;
-  details?: string;
-}
-
 export function useAgentChat({ chatType = "general" }: UseAgentChatProps) {
-  const { toast } = useToast();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
-  const [isListening, setIsListening] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
-  const [selectedVoice, setSelectedVoice] = useState("21m00Tcm4TlvDq8ikWAM");
-  const [availableVoices, setAvailableVoices] = useState<any[]>([]);
-  const [errorState, setErrorState] = useState<ErrorState | null>(null);
-  const [lastUserInput, setLastUserInput] = useState<string>("");
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
+  const state = useAgentState();
+  const { errorState, resetError, handleError } = useErrorHandling();
+  const { audioRef, mediaRecorderRef, audioChunksRef, handleVoiceChange, toggleMute } = useVoiceSettings();
 
   useEffect(() => {
     audioRef.current = new Audio();
     
-    if (messages.length === 0) {
+    if (state.messages.length === 0) {
       let welcomeMessage = "";
       
       switch (chatType) {
@@ -51,18 +35,18 @@ export function useAgentChat({ chatType = "general" }: UseAgentChatProps) {
           welcomeMessage = "Hello! I'm your Rent Negotiator Assistant. How can I help you today?";
       }
       
-      const initialMessage: ChatMessage = {
+      const initialMessage = {
         id: "welcome",
         type: "agent",
         text: welcomeMessage,
         timestamp: new Date()
       };
       
-      setMessages([initialMessage]);
+      state.setMessages([initialMessage]);
       
       const checkApiKey = async () => {
         if (!(await voiceClient.hasApiKey())) {
-          setShowApiKeyInput(true);
+          state.setShowApiKeyInput(true);
         } else {
           loadVoices();
         }
@@ -70,27 +54,29 @@ export function useAgentChat({ chatType = "general" }: UseAgentChatProps) {
       
       checkApiKey();
     }
-  }, [messages.length, chatType]);
+  }, [state.messages.length, chatType]);
 
   const loadVoices = async () => {
     try {
       const voices = await agentService.getVoices();
-      setAvailableVoices(voices);
+      state.setAvailableVoices(voices);
     } catch (error) {
       console.error("Error loading voices:", error);
     }
   };
 
-  const resetError = () => {
-    setErrorState(null);
-  };
-
   const retryLastMessage = async () => {
-    if (lastUserInput) {
+    if (state.lastUserInput) {
       resetError();
-      await processUserMessage(lastUserInput);
+      await processUserMessage(state.lastUserInput, {
+        ...state,
+        audioRef,
+        handleError,
+        selectedVoice: state.selectedVoice,
+        chatType
+      });
     } else {
-      toast({
+      state.toast({
         title: "Nothing to retry",
         description: "There is no previous message to retry",
         variant: "destructive",
@@ -98,139 +84,29 @@ export function useAgentChat({ chatType = "general" }: UseAgentChatProps) {
     }
   };
 
-  const processUserMessage = async (messageText: string) => {
-    if (!messageText.trim() || isLoading) return;
-    
-    setLastUserInput(messageText);
-    
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      type: "user",
-      text: messageText,
-      timestamp: new Date()
-    };
-    
-    setMessages(prev => [...prev, userMessage]);
-    setInput("");
-    setIsLoading(true);
-    setErrorState(null);
-    setSuggestions([]);
-    
-    try {
-      if (!(await voiceClient.hasApiKey())) {
-        setShowApiKeyInput(true);
-        setIsLoading(false);
-        return;
-      }
-      
-      let response;
-      
-      switch(chatType) {
-        case "market":
-          response = await agentService.getMarketInsights(messageText);
-          break;
-        case "negotiation":
-          response = await agentService.getNegotiationAdvice(messageText);
-          break;
-        default:
-          response = await agentService.simulateResponse(messageText);
-      }
-      
-      const agentMessage: ChatMessage = {
-        id: Date.now().toString(),
-        type: "agent",
-        text: response.text,
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => [...prev, agentMessage]);
-      
-      if (response.suggestions) {
-        setSuggestions(response.suggestions);
-      }
-      
-      try {
-        agentService.setVoice(selectedVoice);
-        const audioBuffer = await agentService.generateSpeech(response.text);
-        const audioBlob = new Blob([audioBuffer], { type: 'audio/mpeg' });
-        const audioUrl = URL.createObjectURL(audioBlob);
-        
-        if (audioRef.current) {
-          audioRef.current.src = audioUrl;
-          audioRef.current.play();
-        }
-      } catch (error) {
-        console.error("Error generating speech:", error);
-        toast({
-          title: "Speech Error",
-          description: "Could not generate speech. Check your API key and try again.",
-          variant: "destructive",
-        });
-      }
-    } catch (error: any) {
-      console.error("Error sending message:", error);
-      
-      setErrorState({
-        message: "Failed to get a response from the AI service. Please try again.",
-        details: error?.toString()
-      });
-      
-      toast({
-        title: "Communication Error",
-        description: "Failed to get response from the agent. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleSend = async () => {
-    await processUserMessage(input);
-  };
-
-  const toggleMute = () => {
-    setIsMuted(!isMuted);
-    
-    if (!isMuted && audioRef.current) {
-      audioRef.current.pause();
-    }
-    
-    toast({
-      title: isMuted ? "Audio Enabled" : "Audio Disabled",
-      description: isMuted ? "Agent responses will now be spoken" : "Agent responses will be text only",
-    });
-  };
-
-  const handleVoiceChange = (voiceId: string) => {
-    setSelectedVoice(voiceId);
-    agentService.setVoice(voiceId);
-    
-    toast({
-      title: "Voice Changed",
-      description: "The agent will now use a different voice",
+    const input = state.input;
+    state.setLastUserInput(input);
+    await processUserMessage(input, {
+      ...state,
+      audioRef,
+      handleError,
+      selectedVoice: state.selectedVoice,
+      chatType
     });
   };
 
   return {
-    messages,
-    input,
-    setInput,
-    isListening,
-    isMuted,
-    isLoading,
+    ...state,
     errorState,
     resetError,
-    showApiKeyInput,
-    setShowApiKeyInput,
-    selectedVoice,
-    availableVoices,
     handleSend,
-    toggleMute,
-    handleVoiceChange,
     retryLastMessage,
-    audioRef,
-    suggestions,
-    setSuggestions
+    toggleMute: () => toggleMute(state.isMuted, state.setIsMuted),
+    handleVoiceChange: (voiceId: string) => {
+      state.setSelectedVoice(voiceId);
+      handleVoiceChange(voiceId);
+    },
+    audioRef
   };
 }
