@@ -3,7 +3,6 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY'); // Keep for backward compatibility
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -49,37 +48,38 @@ serve(async (req) => {
     // Use provided system prompt or default
     const finalSystemPrompt = systemPrompt || defaultSystemPrompt;
 
-    console.log("Sending request to OpenAI API using the Responses API with GPT-4.1 model");
+    console.log("Sending request to OpenAI using the Responses API with GPT-4.1");
     
-    // Make the API call to OpenAI using the new responses API endpoint for GPT-4.1
+    // Build the proper context containing system prompt and conversation history
+    const context = {
+      system: finalSystemPrompt,
+      messages: formattedHistory
+    };
+    
+    // Make the API call to OpenAI using the new responses API endpoint
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "OpenAI-Beta": "responses=v1" // Updated to responses=v1 as per documentation
+        "OpenAI-Beta": "responses=v1" // Required header for the Responses API
       },
       body: JSON.stringify({
         model: "gpt-4.1",
         input: {
           role: "user",
           content: message,
-          context: {
-            system: finalSystemPrompt,
-            messages: formattedHistory
-          }
+          context: context
         },
-        output: {
-          format: { type: "text" } // Correct format specification as per docs
-        }
+        text: { format: "plain" } // Correct format specification for plain text
       })
     });
 
     console.log("OpenAI API Response Status:", response.status);
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("OpenAI API error response:", errorText);
+      const errorData = await response.json();
+      console.error("OpenAI API error response:", JSON.stringify(errorData, null, 2));
       
       // Fallback to GPT-4o using the chat completions API if responses API fails
       console.log("Falling back to GPT-4o with chat completions API");
@@ -129,9 +129,10 @@ serve(async (req) => {
     const data = await response.json();
     console.log("Full OpenAI API response structure:", JSON.stringify(data, null, 2));
 
+    // Extract text from the new response format
     let responseText = "";
-    if (data.output && data.output.content) {
-      responseText = data.output.content;
+    if (data.result && data.result.output && data.result.output.text) {
+      responseText = data.result.output.text;
     } else {
       console.error("Unexpected OpenAI API response structure:", JSON.stringify(data));
       throw new Error("Could not extract response text from OpenAI API");
