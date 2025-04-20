@@ -3,6 +3,20 @@ import { ChatMessage } from "@/shared/types";
 import { randomTip } from "@/shared/utils/negotiationTips";
 import { toast } from "@/shared/hooks/use-toast";
 
+// Define interface for the listing analyzer API response
+interface ListingAnalysisResponse {
+  error?: string;
+  address?: string;
+  rent?: number;
+  beds?: number | string;
+  baths?: number | string;
+  sqft?: number | string;
+  zipcode?: string;
+  marketAverage?: number;
+  deltaPercent?: string;
+  verdict?: string;
+}
+
 export async function analyzeListingUrl(
   text: string,
   addAgentMessage: (m: ChatMessage) => void
@@ -47,7 +61,7 @@ export async function analyzeListingUrl(
     }
     
     // Only parse JSON if we have content
-    let data = {};
+    let data: ListingAnalysisResponse = {};
     if (responseText && responseText.trim()) {
       try {
         data = JSON.parse(responseText);
