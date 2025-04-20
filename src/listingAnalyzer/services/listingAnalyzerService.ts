@@ -13,8 +13,9 @@ export async function analyzeListingUrl(
   
   if (!match) return false;
   
-  const url = match[0];
-  console.log("Detected listing URL:", url);
+  // Clean the url by trimming and removing trailing punctuation
+  const url = match[0].trim().replace(/[.,;!?)\]]+$/, "");
+  console.log("Detected listing URL (cleaned):", url);
   
   // Add a loading message
   addAgentMessage({
@@ -27,12 +28,6 @@ export async function analyzeListingUrl(
   try {
     console.log("Sending request to listing-analyzer with URL:", url);
     
-    // Use the full URL to the Supabase Edge Function
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-    const apiUrl = `${supabaseUrl}/functions/v1/api/listing-analyzer`;
-    
-    console.log("API URL:", apiUrl);
-    
     const resp = await fetch('/api/listing-analyzer', {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -41,23 +36,13 @@ export async function analyzeListingUrl(
     
     console.log("Received response status:", resp.status);
     
-    if (!resp.ok) {
-      const errorText = await resp.text();
-      console.error("Error response:", errorText);
-      
-      let errorData;
-      try {
-        errorData = JSON.parse(errorText);
-      } catch (e) {
-        console.error("Failed to parse error response:", e);
-        throw new Error(`Server error: ${resp.status} ${resp.statusText}`);
-      }
-      
-      throw new Error(errorData.error || "Failed to analyze listing");
-    }
-    
     const data = await resp.json();
     console.log("Listing analysis data:", data);
+
+    // Handle explicit error response
+    if (data.error) {
+      throw new Error(data.error);
+    }
 
     let analysisText = "";
     if (data.address) {
@@ -109,7 +94,9 @@ export async function analyzeListingUrl(
     addAgentMessage({
       id: crypto.randomUUID(),
       type: "agent",
-      text: "⚠️ I encountered an error while analyzing that listing. Please try again later or provide the property details manually.",
+      text: error instanceof Error 
+        ? `⚠️ ${error.message}`
+        : "⚠️ I encountered an error while analyzing that listing. Please try again later or provide the property details manually.",
       timestamp: new Date()
     });
     
