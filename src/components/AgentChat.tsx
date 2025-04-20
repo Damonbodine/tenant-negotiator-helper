@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { useAgentChat, ChatType } from "@/hooks/useAgentChat";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -13,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { speak } from "@/integrations/elevenlabs/client";
 import { handleListingUrl } from "@/utils/handleListingUrl";
 import { SuggestedQuestions } from "./chat/SuggestedQuestions";
+import { randomTip } from "@/utils/negotiationTips";
 
 interface AgentChatProps {
   chatType?: ChatType;
@@ -39,9 +39,6 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
     suggestions
   } = useAgentChat({ chatType });
 
-  /**
-   * 🔊 Trigger TTS whenever a new assistant message arrives
-   */
   useEffect(() => {
     if (isMuted || messages.length === 0) return;
 
@@ -53,20 +50,24 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
 
   const handleSelectSuggestion = (question: string) => {
     setInput(question);
-    setTimeout(() => handleSendMessage(), 100); // Small timeout to ensure state is updated
+    setTimeout(() => handleSendMessage(), 100);
   };
 
   const handleSendMessage = async () => {
     const currentInput = input;
-    
-    // Try handling as a listing URL first
     const analyzed = await handleListingUrl(currentInput, setMessages);
     if (analyzed) {
       setInput("");
+      const tipMessage = {
+        id: crypto.randomUUID(),
+        type: "agent" as const,
+        text: `\n\n💡 Negotiation tip: ${randomTip()}`,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, tipMessage]);
       return;
     }
 
-    // Handle as normal message (commented out for now)
     // setLastUserInput(currentInput);
     // await processUserMessage(currentInput, {
     //   messages,
