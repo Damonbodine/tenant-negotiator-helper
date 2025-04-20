@@ -8,6 +8,7 @@ import { Button } from "@/shared/ui/button";
 import { Send, MessageSquare } from "lucide-react";
 import { toast } from "@/shared/hooks/use-toast";
 import { chatService } from "@/shared/services/chatService";
+import { LoadingIndicator } from "@/chat/components/LoadingIndicator";
 
 const MarketInsights = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -70,13 +71,13 @@ const MarketInsights = () => {
   };
 
   return (
-    <div className="flex flex-col h-full border rounded-xl overflow-hidden shadow-md bg-white">
-      <div className="p-3 border-b border-border bg-slate-50">
+    <div className="flex flex-col h-full border rounded-xl overflow-hidden shadow-md bg-white dark:bg-slate-800">
+      <div className="p-3 border-b border-border bg-slate-50 dark:bg-slate-900">
         <h3 className="font-medium">Rental Market Assistant</h3>
       </div>
       
       <ScrollArea className="flex-1">
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-4" aria-live="polite" role="log">
           {messages.length === 1 && (
             <div className="flex flex-wrap gap-2 mb-4">
               {quickActions.map((action) => (
@@ -117,21 +118,11 @@ const MarketInsights = () => {
               </Card>
             </div>
           ))}
-          {isLoading && (
-            <div className="flex justify-start">
-              <Card className="max-w-[80%] p-3 bg-card border border-border">
-                <div className="flex space-x-2">
-                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
-                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse delay-150" />
-                  <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse delay-300" />
-                </div>
-              </Card>
-            </div>
-          )}
+          {isLoading && <LoadingIndicator />}
         </div>
       </ScrollArea>
       
-      <div className="p-4 border-t border-border bg-slate-50">
+      <div className="p-4 border-t border-border bg-slate-50 dark:bg-slate-900">
         <div className="flex items-end gap-2">
           <Textarea
             placeholder="Ask about rental market trends..."

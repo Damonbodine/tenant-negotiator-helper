@@ -2,11 +2,15 @@
 import { Card } from "@/shared/ui/card";
 import { ChatMessage as ChatMessageType } from "@/shared/types";
 
-export function ChatMessage({ message }: { message: ChatMessageType }) {
+interface ChatMessageProps {
+  message: ChatMessageType;
+}
+
+export function ChatMessage({ message }: ChatMessageProps) {
   return (
     <div 
       className={`flex ${message.type === "user" ? "justify-end" : "justify-start"}`}
-      aria-live={message.type === "agent" ? "polite" : "off"}
+      role={message.type === "agent" ? "status" : undefined}
     >
       <Card 
         className={`
