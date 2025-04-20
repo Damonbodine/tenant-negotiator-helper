@@ -1,3 +1,4 @@
+
 import { useEffect } from "react";
 import { useAgentChat, ChatType } from "@/hooks/useAgentChat";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -32,7 +33,6 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
     setShowApiKeyInput,
     selectedVoice,
     availableVoices,
-    handleSend,
     toggleMute,
     handleVoiceChange,
     retryLastMessage,
@@ -53,22 +53,25 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
 
   const handleSelectSuggestion = (question: string) => {
     setInput(question);
-    setTimeout(() => handleSend(), 100); // Small timeout to ensure state is updated
+    setTimeout(() => handleSendMessage(), 100); // Small timeout to ensure state is updated
   };
 
-  const handleSend = async () => {
-    const analyzed = await handleListingUrl(input, setMessages);
+  const handleSendMessage = async () => {
+    const currentInput = input;
+    
+    // Try handling as a listing URL first
+    const analyzed = await handleListingUrl(currentInput, setMessages);
     if (analyzed) {
       setInput("");
       return;
     }
 
-    const input = input;
-    // setLastUserInput(input);
-    // await processUserMessage(input, {
+    // Handle as normal message (commented out for now)
+    // setLastUserInput(currentInput);
+    // await processUserMessage(currentInput, {
     //   messages,
     //   setMessages,
-    //   input,
+    //   input: currentInput,
     //   setInput,
     //   isListening,
     //   setIsListening,
@@ -138,7 +141,7 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
       <ChatInput 
         input={input}
         setInput={setInput}
-        handleSend={handleSend}
+        handleSend={handleSendMessage}
         isLoading={isLoading}
         isListening={isListening}
         isMuted={isMuted}
