@@ -24,12 +24,18 @@ serve(async (req: Request) => {
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
+    console.log(`Request path: ${path}`);
+    
     // Route to the appropriate function based on the path
     if (path === '/api/listing-analyzer' || path.startsWith('/api/listing-analyzer')) {
       console.log('Routing to listing-analyzer function');
+      
+      const requestBody = await req.json();
+      console.log('Request body:', requestBody);
+      
       // Call the listing-analyzer function
       const { data, error } = await supabase.functions.invoke('listing-analyzer', {
-        body: await req.json(),
+        body: requestBody,
       });
 
       if (error) {
@@ -45,6 +51,7 @@ serve(async (req: Request) => {
     }
 
     // If no matching route is found
+    console.error(`No matching route found for path: ${path}`);
     return new Response(
       JSON.stringify({ error: 'Not Found' }),
       { 

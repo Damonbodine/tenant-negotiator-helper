@@ -17,7 +17,13 @@ serve(async (req) => {
   }
 
   try {
-    const { url } = await req.json();
+    console.log('Listing analyzer function called');
+    
+    const body = await req.json();
+    console.log('Request body:', body);
+    
+    const { url } = body;
+    
     if (!url) {
       throw new Error('Missing URL parameter');
     }
@@ -25,14 +31,19 @@ serve(async (req) => {
     console.log('Analyzing listing URL:', url);
 
     // 1️⃣ Pull basic HTML
+    console.log('Fetching HTML from:', url);
     const htmlResponse = await fetch(url);
     if (!htmlResponse.ok) {
+      console.error(`Failed to fetch listing page: ${htmlResponse.status} ${htmlResponse.statusText}`);
       throw new Error('Failed to fetch listing page');
     }
+    
     const html = await htmlResponse.text();
+    console.log('HTML fetched successfully, length:', html.length);
 
     // 2️⃣ Ask OpenAI to extract fields
     if (!OPENAI_API_KEY) {
+      console.error('OpenAI API key not configured');
       throw new Error('OpenAI API key not configured');
     }
 
@@ -60,7 +71,10 @@ serve(async (req) => {
     }
 
     const extract = await extractResponse.json();
+    console.log('OpenAI extraction response:', extract);
+    
     const props = JSON.parse(extract.choices[0].message.content || "{}");
+    console.log('Extracted property details:', props);
 
     // 3️⃣ Compare with RentCast if possible
     let verdict = "unknown";
@@ -73,10 +87,13 @@ serve(async (req) => {
         );
 
         if (!rentcastResponse.ok) {
+          console.error(`RentCast API error: ${rentcastResponse.status} ${rentcastResponse.statusText}`);
           throw new Error('RentCast API returned an error');
         }
 
         const rc = await rentcastResponse.json();
+        console.log('RentCast response:', rc);
+        
         const avg = rc?.medianRent;
         
         if (avg && props.rent) {
