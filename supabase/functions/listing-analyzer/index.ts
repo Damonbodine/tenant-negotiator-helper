@@ -40,7 +40,7 @@ serve(async (req) => {
         'Authorization': `Bearer ${OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: 'o3',
+        model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -70,6 +70,9 @@ serve(async (req) => {
       // Try to parse the response as JSON
       listingDetails = JSON.parse(listingText);
     } catch (e) {
+      console.error("Error parsing OpenAI response as JSON:", e);
+      console.log("Raw response:", listingText);
+      
       // If parsing fails, make another call to format it as JSON
       const formatResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -78,7 +81,7 @@ serve(async (req) => {
           'Authorization': `Bearer ${OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'o3',
+          model: 'gpt-4o-mini',
           messages: [
             {
               role: 'system',
@@ -96,7 +99,21 @@ serve(async (req) => {
       });
       
       const formattedData = await formatResponse.json();
-      listingDetails = JSON.parse(formattedData.choices[0].message.content);
+      try {
+        listingDetails = JSON.parse(formattedData.choices[0].message.content);
+      } catch(e) {
+        console.error("Still couldn't parse as JSON:", e);
+        // Fallback with some default values
+        listingDetails = {
+          address: "Unknown address from URL",
+          price: 0,
+          sqft: 0,
+          bedrooms: 0,
+          bathrooms: 0,
+          features: ["Could not extract features"],
+          zipCode: "00000"
+        };
+      }
     }
 
     // Get rental market data for comparison
