@@ -3,7 +3,7 @@ import { ChatMessage } from "@/utils/types";
 import { agentService } from "@/utils/agentService";
 import { voiceClient } from "@/utils/voiceClient";
 import { ChatType } from "./useAgentChat";
-import { handleListingAnalysis } from "@/integrations/elevenlabs/client";
+import { handleListingUrl } from "@/utils/handleListingUrl";
 
 interface UseMessageProcessingProps {
   setMessages: (messages: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => void;
@@ -52,7 +52,7 @@ export async function processUserMessage(messageText: string, {
     };
     
     // Check if it's a URL for analysis
-    const wasListingAnalyzed = await handleListingAnalysis(userMessage, agentMessage, setMessages);
+    const wasListingAnalyzed = await handleListingUrl(messageText, setMessages);
     if (wasListingAnalyzed) {
       setIsLoading(false);
       return;
