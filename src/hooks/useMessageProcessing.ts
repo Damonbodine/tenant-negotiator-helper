@@ -51,8 +51,13 @@ export async function processUserMessage(messageText: string, {
       timestamp: new Date()
     };
     
+    // Create a function that matches the expected signature
+    const addAgentMessage = (msg: ChatMessage) => {
+      setMessages(prev => [...prev, msg]);
+    };
+    
     // Check if it's a URL for analysis
-    const wasListingAnalyzed = await handleListingUrl(messageText, setMessages);
+    const wasListingAnalyzed = await handleListingUrl(messageText, addAgentMessage);
     if (wasListingAnalyzed) {
       setIsLoading(false);
       return;

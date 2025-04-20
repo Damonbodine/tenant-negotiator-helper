@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { speak } from "@/integrations/elevenlabs/client";
 import { handleListingUrl } from "@/utils/handleListingUrl";
 import { SuggestedQuestions } from "./chat/SuggestedQuestions";
+import { randomTip } from "@/utils/negotiationTips";
+import { ChatMessage as ChatMessageType } from "@/utils/types";
 
 interface AgentChatProps {
   chatType?: ChatType;
@@ -48,7 +50,7 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
     }
   }, [messages, isMuted]);
 
-  const addAgentMessage = (msg: ChatMessage) => setMessages(prev => [...prev, msg]);
+  const addAgentMessage = (msg: ChatMessageType) => setMessages(prev => [...prev, msg]);
 
   const handleSelectSuggestion = (question: string) => {
     setInput(question);
@@ -57,7 +59,7 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
 
   const handleSendMessage = async () => {
     const currentInput = input;
-    const analyzed = await handleListingUrl(currentInput, setMessages);
+    const analyzed = await handleListingUrl(currentInput, addAgentMessage);
     if (analyzed) {
       setInput("");
       const tipMessage = {
