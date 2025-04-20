@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { ChatMessage } from "@/shared/types";
 import { ScrollArea } from "@/shared/ui/scroll-area";
@@ -12,6 +11,7 @@ import { LoadingIndicator } from "@/chat/components/LoadingIndicator";
 import { ChatMessage as ChatMessageComponent } from "@/chat/components/ChatMessage";
 import { Alert, AlertTitle, AlertDescription } from "@/shared/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { analyzeListingUrl } from "@/listingAnalyzer/services/listingAnalyzerService"; 
 
 const MarketInsights = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -37,6 +37,8 @@ const MarketInsights = () => {
     setTimeout(() => handleSendMessage(), 100);
   };
 
+  const addAgentMessage = (msg: ChatMessage) => setMessages(prev => [...prev, msg]);
+
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return;
     
@@ -53,6 +55,12 @@ const MarketInsights = () => {
     setError(null);
     
     try {
+      const wasListingAnalyzed = await analyzeListingUrl(input, addAgentMessage);
+      if (wasListingAnalyzed) {
+        setIsLoading(false);
+        return;
+      }
+      
       const response = await chatService.sendMessageToGemini(input, messages);
       
       const agentMessage: ChatMessage = {

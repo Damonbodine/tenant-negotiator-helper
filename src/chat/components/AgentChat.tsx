@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { useAgentChat } from "@/chat/hooks/useAgentChat";
 import { ScrollArea } from "@/shared/ui/scroll-area";
@@ -48,14 +47,15 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
     setTimeout(() => onSend(), 50);
   };
 
-  // New onSend function to handle listing URLs first
   const onSend = async () => {
-    // Run listing analyser first
-    if (await analyzeListingUrl(input, addAgentMessage)) {
+    if (!input.trim() || isLoading) return;
+
+    const wasListingAnalyzed = await analyzeListingUrl(input, addAgentMessage);
+    if (wasListingAnalyzed) {
       setInput("");
       return;
     }
-    // Otherwise fall back to original hook's handleSend
+    
     handleSend();
   };
 
