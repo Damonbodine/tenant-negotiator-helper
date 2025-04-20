@@ -1,3 +1,4 @@
+
 import { useEffect } from "react";
 import { useAgentChat, ChatType } from "@/hooks/useAgentChat";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -12,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { speak } from "@/integrations/elevenlabs/client";
 import { handleListingUrl } from "@/utils/handleListingUrl";
 import { SuggestedQuestions } from "./chat/SuggestedQuestions";
-import { randomTip } from "@/utils/negotiationTips";
 
 interface AgentChatProps {
   chatType?: ChatType;
@@ -47,6 +47,8 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
       speak(lastMsg.text).catch(console.error);
     }
   }, [messages, isMuted]);
+
+  const addAgentMessage = (msg: ChatMessage) => setMessages(prev => [...prev, msg]);
 
   const handleSelectSuggestion = (question: string) => {
     setInput(question);
