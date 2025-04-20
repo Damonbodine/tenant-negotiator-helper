@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { useAgentChat, ChatType } from "@/hooks/useAgentChat";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -11,6 +10,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { speak } from "@/integrations/elevenlabs/client";
+import { handleListingUrl } from "@/utils/handleListingUrl";
 import { SuggestedQuestions } from "./chat/SuggestedQuestions";
 
 interface AgentChatProps {
@@ -20,6 +20,7 @@ interface AgentChatProps {
 export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
   const {
     messages,
+    setMessages,
     input,
     setInput,
     isListening,
@@ -39,7 +40,7 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
   } = useAgentChat({ chatType });
 
   /**
-   * 🔊 Trigger ElevenLabs TTS whenever a new assistant message arrives
+   * 🔊 Trigger TTS whenever a new assistant message arrives
    */
   useEffect(() => {
     if (isMuted || messages.length === 0) return;
@@ -53,6 +54,39 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
   const handleSelectSuggestion = (question: string) => {
     setInput(question);
     setTimeout(() => handleSend(), 100); // Small timeout to ensure state is updated
+  };
+
+  const handleSend = async () => {
+    const analyzed = await handleListingUrl(input, setMessages);
+    if (analyzed) {
+      setInput("");
+      return;
+    }
+
+    const input = input;
+    // setLastUserInput(input);
+    // await processUserMessage(input, {
+    //   messages,
+    //   setMessages,
+    //   input,
+    //   setInput,
+    //   isListening,
+    //   setIsListening,
+    //   isMuted,
+    //   setIsMuted,
+    //   isLoading,
+    //   setIsLoading,
+    //   showApiKeyInput,
+    //   setShowApiKeyInput,
+    //   selectedVoice,
+    //   availableVoices,
+    //   setAvailableVoices,
+    //   lastUserInput,
+    //   setLastUserInput,
+    //   suggestions,
+    //   setSuggestions,
+    //   toast
+    // });
   };
 
   return (
