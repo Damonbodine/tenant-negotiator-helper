@@ -6,7 +6,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 
 // Lazy load pages for better performance
-const Index = lazy(() => import("@/pages/Index"));
+const Index = lazy(() => import("@/pages/index"));
 const Practice = lazy(() => import("@/pages/Practice"));
 const VoicePractice = lazy(() => import("@/pages/VoicePractice"));
 const Auth = lazy(() => import("@/pages/Auth"));

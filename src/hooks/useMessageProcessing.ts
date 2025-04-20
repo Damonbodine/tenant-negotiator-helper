@@ -3,6 +3,7 @@ import { ChatMessage } from "@/utils/types";
 import { agentService } from "@/utils/agentService";
 import { voiceClient } from "@/utils/voiceClient";
 import { ChatType } from "./useAgentChat";
+import { handleListingAnalysis } from "@/integrations/elevenlabs/client";
 
 interface UseMessageProcessingProps {
   setMessages: (messages: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => void;
@@ -42,6 +43,21 @@ export async function processUserMessage(messageText: string, {
   setSuggestions([]);
   
   try {
+    // Check if this is a listing URL that should be analyzed
+    const agentMessage: ChatMessage = {
+      id: Date.now().toString(),
+      type: "agent",
+      text: "Processing your request...",
+      timestamp: new Date()
+    };
+    
+    // Check if it's a URL for analysis
+    const wasListingAnalyzed = await handleListingAnalysis(userMessage, agentMessage, setMessages);
+    if (wasListingAnalyzed) {
+      setIsLoading(false);
+      return;
+    }
+    
     if (!(await voiceClient.hasApiKey())) {
       setShowApiKeyInput(true);
       setIsLoading(false);
@@ -61,14 +77,14 @@ export async function processUserMessage(messageText: string, {
         response = await agentService.simulateResponse(messageText);
     }
     
-    const agentMessage: ChatMessage = {
+    const finalAgentMessage: ChatMessage = {
       id: Date.now().toString(),
       type: "agent",
       text: response.text,
       timestamp: new Date()
     };
     
-    setMessages((prev: ChatMessage[]) => [...prev, agentMessage]);
+    setMessages((prev: ChatMessage[]) => [...prev, finalAgentMessage]);
     
     if (response.suggestions) {
       setSuggestions(response.suggestions);
