@@ -1,46 +1,30 @@
 
 import { ChatMessage } from "@/utils/types";
+import { randomTip } from "@/utils/negotiationTips";
 
 export async function handleListingUrl(
   text: string,
-  setMessages: (messages: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => void
+  addAgentMessage: (m: ChatMessage) => void
 ) {
   const urlRegex = /(https?:\/\/[^\s]+)/;
   if (!urlRegex.test(text)) return false;
 
-  try {
-    console.log('Analyzing listing URL:', text);
-    const resp = await fetch("/api/listing-analyzer", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: text })
-    });
+  const resp = await fetch("/api/listing-analyzer", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url: text })
+  });
+  const data = await resp.json();
 
-    if (!resp.ok) {
-      console.error('Listing analyzer error:', await resp.text());
-      return false;
-    }
+  const summary = data.address
+    ? `🔎 ${data.address}\nRent $${data.rent} • Beds ${data.beds}\nMarket avg $${data.marketAverage ?? "n/a"}\n➡️ Looks **${data.verdict}** (${data.deltaPercent ?? "?"}% diff).\n\n---\n💡 Negotiation tip: ${randomTip()}`
+    : "⚠️ I couldn't read that listing. Try another link.";
 
-    const analysis = await resp.json();
-    console.log('Listing analysis:', analysis);
-    
-    setMessages(prev => [
-      ...prev,
-      { 
-        id: crypto.randomUUID(), 
-        type: "agent", 
-        text: summaryFrom(analysis), 
-        timestamp: new Date() 
-      }
-    ]);
-    return true;
-  } catch (error) {
-    console.error('Error analyzing listing:', error);
-    return false;
-  }
-}
-
-function summaryFrom(a: any) {
-  if (!a.address) return "⚠️ I couldn't read that listing. Try another link.";
-  return `🔎 ${a.address}\nRent: $${a.rent} | Beds: ${a.beds}\nMarket avg: $${a.marketAverage ?? "n/a"}\n➡️ This unit looks **${a.verdict}** (${a.deltaPercent ?? "?"}% diff).`;
+  addAgentMessage({
+    id: crypto.randomUUID(),
+    type: "agent",
+    text: summary,
+    timestamp: new Date()
+  });
+  return true;
 }
