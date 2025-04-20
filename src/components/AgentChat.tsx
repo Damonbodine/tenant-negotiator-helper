@@ -1,3 +1,5 @@
+
+import { useEffect } from "react";
 import { useAgentChat, ChatType } from "@/hooks/useAgentChat";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ApiKeyInput } from "@/components/ApiKeyInput";
@@ -10,7 +12,6 @@ import { AlertCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { speak } from "@/integrations/elevenlabs/client";
 import { SuggestedQuestions } from "./chat/SuggestedQuestions";
-import { useEffect } from "react";
 
 interface AgentChatProps {
   chatType?: ChatType;
@@ -44,8 +45,8 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
     if (isMuted || messages.length === 0) return;
 
     const lastMsg = messages[messages.length - 1];
-    if (lastMsg.role === "assistant" && lastMsg.content) {
-      speak(lastMsg.content).catch(console.error);
+    if (lastMsg.type === "agent" && lastMsg.text) {
+      speak(lastMsg.text).catch(console.error);
     }
   }, [messages, isMuted]);
 
@@ -56,7 +57,7 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
 
   return (
     <div className="flex flex-col h-full border rounded-xl overflow-hidden shadow-md bg-white dark:bg-slate-800">
-      <ChatHeader
+      <ChatHeader 
         selectedVoice={selectedVoice}
         availableVoices={availableVoices}
         isMuted={isMuted}
@@ -64,14 +65,14 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
         onMuteToggle={toggleMute}
         chatType={chatType}
       />
-
+      
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4">
           {messages.map((message) => (
             <ChatMessage key={message.id} message={message} />
           ))}
           {isLoading && <LoadingIndicator />}
-
+          
           {errorState && (
             <Alert variant="destructive" className="mt-4 animate-appear">
               <AlertCircle className="h-4 w-4" />
@@ -89,7 +90,7 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
               </AlertDescription>
             </Alert>
           )}
-
+          
           {!isLoading && suggestions.length > 0 && (
             <SuggestedQuestions
               suggestions={suggestions}
@@ -99,8 +100,8 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
           )}
         </div>
       </ScrollArea>
-
-      <ChatInput
+      
+      <ChatInput 
         input={input}
         setInput={setInput}
         handleSend={handleSend}
@@ -110,10 +111,11 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
         toggleListening={() => {}}
         toggleMute={toggleMute}
       />
-
+      
       {showApiKeyInput && (
         <ApiKeyInput onClose={() => setShowApiKeyInput(false)} />
       )}
     </div>
   );
 };
+
