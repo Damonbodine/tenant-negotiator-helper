@@ -41,3 +41,4 @@ port = 54329
 verify_jwt = false
 [functions.listing-analyzer]
 verify_jwt = false
+

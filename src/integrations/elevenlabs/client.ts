@@ -1,4 +1,3 @@
-
 // Client for ElevenLabs API
 import { voiceClient } from '@/utils/voiceClient';
 
@@ -25,6 +24,12 @@ export async function handleListingAnalysis(userMessage: any, agentMessage: any,
   
   if (urlRegex.test(userMessage.text)) {
     try {
+      // First update the message to show we're analyzing
+      setMessages(prev => [...prev, { 
+        ...agentMessage, 
+        text: "I'm analyzing that listing for you. This may take a moment..." 
+      }]);
+      
       const resp = await fetch("/api/listing-analyzer", { 
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -32,18 +37,59 @@ export async function handleListingAnalysis(userMessage: any, agentMessage: any,
       });
       
       if (!resp.ok) {
-        throw new Error(`Failed to analyze listing: ${resp.statusText}`);
+        // If the API returns an error, we'll show a more helpful message
+        const errorData = await resp.json();
+        console.error("Listing analyzer API error:", errorData);
+        
+        setMessages(prev => {
+          // Replace the "analyzing" message with the error message
+          const messages = [...prev];
+          messages[messages.length - 1] = { 
+            ...agentMessage, 
+            text: "I couldn't analyze that listing right now. Let me help you manually instead. Could you tell me more about the property, like the address, price, square footage, and number of bedrooms?" 
+          };
+          return messages;
+        });
+        
+        return true;
       }
       
       const analysis = await resp.json();
-      setMessages(prev => [...prev, { ...agentMessage, text: analysis.summary }]);
+      
+      // Update the message with the analysis result
+      setMessages(prev => {
+        // Replace the "analyzing" message with the analysis result
+        const messages = [...prev];
+        messages[messages.length - 1] = { 
+          ...agentMessage, 
+          text: analysis.summary + "\n\n**[Want to practice negotiating for this property? [Click here to try our negotiation simulator](/practice/voice)]**" 
+        };
+        return messages;
+      });
+      
       return true;
     } catch (error) {
       console.error("Error analyzing listing:", error);
-      setMessages(prev => [...prev, { 
-        ...agentMessage, 
-        text: "Sorry, I couldn't analyze that listing. Please try again or provide a different URL." 
-      }]);
+      
+      // Show a more helpful error message
+      setMessages(prev => {
+        // If we were in the middle of analyzing, replace that message
+        if (prev[prev.length - 1].text.includes("analyzing")) {
+          const messages = [...prev];
+          messages[messages.length - 1] = { 
+            ...agentMessage, 
+            text: "I'm having trouble analyzing that listing right now. Instead, could you tell me more details about the property you're interested in? Things like location, price, square footage, and number of bedrooms would be helpful." 
+          };
+          return messages;
+        } else {
+          // Otherwise add a new message
+          return [...prev, { 
+            ...agentMessage, 
+            text: "I'm having trouble analyzing that listing right now. Instead, could you tell me more details about the property you're interested in? Things like location, price, square footage, and number of bedrooms would be helpful." 
+          }];
+        }
+      });
+      
       return true;
     }
   }
