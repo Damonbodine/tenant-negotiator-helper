@@ -34,7 +34,7 @@ export async function speak(text: string): Promise<void> {
     await audio.play();
     
     // Clean up the URL after playing
-    audio.onended = () => URL.createObjectURL(audioUrl);
+    audio.onended = () => URL.revokeObjectURL(audioUrl);
   } catch (error) {
     console.error('Error generating speech:', error);
     throw error;
