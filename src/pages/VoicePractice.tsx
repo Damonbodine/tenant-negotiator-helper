@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Building, ExternalLink } from "lucide-react";
@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 const VoicePractice = () => {
   const [selectedScenario, setSelectedScenario] = useState("random");
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
+  const [elevenLabsDialogOpen, setElevenLabsDialogOpen] = useState(true);
   
   const {
     messages,
@@ -35,6 +36,13 @@ const VoicePractice = () => {
     handleVoiceChange
   } = useVoiceNegotiation(selectedScenario);
   
+  useEffect(() => {
+    // Auto-start call when component mounts
+    if (!isCallActive && availableVoices.length > 0) {
+      startCall();
+    }
+  }, [availableVoices, isCallActive, startCall]);
+  
   const openSettings = () => setShowApiKeyInput(true);
   
   return (
@@ -48,7 +56,7 @@ const VoicePractice = () => {
             </p>
           </div>
           <div className="flex gap-2">
-            <Dialog>
+            <Dialog open={elevenLabsDialogOpen} onOpenChange={setElevenLabsDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-2">
                   <ExternalLink className="h-4 w-4" />

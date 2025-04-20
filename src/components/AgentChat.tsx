@@ -118,4 +118,3 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
     </div>
   );
 };
-

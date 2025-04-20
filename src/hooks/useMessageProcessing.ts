@@ -77,6 +77,11 @@ export async function processUserMessage(messageText: string, {
         response = await agentService.simulateResponse(messageText);
     }
     
+    // Add a practice negotiation CTA to the response
+    if (response.text && !response.text.includes("Want to practice negotiating")) {
+      response.text += "\n\n**[Want to practice negotiating this scenario? [Click here to try our negotiation simulator](/practice/voice)]**";
+    }
+    
     const finalAgentMessage: ChatMessage = {
       id: Date.now().toString(),
       type: "agent",

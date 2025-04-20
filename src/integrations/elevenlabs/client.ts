@@ -20,7 +20,7 @@ export async function speak(text: string): Promise<void> {
   }
 }
 
-export async function handleListingAnalysis(userMessage: any, agentMessage: any, setMessages: any) {
+export async function handleListingAnalysis(userMessage: any, agentMessage: any, setMessages: any): Promise<boolean> {
   const urlRegex = /(https?:\/\/[^\s]+)/;
   
   if (urlRegex.test(userMessage.text)) {
@@ -31,16 +31,21 @@ export async function handleListingAnalysis(userMessage: any, agentMessage: any,
         body: JSON.stringify({ url: userMessage.text })
       });
       
+      if (!resp.ok) {
+        throw new Error(`Failed to analyze listing: ${resp.statusText}`);
+      }
+      
       const analysis = await resp.json();
       setMessages(prev => [...prev, { ...agentMessage, text: analysis.summary }]);
+      return true;
     } catch (error) {
       console.error("Error analyzing listing:", error);
       setMessages(prev => [...prev, { 
         ...agentMessage, 
         text: "Sorry, I couldn't analyze that listing. Please try again or provide a different URL." 
       }]);
+      return true;
     }
-    return true;
   }
   
   return false;
