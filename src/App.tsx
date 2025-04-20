@@ -4,6 +4,7 @@ import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
+import { Footer } from "@/components/layout/Footer";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("@/pages/index"));
@@ -40,7 +41,12 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <AppRoutes />
+        <div className="flex flex-col min-h-screen">
+          <div className="flex-1">
+            <AppRoutes />
+          </div>
+          <Footer />
+        </div>
         <Toaster />
       </Router>
     </AuthProvider>
