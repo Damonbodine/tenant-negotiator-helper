@@ -63,11 +63,24 @@ serve(async (req: Request) => {
           );
         }
 
+        // Make sure we never return empty data
         if (!data) {
           console.error('No data returned from listing-analyzer');
           return new Response(
             JSON.stringify({ error: 'No data returned from analyzer' }),
             { 
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
+        }
+
+        // If there's an error property in the data, preserve the error status
+        if (data.error) {
+          console.error('Error from listing-analyzer function:', data.error);
+          return new Response(
+            JSON.stringify(data),
+            {
               status: 500,
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             }
