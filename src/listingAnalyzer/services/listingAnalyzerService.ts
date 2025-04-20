@@ -26,7 +26,14 @@ export async function analyzeListingUrl(
 
   try {
     console.log("Sending request to listing-analyzer with URL:", url);
-    const resp = await fetch("/api/listing-analyzer", {
+    
+    // Use the full URL to the Supabase Edge Function
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+    const apiUrl = `${supabaseUrl}/functions/v1/api/listing-analyzer`;
+    
+    console.log("API URL:", apiUrl);
+    
+    const resp = await fetch('/api/listing-analyzer', {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url })
