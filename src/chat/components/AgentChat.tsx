@@ -1,3 +1,4 @@
+
 import { useEffect } from "react";
 import { useAgentChat } from "@/chat/hooks/useAgentChat";
 import { ScrollArea } from "@/shared/ui/scroll-area";
@@ -120,4 +121,4 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
       )}
     </div>
   );
-};
+}
