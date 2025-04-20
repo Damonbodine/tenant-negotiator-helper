@@ -9,6 +9,9 @@ import { Send, MessageSquare } from "lucide-react";
 import { toast } from "@/shared/hooks/use-toast";
 import { chatService } from "@/shared/services/chatService";
 import { LoadingIndicator } from "@/chat/components/LoadingIndicator";
+import { ChatMessage as ChatMessageComponent } from "@/chat/components/ChatMessage";
+import { Alert, AlertTitle, AlertDescription } from "@/shared/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 const MarketInsights = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -21,6 +24,7 @@ const MarketInsights = () => {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const quickActions = [
     "Am I paying too much?",
@@ -30,7 +34,7 @@ const MarketInsights = () => {
 
   const handleQuickAction = (text: string) => {
     setInput(text);
-    handleSendMessage();
+    setTimeout(() => handleSendMessage(), 100);
   };
 
   const handleSendMessage = async () => {
@@ -46,6 +50,7 @@ const MarketInsights = () => {
     setMessages(prev => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
+    setError(null);
     
     try {
       const response = await chatService.sendMessageToGemini(input, messages);
@@ -58,8 +63,9 @@ const MarketInsights = () => {
       };
       
       setMessages(prev => [...prev, agentMessage]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error sending message:", error);
+      setError(error.message || "Failed to get response from the agent");
       toast({
         title: "Error",
         description: "Failed to get response from the agent",
@@ -94,31 +100,16 @@ const MarketInsights = () => {
             </div>
           )}
           {messages.map((message) => (
-            <div 
-              key={message.id} 
-              className={`flex ${message.type === "user" ? "justify-end" : "justify-start"}`}
-            >
-              <Card 
-                className={`
-                  max-w-[80%] p-3
-                  ${message.type === "user" 
-                    ? "bg-blue-500 text-white" 
-                    : "bg-card border border-border"}
-                `}
-              >
-                <p>{message.text}</p>
-                <div 
-                  className={`
-                    text-xs mt-1 
-                    ${message.type === "user" ? "text-blue-100" : "text-muted-foreground"}
-                  `}
-                >
-                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </div>
-              </Card>
-            </div>
+            <ChatMessageComponent key={message.id} message={message} />
           ))}
           {isLoading && <LoadingIndicator />}
+          {error && (
+            <Alert variant="destructive" className="mt-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
         </div>
       </ScrollArea>
       
