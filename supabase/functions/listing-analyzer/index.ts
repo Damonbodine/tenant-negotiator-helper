@@ -19,17 +19,36 @@ serve(async (req) => {
   try {
     console.log('Listing analyzer function called');
     
-    const body = await req.json();
-    console.log('Request body:', body);
+    let body;
+    try {
+      body = await req.json();
+      console.log('Request body:', body);
+    } catch (e) {
+      console.error('Error parsing request body:', e);
+      return new Response(
+        JSON.stringify({ error: 'Invalid JSON in request body' }),
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
     
     const { url } = body;
     
     if (!url) {
-      throw new Error('Missing URL parameter');
+      console.error('Missing URL parameter');
+      return new Response(
+        JSON.stringify({ error: 'Missing URL parameter' }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     // Clean the URL by trimming whitespace and removing trailing punctuation
-    const cleanUrl = url.trim().replace(/[.,)]+$/, "");
+    const cleanUrl = url.trim().replace(/[.,;!?)\]]+$/, "");
     console.log('Analyzing listing URL (cleaned):', cleanUrl);
 
     // 1️⃣ Pull basic HTML with proper browser-like headers
@@ -47,7 +66,13 @@ serve(async (req) => {
 
     if (!htmlResponse.ok) {
       console.error(`Failed to fetch listing page: ${htmlResponse.status} ${htmlResponse.statusText}`);
-      throw new Error(`Listing fetch failed: ${htmlResponse.status} ${htmlResponse.statusText}`);
+      return new Response(
+        JSON.stringify({ error: `Listing fetch failed: ${htmlResponse.status} ${htmlResponse.statusText}` }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
     
     const html = await htmlResponse.text();
@@ -56,7 +81,13 @@ serve(async (req) => {
     // 2️⃣ Ask OpenAI to extract fields
     if (!OPENAI_API_KEY) {
       console.error('OpenAI API key not configured');
-      throw new Error('OpenAI API key not configured');
+      return new Response(
+        JSON.stringify({ error: 'OpenAI API key not configured' }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     console.log('Extracting listing details using OpenAI');
@@ -77,16 +108,46 @@ serve(async (req) => {
     });
 
     if (!extractResponse.ok) {
-      const error = await extractResponse.json();
-      console.error('OpenAI API error:', error);
-      throw new Error('Failed to extract listing details');
+      const errorData = await extractResponse.json();
+      console.error('OpenAI API error:', errorData);
+      return new Response(
+        JSON.stringify({ error: 'Failed to extract listing details from OpenAI' }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
     }
 
     const extract = await extractResponse.json();
     console.log('OpenAI extraction response:', extract);
     
-    const props = JSON.parse(extract.choices[0].message.content || "{}");
-    console.log('Extracted property details:', props);
+    if (!extract.choices || !extract.choices[0] || !extract.choices[0].message || !extract.choices[0].message.content) {
+      console.error('Invalid response structure from OpenAI');
+      return new Response(
+        JSON.stringify({ error: 'Invalid response structure from OpenAI' }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+    
+    // Parse the properties safely
+    let props;
+    try {
+      props = JSON.parse(extract.choices[0].message.content);
+      console.log('Extracted property details:', props);
+    } catch (e) {
+      console.error('Failed to parse OpenAI response:', e);
+      return new Response(
+        JSON.stringify({ error: 'Failed to parse property details from OpenAI response' }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
 
     // 3️⃣ Compare with RentCast if possible
     let verdict = "unknown";
@@ -100,35 +161,41 @@ serve(async (req) => {
 
         if (!rentcastResponse.ok) {
           console.error(`RentCast API error: ${rentcastResponse.status} ${rentcastResponse.statusText}`);
-          throw new Error('RentCast API returned an error');
-        }
-
-        const rc = await rentcastResponse.json();
-        console.log('RentCast response:', rc);
-        
-        const avg = rc?.medianRent;
-        
-        if (avg && props.rent) {
-          const delta = ((props.rent - avg) / avg) * 100;
-          verdict =
-            delta < -5 ? "under-priced" :
-            delta > 5 ? "over-priced" : "priced right";
-          props.marketAverage = avg;
-          props.deltaPercent = delta.toFixed(1);
+          // Continue without RentCast data, but log the error
+          console.log('Continuing without RentCast market data');
+        } else {
+          const rc = await rentcastResponse.json();
+          console.log('RentCast response:', rc);
           
-          console.log('Market analysis complete:', { 
-            verdict,
-            marketAverage: avg,
-            deltaPercent: delta.toFixed(1)
-          });
+          const avg = rc?.medianRent;
+          
+          if (avg && props.rent) {
+            const delta = ((props.rent - avg) / avg) * 100;
+            verdict =
+              delta < -5 ? "under-priced" :
+              delta > 5 ? "over-priced" : "priced right";
+            props.marketAverage = avg;
+            props.deltaPercent = delta.toFixed(1);
+            
+            console.log('Market analysis complete:', { 
+              verdict,
+              marketAverage: avg,
+              deltaPercent: delta.toFixed(1)
+            });
+          }
         }
       } catch (error) {
         console.error('Error fetching RentCast data:', error);
+        // Continue without market data
       }
     }
 
+    // Return the result
+    const result = { ...props, verdict };
+    console.log('Final analysis result:', result);
+    
     return new Response(
-      JSON.stringify({ ...props, verdict }),
+      JSON.stringify(result),
       { 
         headers: { 
           ...corsHeaders,
@@ -139,7 +206,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in listing-analyzer function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || 'Unknown error in listing analyzer' }),
       { 
         status: 500,
         headers: { 

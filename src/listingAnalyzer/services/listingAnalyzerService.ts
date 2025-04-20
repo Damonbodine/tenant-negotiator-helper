@@ -36,7 +36,30 @@ export async function analyzeListingUrl(
     
     console.log("Received response status:", resp.status);
     
-    const data = await resp.json();
+    if (!resp.ok) {
+      let errorMessage = `Server error: ${resp.status} ${resp.statusText}`;
+      try {
+        const errorData = await resp.json();
+        if (errorData && errorData.error) {
+          errorMessage = errorData.error;
+        }
+      } catch (e) {
+        console.error("Failed to parse error response:", e);
+      }
+      throw new Error(errorMessage);
+    }
+    
+    // Try to safely parse the JSON
+    let data;
+    try {
+      const text = await resp.text();
+      console.log("Raw response text:", text);
+      data = text ? JSON.parse(text) : {};
+    } catch (e) {
+      console.error("Failed to parse JSON response:", e);
+      throw new Error("Failed to parse response from listing analyzer");
+    }
+    
     console.log("Listing analysis data:", data);
 
     // Handle explicit error response
