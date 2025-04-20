@@ -1,10 +1,11 @@
 
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Suspense, lazy } from "react";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/shared/ui/toaster";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
-import { Footer } from "@/components/layout/Footer";
+import { Footer } from "@/shared/components/layout/Footer";
+import { ErrorBoundary } from "@/shared/ui/ErrorBoundary";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("@/pages/index"));
@@ -12,7 +13,7 @@ const Practice = lazy(() => import("@/pages/Practice"));
 const VoicePractice = lazy(() => import("@/pages/VoicePractice"));
 const Auth = lazy(() => import("@/pages/Auth"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
-const PromptManager = lazy(() => import("@/components/PromptManager"));
+const PromptManager = lazy(() => import("@/shared/components/PromptManager"));
 
 function AppRoutes() {
   return (
@@ -39,17 +40,19 @@ function LoadingScreen() {
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <div className="flex flex-col min-h-screen">
-          <div className="flex-1">
-            <AppRoutes />
+    <ErrorBoundary>
+      <AuthProvider>
+        <Router>
+          <div className="flex flex-col min-h-screen">
+            <div className="flex-1">
+              <AppRoutes />
+            </div>
+            <Footer />
           </div>
-          <Footer />
-        </div>
-        <Toaster />
-      </Router>
-    </AuthProvider>
+          <Toaster />
+        </Router>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 
