@@ -110,7 +110,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in listing-analyzer function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }), 
+      JSON.stringify({ error: error.message }),
       { 
         status: 500,
         headers: { 
