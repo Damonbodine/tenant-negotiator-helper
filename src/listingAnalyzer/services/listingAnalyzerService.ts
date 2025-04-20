@@ -36,32 +36,31 @@ export async function analyzeListingUrl(
     
     console.log("Received response status:", resp.status);
     
-    if (!resp.ok) {
-      let errorMessage = `Server error: ${resp.status} ${resp.statusText}`;
-      try {
-        const errorData = await resp.json();
-        if (errorData && errorData.error) {
-          errorMessage = errorData.error;
-        }
-      } catch (e) {
-        console.error("Failed to parse error response:", e);
-      }
-      throw new Error(errorMessage);
-    }
-    
-    // Try to safely parse the JSON
-    let data;
+    // Safely get response text first
+    let responseText;
     try {
-      const text = await resp.text();
-      console.log("Raw response text:", text);
-      data = text ? JSON.parse(text) : {};
+      responseText = await resp.text();
+      console.log("Raw response text:", responseText);
     } catch (e) {
-      console.error("Failed to parse JSON response:", e);
-      throw new Error("Failed to parse response from listing analyzer");
+      console.error("Error reading response text:", e);
+      throw new Error("Failed to read response from server");
     }
     
-    console.log("Listing analysis data:", data);
-
+    // Only parse JSON if we have content
+    let data = {};
+    if (responseText && responseText.trim()) {
+      try {
+        data = JSON.parse(responseText);
+        console.log("Parsed JSON data:", data);
+      } catch (e) {
+        console.error("Failed to parse JSON response:", e);
+        throw new Error("Invalid JSON response from listing analyzer");
+      }
+    } else {
+      console.error("Empty response received from server");
+      throw new Error("No data received from listing analyzer");
+    }
+    
     // Handle explicit error response
     if (data.error) {
       throw new Error(data.error);

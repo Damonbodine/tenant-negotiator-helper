@@ -55,21 +55,22 @@ serve(async (req) => {
     console.log('Fetching HTML from:', cleanUrl);
     const htmlResponse = await fetch(cleanUrl, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         "Accept-Language": "en-US,en;q=0.9",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-        "sec-ch-ua": '"Not A(Brand";v="99", "Google Chrome";v="123", "Chromium";v="123"',
+        "sec-ch-ua": '"Not A(Brand";v="99", "Google Chrome";v="124", "Chromium";v="124"',
         "sec-ch-ua-mobile": "?0",
         "sec-ch-ua-platform": '"Windows"',
       }
     });
 
     if (!htmlResponse.ok) {
-      console.error(`Failed to fetch listing page: ${htmlResponse.status} ${htmlResponse.statusText}`);
+      const errorMsg = `Failed to fetch listing page: ${htmlResponse.status} ${htmlResponse.statusText}`;
+      console.error(errorMsg);
       return new Response(
-        JSON.stringify({ error: `Listing fetch failed: ${htmlResponse.status} ${htmlResponse.statusText}` }),
+        JSON.stringify({ error: errorMsg }),
         { 
-          status: 500,
+          status: htmlResponse.status,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
@@ -108,10 +109,18 @@ serve(async (req) => {
     });
 
     if (!extractResponse.ok) {
-      const errorData = await extractResponse.json();
-      console.error('OpenAI API error:', errorData);
+      let errorMsg = `OpenAI API error: ${extractResponse.status}`;
+      try {
+        const errorData = await extractResponse.json();
+        console.error('OpenAI API error details:', errorData);
+        if (errorData.error) {
+          errorMsg += ` - ${errorData.error.message || errorData.error}`;
+        }
+      } catch (e) {
+        console.error('Failed to parse OpenAI error response', e);
+      }
       return new Response(
-        JSON.stringify({ error: 'Failed to extract listing details from OpenAI' }),
+        JSON.stringify({ error: errorMsg }),
         { 
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
