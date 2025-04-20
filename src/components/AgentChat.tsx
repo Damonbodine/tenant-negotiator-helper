@@ -67,30 +67,6 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
       setMessages(prev => [...prev, tipMessage]);
       return;
     }
-
-    // setLastUserInput(currentInput);
-    // await processUserMessage(currentInput, {
-    //   messages,
-    //   setMessages,
-    //   input: currentInput,
-    //   setInput,
-    //   isListening,
-    //   setIsListening,
-    //   isMuted,
-    //   setIsMuted,
-    //   isLoading,
-    //   setIsLoading,
-    //   showApiKeyInput,
-    //   setShowApiKeyInput,
-    //   selectedVoice,
-    //   availableVoices,
-    //   setAvailableVoices,
-    //   lastUserInput,
-    //   setLastUserInput,
-    //   suggestions,
-    //   setSuggestions,
-    //   toast
-    // });
   };
 
   return (
