@@ -19,13 +19,21 @@ export const chatClient = {
       console.log("Sending message to AI model:", message);
       console.log("With history:", history);
       
-      const templates = promptService.getPromptTemplates();
-      const activeTemplate = templates.find(t => t.id === activePromptTemplateId) || templates[0];
+      // Get prompt templates and handle the case when it might be undefined
+      const templates = promptService.getPromptTemplates() || [];
+      const activeTemplate = templates.find(t => t.id === activePromptTemplateId) || {
+        id: 'default',
+        name: 'Default Template',
+        systemPrompt: 'You are a helpful rental assistant.'
+      };
+      
+      // Safely access subPrompts with a fallback to an empty array
+      const subPrompts = activeTemplate.subPrompts || [];
       
       // Check if any subPrompts are triggered by the current message
-      const activatedSubPrompts = activeTemplate.subPrompts?.filter(
+      const activatedSubPrompts = subPrompts.filter(
         sp => message.toLowerCase().includes(sp.trigger.toLowerCase())
-      ) || [];
+      );
       
       // Build the enhanced system prompt with any triggered sub-prompts
       let enhancedSystemPrompt = activeTemplate.systemPrompt;
