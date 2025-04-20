@@ -25,14 +25,27 @@ export async function analyzeListingUrl(
   });
 
   try {
+    console.log("Sending request to listing-analyzer with URL:", url);
     const resp = await fetch("/api/listing-analyzer", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url })
     });
     
+    console.log("Received response status:", resp.status);
+    
     if (!resp.ok) {
-      const errorData = await resp.json();
+      const errorText = await resp.text();
+      console.error("Error response:", errorText);
+      
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (e) {
+        console.error("Failed to parse error response:", e);
+        throw new Error(`Server error: ${resp.status} ${resp.statusText}`);
+      }
+      
       throw new Error(errorData.error || "Failed to analyze listing");
     }
     

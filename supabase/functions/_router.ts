@@ -25,14 +25,19 @@ serve(async (req: Request) => {
 
   try {
     // Route to the appropriate function based on the path
-    if (path.startsWith('/api/listing-analyzer')) {
+    if (path === '/api/listing-analyzer' || path.startsWith('/api/listing-analyzer')) {
+      console.log('Routing to listing-analyzer function');
       // Call the listing-analyzer function
       const { data, error } = await supabase.functions.invoke('listing-analyzer', {
         body: await req.json(),
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error invoking listing-analyzer:', error);
+        throw error;
+      }
 
+      console.log('Listing analyzer response:', data);
       return new Response(
         JSON.stringify(data),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
