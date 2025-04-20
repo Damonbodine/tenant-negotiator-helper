@@ -40,13 +40,22 @@ serve(async (req: Request) => {
 
       if (error) {
         console.error('Error invoking listing-analyzer:', error);
-        throw error;
+        return new Response(
+          JSON.stringify({ error: error.message || 'Invocation error' }),
+          { 
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
       }
 
       console.log('Listing analyzer response:', data);
       return new Response(
         JSON.stringify(data),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { 
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
       );
     }
 
