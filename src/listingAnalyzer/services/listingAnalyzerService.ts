@@ -40,9 +40,9 @@ export async function analyzeListingUrl(
   });
 
   try {
-    console.log("Sending request to listing-analyzer with URL:", url);
+    console.log("Sending request to listing-analyzer API with URL:", url);
     
-    // Use fetch to call the router at /api/listing-analyzer
+    // Use fetch to call the local API route instead of directly calling the edge function
     const resp = await fetch('/api/listing-analyzer', {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -51,29 +51,20 @@ export async function analyzeListingUrl(
     
     console.log("Received response status:", resp.status);
     
-    // Safely get response text first
-    let responseText;
-    try {
-      responseText = await resp.text();
-      console.log("Raw response text:", responseText);
-    } catch (e) {
-      console.error("Error reading response text:", e);
-      throw new Error("Failed to read response from server");
+    if (!resp.ok) {
+      const errorText = await resp.text();
+      console.error(`Error response (${resp.status}):`, errorText);
+      throw new Error(`Server responded with ${resp.status}: ${errorText || 'No error details'}`);
     }
     
-    // Only parse JSON if we have content
-    let data: ListingAnalysisResponse = {};
-    if (responseText && responseText.trim()) {
-      try {
-        data = JSON.parse(responseText);
-        console.log("Parsed JSON data:", data);
-      } catch (e) {
-        console.error("Failed to parse JSON response:", e);
-        throw new Error("Invalid JSON response from listing analyzer");
-      }
-    } else {
-      console.error("Empty response received from server");
-      throw new Error("No data received from listing analyzer");
+    // Parse the JSON response
+    let data: ListingAnalysisResponse;
+    try {
+      data = await resp.json();
+      console.log("Parsed JSON data:", data);
+    } catch (e) {
+      console.error("Failed to parse JSON response:", e);
+      throw new Error("Invalid JSON response from listing analyzer");
     }
     
     // Handle explicit error response

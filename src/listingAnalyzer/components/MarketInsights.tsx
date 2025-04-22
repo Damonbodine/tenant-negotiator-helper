@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { ChatMessage } from "@/shared/types";
 import { ScrollArea } from "@/shared/ui/scroll-area";
@@ -55,12 +56,15 @@ const MarketInsights = () => {
     setError(null);
     
     try {
+      // First try to analyze as a URL
       const wasListingAnalyzed = await analyzeListingUrl(input, addAgentMessage);
+      
       if (wasListingAnalyzed) {
         setIsLoading(false);
         return;
       }
       
+      // If not a listing URL, process as normal chat message
       const response = await chatService.sendMessageToGemini(input, messages);
       
       const agentMessage: ChatMessage = {
