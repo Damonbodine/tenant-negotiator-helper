@@ -27,7 +27,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4.1',
         messages: [
           { role: 'system', content: systemPrompt },
           ...history,
@@ -35,20 +35,11 @@ serve(async (req) => {
         ],
         tools: [
           {
-            type: "function",
-            function: {
-              name: "web_search",
-              description: "Search the web for current market data and rental information",
-              parameters: {
-                type: "object",
-                properties: {
-                  query: {
-                    type: "string",
-                    description: "The search query to look up rental market information"
-                  }
-                },
-                required: ["query"]
-              }
+            type: "web_search_preview",
+            search_context_size: "medium",
+            user_location: {
+              type: "approximate",
+              country: "US"
             }
           }
         ],
@@ -67,11 +58,11 @@ serve(async (req) => {
 
     console.log('Successfully generated response with web search');
 
-    return new Response(JSON.stringify({ text, model: 'gpt-4o' }), { 
+    return new Response(JSON.stringify({ text }), { 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   } catch (error) {
-    console.error('Error in gemini-chat function:', error);
+    console.error('Error in chat-ai function:', error);
     return new Response(JSON.stringify({ error: error.message }), { 
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
