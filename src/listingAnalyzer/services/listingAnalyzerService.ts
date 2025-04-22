@@ -42,6 +42,7 @@ export async function analyzeListingUrl(
   try {
     console.log("Sending request to listing-analyzer with URL:", url);
     
+    // Use fetch to call the router at /api/listing-analyzer
     const resp = await fetch('/api/listing-analyzer', {
       method: "POST",
       headers: { "Content-Type": "application/json" },

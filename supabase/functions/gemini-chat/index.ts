@@ -35,11 +35,20 @@ serve(async (req) => {
         ],
         tools: [
           {
-            type: "web_search_preview",
-            search_context_size: "medium",
-            user_location: {
-              type: "approximate",
-              country: "US"
+            type: "function",
+            function: {
+              name: "web_search",
+              description: "Search the web for current market data and rental information",
+              parameters: {
+                type: "object",
+                properties: {
+                  query: {
+                    type: "string",
+                    description: "The search query to look up rental market information"
+                  }
+                },
+                required: ["query"]
+              }
             }
           }
         ],
