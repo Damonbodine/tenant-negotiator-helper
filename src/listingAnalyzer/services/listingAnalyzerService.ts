@@ -2,6 +2,7 @@
 import { ChatMessage } from "@/shared/types";
 import { randomTip } from "@/shared/utils/negotiationTips";
 import { toast } from "@/shared/hooks/use-toast";
+import { analyzeListingWithSupabase } from "@/api/listing-analyzer";
 
 // Define interface for the listing analyzer API response
 interface ListingAnalysisResponse {
@@ -42,30 +43,10 @@ export async function analyzeListingUrl(
   try {
     console.log("Sending request to listing-analyzer API with URL:", url);
     
-    // Use fetch to call the local API route instead of directly calling the edge function
-    const resp = await fetch('/api/listing-analyzer', {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url })
-    });
+    // Call our direct Supabase function instead of using fetch
+    const data = await analyzeListingWithSupabase(url);
     
-    console.log("Received response status:", resp.status);
-    
-    if (!resp.ok) {
-      const errorText = await resp.text();
-      console.error(`Error response (${resp.status}):`, errorText);
-      throw new Error(`Server responded with ${resp.status}: ${errorText || 'No error details'}`);
-    }
-    
-    // Parse the JSON response
-    let data: ListingAnalysisResponse;
-    try {
-      data = await resp.json();
-      console.log("Parsed JSON data:", data);
-    } catch (e) {
-      console.error("Failed to parse JSON response:", e);
-      throw new Error("Invalid JSON response from listing analyzer");
-    }
+    console.log("Received listing analysis data:", data);
     
     // Handle explicit error response
     if (data.error) {

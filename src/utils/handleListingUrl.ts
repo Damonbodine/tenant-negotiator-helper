@@ -1,6 +1,7 @@
 
 import { ChatMessage } from "@/utils/types";
 import { randomTip } from "@/utils/negotiationTips";
+import { analyzeListingWithSupabase } from "@/api/listing-analyzer";
 
 export async function handleListingUrl(
   text: string,
@@ -21,19 +22,7 @@ export async function handleListingUrl(
   });
 
   try {
-    const resp = await fetch("/api/listing-analyzer", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url })
-    });
-    
-    if (!resp.ok) {
-      const errorText = await resp.text();
-      console.error(`Error response (${resp.status}):`, errorText);
-      throw new Error(`Server responded with ${resp.status}: ${errorText || 'No error details'}`);
-    }
-    
-    const data = await resp.json();
+    const data = await analyzeListingWithSupabase(url as string);
 
     const summary = data.address
       ? `🔎 ${data.address}\nRent $${data.rent} • Beds ${data.beds}\nMarket avg $${data.marketAverage ?? "n/a"}\n➡️ Looks **${data.verdict}** (${data.deltaPercent ?? "?"}% diff).\n\n---\n💡 Negotiation tip: ${randomTip()}`
