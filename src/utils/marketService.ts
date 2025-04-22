@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 export const marketService = {
   async getMarketInsights(query: string): Promise<string> {
     try {
-      const { data, error } = await supabase.functions.invoke('gemini-chat', {
+      const { data, error } = await supabase.functions.invoke('chat-ai', {
         body: { 
           message: query,
           history: [],
@@ -46,7 +46,7 @@ Always prioritize accuracy and clarity in your market analysis.`
 
   async getNegotiationAdvice(query: string): Promise<string> {
     try {
-      const { data, error } = await supabase.functions.invoke('gemini-chat', {
+      const { data, error } = await supabase.functions.invoke('chat-ai', {
         body: { 
           message: query,
           history: [],

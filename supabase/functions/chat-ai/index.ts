@@ -19,6 +19,8 @@ serve(async (req) => {
     const { history = [], message, systemPrompt = "You are a renter-advocate assistant." } = await req.json();
 
     console.log('Processing chat message:', { message, historyLength: history.length });
+    console.log('Using system prompt:', systemPrompt.substring(0, 100) + '...');
+    console.log('Requesting GPT-4.1 model from OpenAI');
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -54,11 +56,15 @@ serve(async (req) => {
     }
 
     const data = await response.json();
+    console.log('OpenAI response received. Model used:', data.model);
+    
     const text = data.choices?.[0]?.message?.content ?? "";
-
-    console.log('Successfully generated response with web search');
-
-    return new Response(JSON.stringify({ text }), { 
+    
+    // Return both the text and the model used for verification purposes
+    return new Response(JSON.stringify({ 
+      text,
+      model: data.model || 'unknown' 
+    }), { 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   } catch (error) {
