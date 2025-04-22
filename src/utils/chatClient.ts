@@ -34,8 +34,9 @@ export const chatClient = {
           activatedSubPrompts.map(sp => sp.content).join("\n\n");
       }
       
+      console.log('Calling chat-ai function with OpenAI GPT-4.1');
       // Call the OpenAI API through our edge function
-      const { data, error } = await supabase.functions.invoke('gemini-chat', {
+      const { data, error } = await supabase.functions.invoke('chat-ai', {
         body: { 
           message, 
           history,
@@ -55,9 +56,11 @@ export const chatClient = {
         throw new Error('Received an invalid response from the AI service');
       }
 
-      // If the response includes model information, log it
+      // Log model information for verification
       if (data.model) {
-        console.log(`Response generated using model: ${data.model}`);
+        console.log(`Model used for this response: ${data.model}`);
+      } else {
+        console.warn('No model information returned from AI service');
       }
 
       return data.text;

@@ -42,6 +42,7 @@ export const chatClient = {
         content: msg.text
       }));
       
+      console.log('Calling chat-ai function with OpenAI GPT-4.1');
       const { data, error } = await supabase.functions.invoke('chat-ai', {
         body: { 
           message, 
@@ -60,6 +61,13 @@ export const chatClient = {
       if (!data || !data.text) {
         console.error('Invalid response from AI API:', data);
         throw new Error('Received an invalid response from the AI service');
+      }
+
+      // Log model information for verification
+      if (data.model) {
+        console.log(`Model used for this response: ${data.model}`);
+      } else {
+        console.warn('No model information returned from AI service');
       }
 
       return data.text;
