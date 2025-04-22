@@ -15,18 +15,6 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Validate API key
-  if (!OPENAI_API_KEY) {
-    console.error('Missing OpenAI API key');
-    return new Response(
-      JSON.stringify({ error: 'OpenAI API key not configured' }), 
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
-  }
-
   try {
     const { history = [], message, systemPrompt = "You are a renter-advocate assistant." } = await req.json();
 
@@ -39,14 +27,23 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
           ...history,
           { role: 'user', content: message }
         ],
-        temperature: 0.7,
-        max_tokens: 800,
+        tools: [
+          {
+            type: "web_search_preview",
+            search_context_size: "medium",
+            user_location: {
+              type: "approximate",
+              country: "US"
+            }
+          }
+        ],
+        temperature: 0.7
       }),
     });
 
@@ -59,22 +56,16 @@ serve(async (req) => {
     const data = await response.json();
     const text = data.choices?.[0]?.message?.content ?? "";
 
-    console.log('Successfully generated response');
+    console.log('Successfully generated response with web search');
 
-    return new Response(
-      JSON.stringify({ text, model: 'gpt-4o-mini' }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
+    return new Response(JSON.stringify({ text, model: 'gpt-4o' }), { 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   } catch (error) {
     console.error('Error in gemini-chat function:', error);
-    return new Response(
-      JSON.stringify({ error: error.message }), 
-      { 
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
+    return new Response(JSON.stringify({ error: error.message }), { 
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
   }
 });
