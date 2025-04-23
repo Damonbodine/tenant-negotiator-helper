@@ -71,12 +71,8 @@ serve(async (req) => {
         tools: [
           {
             "type": "web_search",
-            "search_context_size": "medium"
           }
         ],
-        tool_choice: {
-          "type": "web_search"
-        }
       }),
     });
 
