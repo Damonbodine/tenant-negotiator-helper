@@ -51,47 +51,67 @@ serve(async (req) => {
     const cleanUrl = url.trim().replace(/[.,;!?)\]]+$/, "");
     console.log('Analyzing listing URL (cleaned):', cleanUrl);
 
-    // Enhanced browser-like headers to help avoid detection
+    // Enhanced browser-like headers with more sophistication to avoid detection
     const headers = {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
       "Accept-Language": "en-US,en;q=0.9",
       "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
       "sec-ch-ua": '"Not A(Brand";v="99", "Google Chrome";v="124", "Chromium";v="124"',
       "sec-ch-ua-mobile": "?0",
-      "sec-ch-ua-platform": '"Windows"',
-      "Referer": "https://www.google.com/",
+      "sec-ch-ua-platform": '"macOS"',
+      "Referer": "https://www.google.com/search?q=apartments+in+austin",
       "Cache-Control": "no-cache",
-      "Cookie": "", // Empty cookie - could be populated with a valid session cookie if needed
+      "Pragma": "no-cache",
+      "Upgrade-Insecure-Requests": "1",
+      "sec-fetch-site": "cross-site",
+      "sec-fetch-mode": "navigate",
+      "sec-fetch-user": "?1",
+      "sec-fetch-dest": "document",
     };
 
-    // 1️⃣ Pull basic HTML
-    console.log('Fetching HTML from:', cleanUrl);
-    const htmlResponse = await fetch(cleanUrl, { headers });
+    // Try different approaches for fetching HTML
+    let htmlResponse;
+    let html = '';
+    try {
+      console.log('Attempting to fetch HTML with enhanced headers...');
+      htmlResponse = await fetch(cleanUrl, { 
+        headers,
+        redirect: 'follow',
+      });
 
-    if (!htmlResponse.ok) {
-      const errorMsg = `Failed to fetch listing page: ${htmlResponse.status} ${htmlResponse.statusText}`;
-      console.error(errorMsg);
+      if (!htmlResponse.ok) {
+        console.error(`Failed to fetch with first method: ${htmlResponse.status} ${htmlResponse.statusText}`);
+        
+        // Alternative fetch approach
+        console.log('Trying alternative fetch approach...');
+        const alternativeHeaders = {
+          ...headers,
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0",
+        };
+
+        htmlResponse = await fetch(cleanUrl, {
+          headers: alternativeHeaders,
+          redirect: 'follow',
+        });
+      }
+      
+      if (!htmlResponse.ok) {
+        throw new Error(`Failed to fetch listing page: ${htmlResponse.status} ${htmlResponse.statusText}`);
+      }
+      
+      html = await htmlResponse.text();
+      console.log('HTML fetched successfully, length:', html.length);
+      
+      if (html.length < 1000) {
+        console.error('Received suspiciously short HTML, likely blocked');
+        throw new Error('Received suspiciously short HTML response');
+      }
+    } catch (error) {
+      console.error('Error fetching HTML:', error);
       return new Response(
         JSON.stringify({ 
-          error: errorMsg,
-          message: "The site might be blocking our request. Try using a direct URL to the property details page instead of a search results page."
-        }),
-        { 
-          status: htmlResponse.status,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
-    
-    const html = await htmlResponse.text();
-    console.log('HTML fetched successfully, length:', html.length);
-
-    if (html.length < 1000) {
-      console.error('Received suspiciously short HTML, likely blocked');
-      return new Response(
-        JSON.stringify({ 
-          error: 'Received suspiciously short HTML response', 
-          message: "We might be getting blocked by the website. Try using another real estate site like Apartments.com or Realtor.com" 
+          error: error.message || 'Failed to fetch listing page', 
+          message: "We're having trouble accessing this website. Try using another real estate site like Apartments.com or Realtor.com" 
         }),
         { 
           status: 403,
@@ -113,52 +133,64 @@ serve(async (req) => {
     }
 
     console.log('Extracting listing details using OpenAI');
-    const extractResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        temperature: 0,
-        messages: [{
-          role: 'system',
-          content: `You are a helpful assistant that extracts property listing details from HTML. Return ONLY a JSON object with no additional text. The properties are: address, rent, beds, baths, sqft, zipcode. Return null for any values you cannot find.`
-        }, {
-          role: 'user',
-          content: `Extract the property details from this HTML:\n${html.slice(0, 15000)}`
-        }]
-      })
-    });
+    let extract;
+    try {
+      const extractResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          temperature: 0,
+          messages: [
+            {
+              role: 'system',
+              content: `You are a helpful assistant that extracts property listing details from HTML. ONLY respond with a valid JSON object - no markdown formatting, no code blocks, no explanations. The JSON object should have these properties: address (string), rent (number), beds (number|string), baths (number|string), sqft (number|string), zipcode (string). Use null for any values you cannot find.`
+            },
+            {
+              role: 'user',
+              content: `Extract the property details from this HTML:\n${html.slice(0, 15000)}`
+            }
+          ]
+        })
+      });
 
-    if (!extractResponse.ok) {
-      let errorMsg = `OpenAI API error: ${extractResponse.status}`;
-      try {
-        const errorData = await extractResponse.json();
-        console.error('OpenAI API error details:', errorData);
-        if (errorData.error) {
-          errorMsg += ` - ${errorData.error.message || errorData.error}`;
+      if (!extractResponse.ok) {
+        let errorMsg = `OpenAI API error: ${extractResponse.status}`;
+        try {
+          const errorData = await extractResponse.json();
+          console.error('OpenAI API error details:', errorData);
+          if (errorData.error) {
+            errorMsg += ` - ${errorData.error.message || errorData.error}`;
+          }
+        } catch (e) {
+          console.error('Failed to parse OpenAI error response', e);
         }
-      } catch (e) {
-        console.error('Failed to parse OpenAI error response', e);
+        throw new Error(errorMsg);
       }
+
+      extract = await extractResponse.json();
+      console.log('OpenAI extraction response:', extract);
+    } catch (error) {
+      console.error('Error calling OpenAI API:', error);
       return new Response(
-        JSON.stringify({ error: errorMsg }),
+        JSON.stringify({ 
+          error: error.message || 'Error analyzing property details', 
+          message: "We had trouble analyzing this listing. Try a different website or provide details manually."
+        }),
         { 
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
-
-    const extract = await extractResponse.json();
-    console.log('OpenAI extraction response:', extract);
     
     if (!extract.choices || !extract.choices[0] || !extract.choices[0].message || !extract.choices[0].message.content) {
       console.error('Invalid response structure from OpenAI');
       return new Response(
-        JSON.stringify({ error: 'Invalid response structure from OpenAI' }),
+        JSON.stringify({ error: 'Invalid response from AI model' }),
         { 
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -166,39 +198,60 @@ serve(async (req) => {
       );
     }
     
-    // Parse the properties safely - with enhanced error handling
+    // Parse the properties with enhanced error handling
     let props;
     try {
-      // Extract the JSON from the content - the API might return markdown with ```json wrapper
+      // Extract the JSON from the content with improved handling of different formats
       let content = extract.choices[0].message.content.trim();
       
-      // Handle if response is in a code block
+      // Remove any non-JSON parts from the response
+      console.log('Raw OpenAI content:', content);
+      
+      // Handle if response is in code blocks
       if (content.includes('```json')) {
         content = content.split('```json')[1].split('```')[0].trim();
       } else if (content.includes('```')) {
         content = content.split('```')[1].split('```')[0].trim();
       }
       
-      // If content starts with curly brace directly, try parsing it
+      // If content doesn't start with curly brace, try to find JSON object
       if (!content.startsWith('{')) {
-        // Try to find a JSON object in the content
         const jsonMatch = content.match(/({[\s\S]*})/);
         if (jsonMatch) {
           content = jsonMatch[0];
+        } else {
+          throw new Error('Could not find valid JSON in AI response');
         }
       }
       
-      props = JSON.parse(content);
+      // Try to parse the JSON
+      try {
+        props = JSON.parse(content);
+      } catch (e) {
+        // If first attempt fails, try more aggressive cleaning
+        content = content.replace(/[\n\r\t]/g, ' ');
+        const jsonRegex = /{[^}]*}/g;
+        const jsonMatch = content.match(jsonRegex);
+        
+        if (jsonMatch) {
+          props = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error('Failed to extract valid JSON from AI response');
+        }
+      }
+      
       console.log('Extracted property details:', props);
       
-      // Check if we actually got useful data
-      const hasRealData = Object.values(props).some(val => val !== null && val !== undefined);
-      if (!hasRealData) {
-        console.error('All extracted properties are null or undefined');
+      // Validate we have at least some meaningful data
+      const hasAddress = props.address && typeof props.address === 'string';
+      const hasRent = props.rent && typeof props.rent === 'number';
+      
+      if (!hasAddress || !hasRent) {
+        console.warn('Missing critical property data', {hasAddress, hasRent});
         return new Response(
           JSON.stringify({ 
-            error: 'Failed to extract any meaningful data from the listing', 
-            message: "We couldn't extract the property details. The website may be using a format we can't parse. Try a different listing URL."
+            error: 'Could not extract critical property details', 
+            message: "We couldn't extract the key details from this listing. Please try a different listing from another website like Apartments.com or Realtor.com."
           }),
           { 
             status: 422,
@@ -210,9 +263,9 @@ serve(async (req) => {
       console.error('Failed to parse OpenAI response:', e);
       return new Response(
         JSON.stringify({ 
-          error: 'Failed to parse property details from OpenAI response',
+          error: 'Failed to parse property details from AI response',
           rawContent: extract.choices[0].message.content,
-          message: "The AI couldn't properly extract data from this page format. Try a different listing."
+          message: "The AI couldn't properly extract data from this page format. Try a different real estate website."
         }),
         { 
           status: 500,
@@ -285,7 +338,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         error: error.message || 'Unknown error in listing analyzer',
-        message: "Something went wrong while analyzing the listing. Please try again with a different URL."
+        message: "Something went wrong while analyzing the listing. Please try again with a different URL from another real estate website."
       }),
       { 
         status: 500,

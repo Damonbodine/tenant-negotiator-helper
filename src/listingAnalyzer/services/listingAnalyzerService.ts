@@ -25,7 +25,7 @@ export async function analyzeListingUrl(
   addAgentMessage: (m: ChatMessage) => void
 ) {
   // Improved regex to better capture real estate platform URLs
-  const urlRegex = /(https?:\/\/(www\.)?(zillow|redfin|apartments|trulia|realtor)\.com\/[^\s]+)/i;
+  const urlRegex = /(https?:\/\/(www\.)?(zillow|redfin|apartments|trulia|realtor|hotpads)\.com\/[^\s]+)/i;
   const match = text.match(urlRegex);
   
   if (!match) return false;
@@ -112,7 +112,7 @@ export async function analyzeListingUrl(
       type: "agent",
       text: error instanceof Error 
         ? `⚠️ ${error.message}`
-        : "⚠️ I encountered an error while analyzing that listing. Please try again later or provide the property details manually.",
+        : "⚠️ I encountered an error while analyzing that listing. Please try again with a URL from Apartments.com or Realtor.com instead.",
       timestamp: new Date()
     });
     
