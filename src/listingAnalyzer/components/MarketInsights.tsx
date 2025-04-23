@@ -5,21 +5,21 @@ import { ScrollArea } from "@/shared/ui/scroll-area";
 import { Card } from "@/shared/ui/card";
 import { Textarea } from "@/shared/ui/textarea";
 import { Button } from "@/shared/ui/button";
-import { Send, MessageSquare } from "lucide-react";
+import { Send, MessageSquare, Search } from "lucide-react";
 import { toast } from "@/shared/hooks/use-toast";
 import { chatService } from "@/shared/services/chatService";
 import { LoadingIndicator } from "@/chat/components/LoadingIndicator";
 import { ChatMessage as ChatMessageComponent } from "@/chat/components/ChatMessage";
 import { Alert, AlertTitle, AlertDescription } from "@/shared/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { analyzeListingUrl } from "@/listingAnalyzer/services/listingAnalyzerService"; 
+import { analyzeListingUrl, analyzeAddress } from "@/listingAnalyzer/services/listingAnalyzerService";
 
 const MarketInsights = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "welcome",
       type: "agent",
-      text: "Hello! I can help you understand rental market trends and pricing. What area are you interested in learning about?",
+      text: "Hello! I can help you understand rental market trends and pricing. Enter a property address or paste a listing URL to get started.",
       timestamp: new Date()
     }
   ]);
@@ -28,9 +28,9 @@ const MarketInsights = () => {
   const [error, setError] = useState<string | null>(null);
 
   const quickActions = [
-    "Am I paying too much?",
-    "How much are rentals in this area?",
-    "Help me negotiate"
+    "123 Main St, New York, NY",
+    "Analyze 1-bed apartments in San Francisco",
+    "Is $2,500 fair for a 2-bed in Chicago?"
   ];
 
   const handleQuickAction = (text: string) => {
@@ -91,24 +91,29 @@ const MarketInsights = () => {
   return (
     <div className="flex flex-col h-full border rounded-xl overflow-hidden shadow-md bg-white dark:bg-slate-800">
       <div className="p-3 border-b border-border bg-slate-50 dark:bg-slate-900">
-        <h3 className="font-medium">Rental Market Assistant</h3>
+        <h3 className="font-medium">Rental Price Analyzer</h3>
       </div>
       
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4" aria-live="polite" role="log">
           {messages.length === 1 && (
-            <div className="flex flex-wrap gap-2 mb-4">
-              {quickActions.map((action) => (
-                <Button
-                  key={action}
-                  variant="outline"
-                  className="flex items-center gap-2"
-                  onClick={() => handleQuickAction(action)}
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  {action}
-                </Button>
-              ))}
+            <div className="space-y-3 mb-4">
+              <p className="text-sm text-muted-foreground">
+                Enter an address to analyze rental prices, or try one of these examples:
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {quickActions.map((action) => (
+                  <Button
+                    key={action}
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    onClick={() => handleQuickAction(action)}
+                  >
+                    <Search className="h-4 w-4" />
+                    {action}
+                  </Button>
+                ))}
+              </div>
             </div>
           )}
           {messages.map((message) => (
@@ -128,7 +133,7 @@ const MarketInsights = () => {
       <div className="p-4 border-t border-border bg-slate-50 dark:bg-slate-900">
         <div className="flex items-end gap-2">
           <Textarea
-            placeholder="Ask about rental market trends..."
+            placeholder="Enter an address or paste a listing URL..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             className="min-h-[80px] resize-none"
