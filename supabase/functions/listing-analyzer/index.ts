@@ -51,24 +51,31 @@ serve(async (req) => {
     const cleanUrl = url.trim().replace(/[.,;!?)\]]+$/, "");
     console.log('Analyzing listing URL (cleaned):', cleanUrl);
 
-    // 1️⃣ Pull basic HTML with proper browser-like headers
+    // Enhanced browser-like headers to help avoid detection
+    const headers = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+      "sec-ch-ua": '"Not A(Brand";v="99", "Google Chrome";v="124", "Chromium";v="124"',
+      "sec-ch-ua-mobile": "?0",
+      "sec-ch-ua-platform": '"Windows"',
+      "Referer": "https://www.google.com/",
+      "Cache-Control": "no-cache",
+      "Cookie": "", // Empty cookie - could be populated with a valid session cookie if needed
+    };
+
+    // 1️⃣ Pull basic HTML
     console.log('Fetching HTML from:', cleanUrl);
-    const htmlResponse = await fetch(cleanUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-        "sec-ch-ua": '"Not A(Brand";v="99", "Google Chrome";v="124", "Chromium";v="124"',
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": '"Windows"',
-      }
-    });
+    const htmlResponse = await fetch(cleanUrl, { headers });
 
     if (!htmlResponse.ok) {
       const errorMsg = `Failed to fetch listing page: ${htmlResponse.status} ${htmlResponse.statusText}`;
       console.error(errorMsg);
       return new Response(
-        JSON.stringify({ error: errorMsg }),
+        JSON.stringify({ 
+          error: errorMsg,
+          message: "The site might be blocking our request. Try using a direct URL to the property details page instead of a search results page."
+        }),
         { 
           status: htmlResponse.status,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -78,6 +85,20 @@ serve(async (req) => {
     
     const html = await htmlResponse.text();
     console.log('HTML fetched successfully, length:', html.length);
+
+    if (html.length < 1000) {
+      console.error('Received suspiciously short HTML, likely blocked');
+      return new Response(
+        JSON.stringify({ 
+          error: 'Received suspiciously short HTML response', 
+          message: "We might be getting blocked by the website. Try using another real estate site like Apartments.com or Realtor.com" 
+        }),
+        { 
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
 
     // 2️⃣ Ask OpenAI to extract fields
     if (!OPENAI_API_KEY) {
@@ -102,8 +123,11 @@ serve(async (req) => {
         model: 'gpt-4o-mini',
         temperature: 0,
         messages: [{
+          role: 'system',
+          content: `You are a helpful assistant that extracts property listing details from HTML. Return ONLY a JSON object with no additional text. The properties are: address, rent, beds, baths, sqft, zipcode. Return null for any values you cannot find.`
+        }, {
           role: 'user',
-          content: `From this HTML extract the following information: address, rent, beds, baths, sqft, zipcode. Return just a JSON object with these fields. If you cannot find a value, use null.\nHTML:\n${html.slice(0, 12000)}`
+          content: `Extract the property details from this HTML:\n${html.slice(0, 15000)}`
         }]
       })
     });
@@ -142,7 +166,7 @@ serve(async (req) => {
       );
     }
     
-    // Parse the properties safely - key fix here!
+    // Parse the properties safely - with enhanced error handling
     let props;
     try {
       // Extract the JSON from the content - the API might return markdown with ```json wrapper
@@ -155,14 +179,40 @@ serve(async (req) => {
         content = content.split('```')[1].split('```')[0].trim();
       }
       
+      // If content starts with curly brace directly, try parsing it
+      if (!content.startsWith('{')) {
+        // Try to find a JSON object in the content
+        const jsonMatch = content.match(/({[\s\S]*})/);
+        if (jsonMatch) {
+          content = jsonMatch[0];
+        }
+      }
+      
       props = JSON.parse(content);
       console.log('Extracted property details:', props);
+      
+      // Check if we actually got useful data
+      const hasRealData = Object.values(props).some(val => val !== null && val !== undefined);
+      if (!hasRealData) {
+        console.error('All extracted properties are null or undefined');
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to extract any meaningful data from the listing', 
+            message: "We couldn't extract the property details. The website may be using a format we can't parse. Try a different listing URL."
+          }),
+          { 
+            status: 422,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
     } catch (e) {
       console.error('Failed to parse OpenAI response:', e);
       return new Response(
         JSON.stringify({ 
           error: 'Failed to parse property details from OpenAI response',
-          rawContent: extract.choices[0].message.content
+          rawContent: extract.choices[0].message.content,
+          message: "The AI couldn't properly extract data from this page format. Try a different listing."
         }),
         { 
           status: 500,
@@ -212,8 +262,13 @@ serve(async (req) => {
       }
     }
 
-    // Return the result
-    const result = { ...props, verdict };
+    // Return the result with added source URL for reference
+    const result = { 
+      ...props, 
+      verdict,
+      sourceUrl: cleanUrl,
+      message: props.address ? undefined : "We couldn't extract complete details from this listing. Some data may be missing."
+    };
     console.log('Final analysis result:', result);
     
     return new Response(
@@ -228,7 +283,10 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in listing-analyzer function:', error);
     return new Response(
-      JSON.stringify({ error: error.message || 'Unknown error in listing analyzer' }),
+      JSON.stringify({ 
+        error: error.message || 'Unknown error in listing analyzer',
+        message: "Something went wrong while analyzing the listing. Please try again with a different URL."
+      }),
       { 
         status: 500,
         headers: { 

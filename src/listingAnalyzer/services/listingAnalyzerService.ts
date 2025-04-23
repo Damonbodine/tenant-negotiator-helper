@@ -7,6 +7,7 @@ import { analyzeListingWithSupabase } from "@/api/listing-analyzer";
 // Define interface for the listing analyzer API response
 interface ListingAnalysisResponse {
   error?: string;
+  message?: string;
   address?: string;
   rent?: number;
   beds?: number | string;
@@ -16,6 +17,7 @@ interface ListingAnalysisResponse {
   marketAverage?: number;
   deltaPercent?: string;
   verdict?: string;
+  sourceUrl?: string;
 }
 
 export async function analyzeListingUrl(
@@ -53,6 +55,11 @@ export async function analyzeListingUrl(
       throw new Error(data.error);
     }
 
+    // If there's a user-friendly message, use it in case of missing data
+    if (data.message && (!data.address || !data.rent)) {
+      throw new Error(data.message);
+    }
+
     let analysisText = "";
     if (data.address) {
       analysisText = `🔎 **${data.address}**\n\n`;
@@ -80,7 +87,7 @@ export async function analyzeListingUrl(
       
       analysisText += `---\n💡 **Negotiation tip:** ${randomTip()}`;
     } else {
-      analysisText = "⚠️ I couldn't extract all the details from that listing. Try using another link or provide the property details manually.";
+      throw new Error("I couldn't extract all the details from that listing. Try using another link or provide the property details manually.");
     }
 
     addAgentMessage({
