@@ -19,6 +19,7 @@ interface ListingAnalysisResponse {
   deltaPercent?: string;
   verdict?: string;
   sourceUrl?: string;
+  propertyName?: string;
 }
 
 interface AddressAnalysisResponse {
@@ -77,7 +78,12 @@ export async function analyzeListingUrl(
 
     let analysisText = "";
     if (data.address) {
-      analysisText = `🔎 **${data.address}**\n\n`;
+      // If we have a property name and it's not already part of the address, show it
+      const addressLine = data.propertyName && !data.address.includes(data.propertyName) 
+        ? `**${data.propertyName}** (${data.address})`
+        : `**${data.address}**`;
+        
+      analysisText = `🔎 ${addressLine}\n\n`;
       
       if (data.rent) {
         analysisText += `💰 Listed rent: **$${data.rent}**\n`;
