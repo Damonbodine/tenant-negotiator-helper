@@ -4,7 +4,8 @@ import { Header } from "@/shared/components/layout/Header";
 import { FeatureCards } from "@/shared/components/marketing/FeatureCards";
 import { NewsletterSignup } from "@/shared/components/marketing/NewsletterSignup";
 import { Button } from "@/shared/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search, MessageSquare } from "lucide-react";
+import { Input } from "@/shared/ui/input";
 
 // Lazy-loaded components
 const MarketInsights = lazy(() => import("@/listingAnalyzer/components/MarketInsights"));
@@ -15,6 +16,15 @@ type JourneyType = "market" | "negotiation" | null;
 
 const Index = () => {
   const [activeJourney, setActiveJourney] = useState<JourneyType>(null);
+  const [addressInput, setAddressInput] = useState("");
+  
+  const handleAddressAnalyze = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (addressInput.trim()) {
+      setActiveJourney("market");
+      // The address will be handled by the MarketInsights component
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -64,9 +74,26 @@ const Index = () => {
               <h2 className="text-5xl font-bold mb-6 gradient-heading">
                 Don't overpay for your next apartment.
               </h2>
-              <p className="text-xl text-cyan-400/90 font-medium">
+              <p className="text-xl text-cyan-400/90 font-medium mb-8">
                 Arm yourself with data to get the best price on rent
               </p>
+              
+              {/* Quick address analysis form */}
+              <form onSubmit={handleAddressAnalyze} className="max-w-lg mx-auto">
+                <div className="flex gap-2">
+                  <Input 
+                    type="text" 
+                    placeholder="Enter an address to analyze price..."
+                    className="flex-1"
+                    value={addressInput}
+                    onChange={(e) => setAddressInput(e.target.value)}
+                  />
+                  <Button type="submit">
+                    <Search className="mr-2 h-4 w-4" />
+                    Analyze
+                  </Button>
+                </div>
+              </form>
             </div>
             
             <FeatureCards setActiveJourney={setActiveJourney} />
