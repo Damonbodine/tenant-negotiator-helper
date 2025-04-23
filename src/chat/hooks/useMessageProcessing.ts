@@ -61,7 +61,7 @@ const suggestionList = [
     trigger: (input: string) => /(discriminat|unfair|illegal|sketchy|bias|landlord)/i.test(input)
   },
   {
-    text: "Should I show you what to expect on move-in day so you’re not caught off guard?",
+    text: "Should I show you what to expect on move-in day so you're not caught off guard?",
     trigger: (input: string) => /(move|moved|moving|new apartment)/i.test(input)
   },
   // 🧠 Education & Tips
@@ -70,7 +70,7 @@ const suggestionList = [
     trigger: (input: string, _history: ChatMessage[], isFirst: boolean) => isFirst
   },
   {
-    text: "Should I explain what most landlords don’t want you to know?",
+    text: "Should I explain what most landlords don't want you to know?",
     trigger: () => true // Always an option
   }
 ];
@@ -130,8 +130,8 @@ export async function processUserMessage(messageText: string, {
   setSuggestions([]);
 
   const getIsFirstInteraction = (history: ChatMessage[]) => {
-    // Only the welcome agent message && this user message
-    const realHistory = history.filter(m => m.type !== 'system' && m.type !== 'internal');
+    // Only count user and agent messages for determining if this is the first interaction
+    const realHistory = history.filter(m => m.type === "user" || m.type === "agent");
     return realHistory.length <= 1;
   };
   
@@ -187,16 +187,18 @@ export async function processUserMessage(messageText: string, {
     setMessages((prev: ChatMessage[]) => [...prev, finalAgentMessage]);
 
     // SUGGESTIONS: Analyze input + history and add suggestions for next steps
-    setSuggestions(() => {
-      // This history includes the new agent message
-      const curHistory = [userMessage, finalAgentMessage];
-      // Look back at entire message history if needed (this will always be called after setMessages)
-      return getDynamicSuggestions(
-        messageText,
-        curHistory,
-        getIsFirstInteraction(curHistory)
-      );
-    });
+    // Create a history array with the current interaction
+    const currentHistory = [userMessage, finalAgentMessage];
+    
+    // Calculate dynamic suggestions
+    const dynamicSuggestions = getDynamicSuggestions(
+      messageText,
+      currentHistory,
+      getIsFirstInteraction(currentHistory)
+    );
+    
+    // Set the dynamic suggestions
+    setSuggestions(dynamicSuggestions);
 
     // Agent voice response
     try {
