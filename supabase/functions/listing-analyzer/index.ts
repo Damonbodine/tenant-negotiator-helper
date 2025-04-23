@@ -103,7 +103,7 @@ serve(async (req) => {
         temperature: 0,
         messages: [{
           role: 'user',
-          content: `From this HTML return JSON: {address, rent, beds, baths, sqft, zipcode}. If missing return nulls.\nHTML:\n${html.slice(0, 12000)}`
+          content: `From this HTML extract the following information: address, rent, beds, baths, sqft, zipcode. Return just a JSON object with these fields. If you cannot find a value, use null.\nHTML:\n${html.slice(0, 12000)}`
         }]
       })
     });
@@ -142,15 +142,28 @@ serve(async (req) => {
       );
     }
     
-    // Parse the properties safely
+    // Parse the properties safely - key fix here!
     let props;
     try {
-      props = JSON.parse(extract.choices[0].message.content);
+      // Extract the JSON from the content - the API might return markdown with ```json wrapper
+      let content = extract.choices[0].message.content.trim();
+      
+      // Handle if response is in a code block
+      if (content.includes('```json')) {
+        content = content.split('```json')[1].split('```')[0].trim();
+      } else if (content.includes('```')) {
+        content = content.split('```')[1].split('```')[0].trim();
+      }
+      
+      props = JSON.parse(content);
       console.log('Extracted property details:', props);
     } catch (e) {
       console.error('Failed to parse OpenAI response:', e);
       return new Response(
-        JSON.stringify({ error: 'Failed to parse property details from OpenAI response' }),
+        JSON.stringify({ 
+          error: 'Failed to parse property details from OpenAI response',
+          rawContent: extract.choices[0].message.content
+        }),
         { 
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
