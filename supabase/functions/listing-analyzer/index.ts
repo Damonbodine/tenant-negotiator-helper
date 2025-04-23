@@ -147,11 +147,22 @@ serve(async (req) => {
           messages: [
             {
               role: 'system',
-              content: `You are a helpful assistant that extracts property listing details from HTML. ONLY respond with a valid JSON object - no markdown formatting, no code blocks, no explanations. The JSON object should have these properties: address (string), rent (number), beds (number|string), baths (number|string), sqft (number|string), zipcode (string). Use null for any values you cannot find.`
+              content: `You are a helpful assistant that extracts property listing details from HTML. Extract the ACTUAL property details from the HTML. DO NOT make up or hallucinate any information. If you don't see the information in the HTML, set the value to null.
+
+ONLY respond with a valid JSON object - no markdown formatting, no code blocks, no explanations. The JSON object should have these properties: 
+- address (string): The full property address including city, state and zip
+- rent (number): The monthly rent in dollars, as a number without $ or commas
+- beds (number|string): Number of bedrooms or text description (like "studio")
+- baths (number|string): Number of bathrooms
+- sqft (number|string): Square footage as a number
+- zipcode (string): The zip/postal code
+- propertyName (string): The name of the apartment complex or building if available
+
+For Zillow pages, focus on extracting the actual address and details, not placeholders. Use null for any values you cannot find.`
             },
             {
               role: 'user',
-              content: `Extract the property details from this HTML:\n${html.slice(0, 15000)}`
+              content: `Extract the property details from this HTML. This is a ${cleanUrl.includes('zillow') ? 'Zillow' : 'property'} listing:\n${html.slice(0, 15000)}`
             }
           ]
         })
@@ -242,12 +253,53 @@ serve(async (req) => {
       
       console.log('Extracted property details:', props);
       
+      // Special check for Zillow URLs to prevent placeholder data
+      if (cleanUrl.includes('zillow.com')) {
+        // Look at the URL to extract info that might be embedded in the URL itself
+        const urlParts = cleanUrl.split('/');
+        let cityState = null;
+        let propertyName = null;
+        
+        // Try to extract city/state and property name from URL segments
+        for (let i = 0; i < urlParts.length; i++) {
+          // Potential city-state format: "austin-tx"
+          if (urlParts[i].includes('-') && i < urlParts.length - 1) {
+            cityState = urlParts[i];
+            // Next segment might be the property name
+            propertyName = urlParts[i+1];
+            break;
+          }
+        }
+        
+        // Use URL-extracted property name if address looks like a placeholder
+        const isPlaceholderAddress = props.address && 
+          (props.address.includes('Main St') || 
+           props.address.includes('123') || 
+           props.address.includes('Springfield'));
+        
+        if (isPlaceholderAddress && propertyName) {
+          console.log('Detected placeholder address, using property name from URL:', propertyName);
+          props.propertyName = propertyName.replace(/-/g, ' ');
+          
+          // Construct a better address if we have city/state
+          if (cityState) {
+            const cityStateParts = cityState.split('-');
+            if (cityStateParts.length >= 2) {
+              const city = cityStateParts[0].charAt(0).toUpperCase() + cityStateParts[0].slice(1);
+              const state = cityStateParts[1].toUpperCase();
+              props.address = `${props.propertyName}, ${city}, ${state}`;
+            }
+          }
+        }
+      }
+      
       // Validate we have at least some meaningful data
       const hasAddress = props.address && typeof props.address === 'string';
+      const hasPropertyName = props.propertyName && typeof props.propertyName === 'string';
       const hasRent = props.rent && typeof props.rent === 'number';
       
-      if (!hasAddress || !hasRent) {
-        console.warn('Missing critical property data', {hasAddress, hasRent});
+      if (!hasAddress && !hasPropertyName) {
+        console.warn('Missing critical property data', {hasAddress, hasPropertyName, hasRent});
         return new Response(
           JSON.stringify({ 
             error: 'Could not extract critical property details', 
@@ -259,6 +311,12 @@ serve(async (req) => {
           }
         );
       }
+      
+      // If we have a property name but not an address, use property name in the response
+      if (!hasAddress && hasPropertyName) {
+        props.address = props.propertyName;
+      }
+      
     } catch (e) {
       console.error('Failed to parse OpenAI response:', e);
       return new Response(
