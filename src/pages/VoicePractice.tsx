@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -7,7 +6,6 @@ import { ScenarioSelector } from "@/components/negotiation/ScenarioSelector";
 import { QuickTips } from "@/components/negotiation/QuickTips";
 import { useState } from "react";
 
-// Add a type declaration for the ElevenLabs widget element
 declare global {
   namespace JSX {
     interface IntrinsicElements {
@@ -40,20 +38,11 @@ const VoicePractice = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <Card className="h-[600px] shadow-md border-blue-100">
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent border-b">
-                <CardTitle>Practice with AI Landlord</CardTitle>
-                <CardDescription>
-                  Use voice chat to practice your negotiation skills
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6 h-[calc(100%-5rem)] flex items-center justify-center">
-                <div className="w-full h-full">
-                  <elevenlabs-convai agent-id="4uRI9hKr0Mhg7DbwaLDD"></elevenlabs-convai>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="lg:col-span-2 space-y-6">
+            <h3 className="text-xl font-semibold text-blue-600">Practice with AI Landlord</h3>
+            <div className="w-full">
+              <elevenlabs-convai agent-id="4uRI9hKr0Mhg7DbwaLDD"></elevenlabs-convai>
+            </div>
           </div>
           
           <div className="space-y-6">
