@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -68,6 +67,34 @@ serve(async (req) => {
       "sec-fetch-user": "?1",
       "sec-fetch-dest": "document",
     };
+
+    // Pre-extract information from the URL itself for Zillow URLs
+    let urlExtractedInfo = {};
+    if (cleanUrl.includes('zillow.com')) {
+      // Parse location from Zillow URL
+      const urlParts = cleanUrl.split('/');
+      let location = null;
+      
+      // Try to find location segment like "apartments/austin-tx" or similar
+      for (let i = 0; i < urlParts.length; i++) {
+        if (urlParts[i].includes('-') && (urlParts[i].includes('apartments') || urlParts[i].includes('homes'))) {
+          location = urlParts[i+1];
+          break;
+        } else if (urlParts[i] === 'apartments' || urlParts[i] === 'homes') {
+          location = urlParts[i+1];
+          break;
+        }
+      }
+      
+      // Get property name or identifier from the URL
+      const propertyIdentifier = urlParts.find(part => part.includes('#'))?.split('#')[1] || 
+                                 urlParts[urlParts.length - 1];
+      
+      if (location || propertyIdentifier) {
+        console.log('Pre-extracted from URL:', { location, propertyIdentifier });
+        urlExtractedInfo = { location, propertyIdentifier };
+      }
+    }
 
     // Try different approaches for fetching HTML
     let htmlResponse;
@@ -158,11 +185,16 @@ ONLY respond with a valid JSON object - no markdown formatting, no code blocks, 
 - zipcode (string): The zip/postal code
 - propertyName (string): The name of the apartment complex or building if available
 
-For Zillow pages, focus on extracting the actual address and details, not placeholders. Use null for any values you cannot find.`
+IMPORTANT INSTRUCTIONS FOR ZILLOW LISTINGS:
+1. For Zillow listings, NEVER return "123 Main St" or any other placeholder address.
+2. Look in the HTML for sections like "BuildingInfo", "LocationInfo", "propertyAddress", or "addressStreet".
+3. The real address is often inside <script> tags with type="application/ld+json".
+4. If you can't find the full address, return the property name and location (city, state) instead.
+5. For zipcode, look for postal_code, addressZipcode, or search for 5-digit numbers in the address section.`
             },
             {
               role: 'user',
-              content: `Extract the property details from this HTML. This is a ${cleanUrl.includes('zillow') ? 'Zillow' : 'property'} listing:\n${html.slice(0, 15000)}`
+              content: `Extract the property details from this HTML. This is a ${cleanUrl.includes('zillow') ? 'Zillow' : 'property'} listing:\n${html.slice(0, 20000)}`
             }
           ]
         })
@@ -253,42 +285,60 @@ For Zillow pages, focus on extracting the actual address and details, not placeh
       
       console.log('Extracted property details:', props);
       
-      // Special check for Zillow URLs to prevent placeholder data
+      // Special handling for Zillow URLs
       if (cleanUrl.includes('zillow.com')) {
-        // Look at the URL to extract info that might be embedded in the URL itself
-        const urlParts = cleanUrl.split('/');
-        let cityState = null;
-        let propertyName = null;
+        // Check for placeholder or missing address
+        const isPlaceholderAddress = 
+          !props.address || 
+          props.address === "null" || 
+          props.address === "undefined" || 
+          props.address.includes('Main St') || 
+          props.address.includes('123') || 
+          props.address.includes('Springfield');
         
-        // Try to extract city/state and property name from URL segments
-        for (let i = 0; i < urlParts.length; i++) {
-          // Potential city-state format: "austin-tx"
-          if (urlParts[i].includes('-') && i < urlParts.length - 1) {
-            cityState = urlParts[i];
-            // Next segment might be the property name
-            propertyName = urlParts[i+1];
-            break;
-          }
-        }
-        
-        // Use URL-extracted property name if address looks like a placeholder
-        const isPlaceholderAddress = props.address && 
-          (props.address.includes('Main St') || 
-           props.address.includes('123') || 
-           props.address.includes('Springfield'));
-        
-        if (isPlaceholderAddress && propertyName) {
-          console.log('Detected placeholder address, using property name from URL:', propertyName);
-          props.propertyName = propertyName.replace(/-/g, ' ');
+        if (isPlaceholderAddress) {
+          console.log('Detected placeholder/missing address, attempting to construct from URL and property name');
           
-          // Construct a better address if we have city/state
-          if (cityState) {
-            const cityStateParts = cityState.split('-');
-            if (cityStateParts.length >= 2) {
-              const city = cityStateParts[0].charAt(0).toUpperCase() + cityStateParts[0].slice(1);
-              const state = cityStateParts[1].toUpperCase();
-              props.address = `${props.propertyName}, ${city}, ${state}`;
+          // Construct better address from URL info and property name
+          let constructedAddress = '';
+          
+          // Try to use property name from extraction
+          if (props.propertyName && props.propertyName !== "null" && props.propertyName !== "undefined") {
+            constructedAddress += props.propertyName;
+          } 
+          // Otherwise use property identifier from URL
+          else if (urlExtractedInfo.propertyIdentifier) {
+            const formattedIdentifier = urlExtractedInfo.propertyIdentifier
+              .replace(/-/g, ' ')
+              .replace(/([a-z])([A-Z])/g, '$1 $2') // Add space between camelCase
+              .split('#')[0]  // Remove any fragments
+              .trim();
+            
+            if (formattedIdentifier) {
+              constructedAddress += formattedIdentifier;
             }
+          }
+          
+          // Add location information
+          if (urlExtractedInfo.location) {
+            // Format location from austin-tx to Austin, TX
+            const locationParts = urlExtractedInfo.location.split('-');
+            if (locationParts.length >= 2) {
+              const city = locationParts[0].charAt(0).toUpperCase() + locationParts[0].slice(1);
+              const state = locationParts[1].toUpperCase();
+              
+              if (constructedAddress) {
+                constructedAddress += ` (${city}, ${state})`;
+              } else {
+                constructedAddress = `${city}, ${state}`;
+              }
+            }
+          }
+          
+          // Use the constructed address if we have something better than the placeholder
+          if (constructedAddress) {
+            props.address = constructedAddress;
+            console.log('Using constructed address:', constructedAddress);
           }
         }
       }
