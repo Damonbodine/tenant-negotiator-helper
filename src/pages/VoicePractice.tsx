@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
@@ -37,15 +38,17 @@ const VoicePractice = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Widget on the left - taking 8 columns on large screens */}
+          <div className="lg:col-span-8 space-y-6 order-2 lg:order-1">
             <h3 className="text-xl font-semibold text-blue-600">Practice with AI Landlord</h3>
             <div className="w-full">
               <elevenlabs-convai agent-id="4uRI9hKr0Mhg7DbwaLDD"></elevenlabs-convai>
             </div>
           </div>
           
-          <div className="space-y-6">
+          {/* Scenarios on the right - taking 4 columns on large screens */}
+          <div className="lg:col-span-4 space-y-6 order-1 lg:order-2">
             <Card className="shadow-md border-blue-100">
               <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent border-b">
                 <CardTitle>Practice Scenarios</CardTitle>
