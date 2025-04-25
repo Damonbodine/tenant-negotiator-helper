@@ -1,11 +1,9 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChatMessage } from "@/shared/types";
 import { ScrollArea } from "@/shared/ui/scroll-area";
-import { Card } from "@/shared/ui/card";
 import { Textarea } from "@/shared/ui/textarea";
 import { Button } from "@/shared/ui/button";
-import { Send, MessageSquare, Search } from "lucide-react";
+import { Send, Search } from "lucide-react";
 import { toast } from "@/shared/hooks/use-toast";
 import { chatService } from "@/shared/services/chatService";
 import { LoadingIndicator } from "@/chat/components/LoadingIndicator";
@@ -14,7 +12,11 @@ import { Alert, AlertTitle, AlertDescription } from "@/shared/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { analyzeListingUrl, analyzeAddress } from "@/listingAnalyzer/services/listingAnalyzerService";
 
-const MarketInsights = () => {
+interface MarketInsightsProps {
+  initialAddress?: string;
+}
+
+const MarketInsights = ({ initialAddress = "" }: MarketInsightsProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "welcome",
@@ -23,20 +25,21 @@ const MarketInsights = () => {
       timestamp: new Date()
     }
   ]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(initialAddress);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialAddress) {
+      handleSendMessage();
+    }
+  }, []);
 
   const quickActions = [
     "123 Main St, New York, NY",
     "Analyze 1-bed apartments in San Francisco",
     "Is $2,500 fair for a 2-bed in Chicago?"
   ];
-
-  const handleQuickAction = (text: string) => {
-    setInput(text);
-    setTimeout(() => handleSendMessage(), 100);
-  };
 
   const addAgentMessage = (msg: ChatMessage) => setMessages(prev => [...prev, msg]);
 
@@ -64,17 +67,8 @@ const MarketInsights = () => {
         return;
       }
       
-      // If not a listing URL, process as normal chat message
-      const response = await chatService.sendMessageToGemini(input, messages);
-      
-      const agentMessage: ChatMessage = {
-        id: Date.now().toString(),
-        type: 'agent',
-        text: response,
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => [...prev, agentMessage]);
+      // If not a listing URL, process as address
+      await analyzeAddress(input, addAgentMessage);
     } catch (error: any) {
       console.error("Error sending message:", error);
       setError(error.message || "Failed to get response from the agent");

@@ -1,9 +1,10 @@
+
 import { useState, lazy, Suspense } from "react";
 import { Header } from "@/shared/components/layout/Header";
 import { FeatureCards } from "@/components/marketing/FeatureCards";
 import { NewsletterSignup } from "@/shared/components/marketing/NewsletterSignup";
 import { Button } from "@/shared/ui/button";
-import { Loader2, Search, MessageSquare } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { Input } from "@/shared/ui/input";
 
 // Lazy-loaded components
@@ -21,7 +22,6 @@ const Index = () => {
     e.preventDefault();
     if (addressInput.trim()) {
       setActiveJourney("market");
-      // The address will be handled by the MarketInsights component
     }
   };
 
@@ -48,7 +48,7 @@ const Index = () => {
                   </button>
                 </div>
                 
-                <MarketInsights />
+                <MarketInsights initialAddress={addressInput} />
               </div>
             )}
             
