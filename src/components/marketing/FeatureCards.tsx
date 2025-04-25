@@ -8,7 +8,7 @@ interface FeatureCardsProps {
 
 export function FeatureCards({ setActiveJourney }: FeatureCardsProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto">
       <button
         onClick={() => setActiveJourney("market")}
         className="journey-bubble flex flex-col items-center justify-center p-8 bg-cyan-950/30 hover:bg-cyan-950/40 border border-cyan-400/20 rounded-xl h-64 w-full mx-auto transition-all hover:shadow-lg hover:scale-105"
