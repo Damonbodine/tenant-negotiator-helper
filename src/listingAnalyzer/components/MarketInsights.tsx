@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { ChatMessage } from "@/shared/types";
 import { ScrollArea } from "@/shared/ui/scroll-area";
@@ -42,6 +43,12 @@ const MarketInsights = ({ initialAddress = "" }: MarketInsightsProps) => {
   ];
 
   const addAgentMessage = (msg: ChatMessage) => setMessages(prev => [...prev, msg]);
+
+  const handleQuickAction = (actionText: string) => {
+    setInput(actionText);
+    // Use setTimeout to ensure the state is updated before sending
+    setTimeout(() => handleSendMessage(), 0);
+  };
 
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return;
