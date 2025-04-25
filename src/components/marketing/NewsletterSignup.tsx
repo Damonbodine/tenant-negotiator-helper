@@ -3,11 +3,13 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/use-toast";
+import { subscribeToNewsletter } from "@/shared/services/newsletterService";
 
 export function NewsletterSignup() {
   const [email, setEmail] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleEmailSubmit = (e: React.FormEvent) => {
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !email.includes('@')) {
       toast({
@@ -17,12 +19,24 @@ export function NewsletterSignup() {
       });
       return;
     }
-    
-    toast({
-      title: "Success!",
-      description: "Thank you for subscribing to our newsletter!",
-    });
-    setEmail("");
+
+    setIsSubmitting(true);
+    try {
+      await subscribeToNewsletter(email, 'homepage');
+      toast({
+        title: "Success!",
+        description: "Thank you for subscribing to our newsletter!",
+      });
+      setEmail("");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to subscribe. Please try again later.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -37,9 +51,14 @@ export function NewsletterSignup() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="flex-1 bg-cyan-950/30 border-cyan-400/20 placeholder:text-cyan-400/50"
+          disabled={isSubmitting}
         />
-        <Button type="submit" className="bg-cyan-400 hover:bg-cyan-500 text-cyan-950">
-          Subscribe
+        <Button 
+          type="submit" 
+          className="bg-cyan-400 hover:bg-cyan-500 text-cyan-950"
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Subscribing..." : "Subscribe"}
         </Button>
       </form>
     </div>
