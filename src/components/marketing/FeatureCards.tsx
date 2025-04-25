@@ -2,8 +2,11 @@
 import { Link } from "react-router-dom";
 import { PieChart, MessageSquare, Headphones } from "lucide-react";
 
+// Update the type to match what index.tsx is providing
+type JourneyType = "market" | "negotiation" | null;
+
 interface FeatureCardsProps {
-  setActiveJourney: (journey: string) => void;
+  setActiveJourney: (journey: JourneyType) => void;
 }
 
 export function FeatureCards({ setActiveJourney }: FeatureCardsProps) {
