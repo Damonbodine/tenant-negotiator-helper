@@ -2,28 +2,29 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/shared/hooks/use-toast';
 
-export interface AddressAnalysisRequest {
+interface AddressAnalysisRequest {
   address: string;
-  beds?: number;
-  baths?: number;
-  propertyType?: string;
 }
 
-export async function analyzeAddressWithSupabase(request: AddressAnalysisRequest) {
-  if (!request.address) {
-    throw new Error('Address is required');
-  }
-  
-  console.log('Forwarding request to address-analyzer function with data:', request);
-  
+interface AddressAnalysisResponse {
+  address: string;
+  text: string;
+  model?: string;
+  error?: string;
+  message?: string;
+}
+
+export const analyzeAddressWithSupabase = async (request: AddressAnalysisRequest): Promise<AddressAnalysisResponse> => {
   try {
+    console.log('Forwarding request to address-analyzer function with data:', request);
+    
     const { data, error } = await supabase.functions.invoke('address-analyzer', {
       body: request
     });
 
     if (error) {
       console.error('Error from address-analyzer function:', error);
-      throw new Error(error.message || 'Error calling address analyzer');
+      throw new Error(error.message || 'Error analyzing address');
     }
 
     if (!data) {
@@ -31,16 +32,23 @@ export async function analyzeAddressWithSupabase(request: AddressAnalysisRequest
     }
 
     console.log('Response from address-analyzer function:', data);
-    return data;
+    return data as AddressAnalysisResponse;
   } catch (error: any) {
     console.error('Error in analyzeAddressWithSupabase:', error);
     
+    // Show a helpful toast message
     toast({
       title: "Address Analysis Failed",
-      description: error.message || "Unable to analyze that address. Please try a different one or check the format.",
+      description: error.message || "Unable to analyze that address. Please try with a more specific address.",
       variant: "destructive",
     });
     
-    throw error;
+    // Return a formatted error that the UI can handle
+    return {
+      address: request.address,
+      text: "",
+      error: error.message,
+      message: "Please try a different address or check the format"
+    };
   }
-}
+};
