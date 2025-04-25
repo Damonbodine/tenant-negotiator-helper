@@ -1,7 +1,6 @@
-
 import { useState, lazy, Suspense } from "react";
 import { Header } from "@/shared/components/layout/Header";
-import { FeatureCards } from "@/shared/components/marketing/FeatureCards";
+import { FeatureCards } from "@/components/marketing/FeatureCards";
 import { NewsletterSignup } from "@/shared/components/marketing/NewsletterSignup";
 import { Button } from "@/shared/ui/button";
 import { Loader2, Search, MessageSquare } from "lucide-react";
