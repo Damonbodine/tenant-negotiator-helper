@@ -10,7 +10,6 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -20,7 +19,6 @@ serve(async (req) => {
 
     console.log('Processing chat message:', { message, historyLength: history.length });
     console.log('Using system prompt:', systemPrompt.substring(0, 100) + '...');
-    console.log('Requesting GPT-4.1 model from OpenAI');
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -29,13 +27,14 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1',
+        model: 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
           ...history,
           { role: 'user', content: message }
         ],
-        temperature: 0.7
+        temperature: 0.7,
+        max_tokens: 4096  // Maximum allowed by the model
       }),
     });
 
@@ -50,7 +49,6 @@ serve(async (req) => {
     
     const text = data.choices?.[0]?.message?.content ?? "";
     
-    // Return both the text and the model used for verification purposes
     return new Response(JSON.stringify({ 
       text,
       model: data.model || 'unknown' 

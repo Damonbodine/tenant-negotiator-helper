@@ -10,7 +10,7 @@ export const Header = () => {
       <div className="container flex h-14 items-center">
         <Link to="/" className="flex items-center gap-2 font-bold">
           <Home className="h-5 w-5 text-blue-500" />
-          <span>Tenant Negotiator</span>
+          <span>Renters Mentor</span>
         </Link>
         <nav className="ml-auto flex gap-2">
           <Link to="/practice">
@@ -29,4 +29,4 @@ export const Header = () => {
       </div>
     </header>
   );
-}
+};
