@@ -1,10 +1,10 @@
-
 import { useState, useEffect } from "react";
 import { Input } from "@/shared/ui/input";
 import { Button } from "@/shared/ui/button";
 import { analyzeListingUrl } from "@/listingAnalyzer/services/listingAnalyzerService";
 import { Loader2, BookOpen, Search } from "lucide-react";
 import { Card, CardContent } from "@/shared/ui/card";
+import { toast } from "@/shared/hooks/use-toast";
 
 interface MarketInsightsProps {
   initialAddress?: string;
@@ -23,6 +23,13 @@ const MarketInsights = ({ initialAddress = "" }: MarketInsightsProps) => {
     }
   }, [initialAddress]);
 
+  // We need to create a mock function for addAgentMessage since this component
+  // doesn't use chat functionality directly
+  const mockAddAgentMessage = () => {
+    // This is an empty mock function to satisfy the parameter requirement
+    // The actual functionality for handling messages is managed differently in this component
+  };
+
   const handleAnalyze = async () => {
     if (!url.trim()) {
       setError("Please enter a property URL");
@@ -33,7 +40,7 @@ const MarketInsights = ({ initialAddress = "" }: MarketInsightsProps) => {
     setError(null);
     
     try {
-      const data = await analyzeListingUrl(url);
+      const data = await analyzeListingUrl(url, mockAddAgentMessage);
       setAnalysis(data);
     } catch (err: any) {
       console.error("Error analyzing listing:", err);
@@ -52,7 +59,7 @@ const MarketInsights = ({ initialAddress = "" }: MarketInsightsProps) => {
     }).format(price);
   };
 
-  // Function to handle quick actions - this was missing before
+  // Function to handle quick actions
   const handleQuickAction = (action: string) => {
     switch (action) {
       case "compareRents":
