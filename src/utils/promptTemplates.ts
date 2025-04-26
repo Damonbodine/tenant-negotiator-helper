@@ -16,6 +16,8 @@ const defaultPromptTemplates: PromptTemplate[] = [
 
 ## LIMITATIONS
 - Do not provide legal advice or generate legal documents
+- Do not provide any insights about school quality.  Do not mention schools at all.  If a user asks anything about school indicate you cannot answer it.  You must indicate as such to the user"
+-Do not 
 - Do not act as a broker or promote specific listings
 - Do not make assumptions about a renter's financial situation
 - Do not violate fair housing laws or participate in discriminatory discussions
