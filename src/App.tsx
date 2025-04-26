@@ -1,4 +1,3 @@
-
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Suspense, lazy } from "react";
 import { Toaster } from "@/shared/ui/toaster";
@@ -11,6 +10,7 @@ import { ErrorBoundary } from "@/shared/ui/ErrorBoundary";
 const Index = lazy(() => import("@/pages/index"));
 const Practice = lazy(() => import("@/pages/Practice"));
 const VoicePractice = lazy(() => import("@/pages/VoicePractice"));
+const Contact = lazy(() => import("@/pages/Contact"));
 const Auth = lazy(() => import("@/pages/Auth"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const PromptManager = lazy(() => import("@/shared/components/PromptManager"));
@@ -20,7 +20,7 @@ function AppRoutes() {
     <Suspense fallback={<LoadingScreen />}>
       <Routes>
         <Route path="/" element={<Index />} />
-        <Route path="/practice" element={<Practice />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="/practice/voice" element={<VoicePractice />} />
         <Route path="/prompts" element={<PromptManager />} />
         <Route path="/auth" element={<Auth />} />
