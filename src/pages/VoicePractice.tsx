@@ -45,7 +45,7 @@ const VoicePractice = () => {
 
     // Add load event listener for additional positioning
     window.addEventListener('load', function positionWidget() {
-      const widget = document.querySelector('elevenlabs-convai');
+      const widget = document.querySelector('elevenlabs-convai') as HTMLElement;
       if (widget) {
         widget.style.position = 'fixed';
         widget.style.bottom = '20px';
