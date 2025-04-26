@@ -13,10 +13,10 @@ export const Header = () => {
           <span>Renters Mentor</span>
         </Link>
         <nav className="ml-auto flex gap-2">
-          <Link to="/practice">
+          <Link to="/contact">
             <Button variant="ghost" size="sm" className="gap-1">
               <MessageSquare className="h-4 w-4" />
-              Practice
+              Contact
             </Button>
           </Link>
           <a href="/renters-playbook.pdf" target="_blank" rel="noopener noreferrer">
