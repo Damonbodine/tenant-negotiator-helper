@@ -39,12 +39,19 @@ const VoicePractice = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Widget on the left - taking 8 columns on large screens */}
+          {/* Main content area - taking 8 columns on large screens */}
           <div className="lg:col-span-8 space-y-6 order-2 lg:order-1">
-            <h3 className="text-xl font-semibold text-blue-600">Practice with AI Landlord</h3>
-            <div className="w-full">
-              <elevenlabs-convai agent-id="4uRI9hKr0Mhg7DbwaLDD"></elevenlabs-convai>
-            </div>
+            <Card className="shadow-md border-blue-100">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent border-b">
+                <CardTitle>Practice with AI Landlord</CardTitle>
+                <CardDescription>
+                  Start a conversation with our AI landlord to practice your negotiation skills
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <elevenlabs-convai agent-id="4uRI9hKr0Mhg7DbwaLDD"></elevenlabs-convai>
+              </CardContent>
+            </Card>
           </div>
           
           {/* Scenarios on the right - taking 4 columns on large screens */}
