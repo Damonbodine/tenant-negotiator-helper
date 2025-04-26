@@ -5,7 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ScenarioSelector } from "@/components/negotiation/ScenarioSelector";
 import { QuickTips } from "@/components/negotiation/QuickTips";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 declare global {
   namespace JSX {
@@ -17,6 +17,23 @@ declare global {
 
 const VoicePractice = () => {
   const [selectedScenario, setSelectedScenario] = useState("standard");
+  const widgetContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Effect to ensure widget script is loaded
+  useEffect(() => {
+    // Check if the script already exists to avoid duplicates
+    if (!document.querySelector('script[src="https://elevenlabs.io/convai-widget/index.js"]')) {
+      const script = document.createElement('script');
+      script.src = "https://elevenlabs.io/convai-widget/index.js";
+      script.async = true;
+      script.type = "text/javascript";
+      document.body.appendChild(script);
+    }
+    
+    return () => {
+      // Optional cleanup if needed
+    };
+  }, []);
 
   return (
     <div className="container py-6">
@@ -39,45 +56,45 @@ const VoicePractice = () => {
           </div>
         </div>
 
-        {/* Main content section */}
-        <div className="space-y-6">
-          {/* ElevenLabs widget section - full width */}
-          <Card className="shadow-md border-blue-100">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent border-b">
-              <CardTitle>Practice with AI Landlord</CardTitle>
-              <CardDescription>
-                Start a conversation with our AI landlord to practice your negotiation skills
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <elevenlabs-convai agent-id="4uRI9hKr0Mhg7DbwaLDD"></elevenlabs-convai>
-            </CardContent>
-          </Card>
-
-          {/* Bottom section with scenarios and tips */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Main content section with custom layout */}
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Left side: ElevenLabs widget */}
+          <div className="lg:w-2/3">
+            <Card className="shadow-md border-blue-100 h-full">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent border-b">
+                <CardTitle>Practice with AI Landlord</CardTitle>
+                <CardDescription>
+                  Start a conversation with our AI landlord to practice your negotiation skills
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <div ref={widgetContainerRef} className="elevenlabs-widget-container min-h-[400px]">
+                  <elevenlabs-convai agent-id="VT5HhuEwB5po9ZHZGcOk"></elevenlabs-convai>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+          
+          {/* Right side: Scenarios and Tips */}
+          <div className="lg:w-1/3 space-y-6">
             {/* Scenarios section */}
-            <div className="lg:col-span-8">
-              <Card className="shadow-md border-blue-100">
-                <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent border-b">
-                  <CardTitle>Practice Scenarios</CardTitle>
-                  <CardDescription>
-                    Choose a scenario to practice different negotiation contexts
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <ScenarioSelector 
-                    selectedScenario={selectedScenario}
-                    onScenarioChange={setSelectedScenario}
-                  />
-                </CardContent>
-              </Card>
-            </div>
+            <Card className="shadow-md border-blue-100">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent border-b">
+                <CardTitle>Practice Scenarios</CardTitle>
+                <CardDescription>
+                  Choose a scenario to practice different negotiation contexts
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <ScenarioSelector 
+                  selectedScenario={selectedScenario}
+                  onScenarioChange={setSelectedScenario}
+                />
+              </CardContent>
+            </Card>
             
             {/* Quick Tips section */}
-            <div className="lg:col-span-4">
-              <QuickTips />
-            </div>
+            <QuickTips />
           </div>
         </div>
       </div>
