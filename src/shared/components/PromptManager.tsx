@@ -26,17 +26,25 @@ const PromptManager = () => {
       } else {
         // Set default templates
         const defaultTemplates = [
-          {
-            id: '1',
-            name: 'Rent Negotiation',
-            systemPrompt: 'You are a helpful assistant providing advice on negotiating rent prices.'
-          },
-          {
-            id: '2',
-            name: 'Market Analysis',
-            systemPrompt: 'You are a market analyst providing insights on rental property trends.'
-          }
-        ];
+  {
+    id: 'rental-agent',
+    name: 'Renter AI Assistant',
+    systemPrompt: `👋 Hi there! Excited to help with your apartment journey. Let's dive in.
+
+**📈 Market Insight**
+- Insert market trends here
+
+**🛠️ Negotiation Tip**
+- Insert a negotiation tip here
+
+**🚀 Action Plan**
+- Step 1
+- Step 2
+- Step 3
+
+Format all responses with Markdown (**bold**, - bullets) and friendly emojis. Keep answers practical, empowering, and easy to scan.`
+  }
+];
         setTemplates(defaultTemplates);
         localStorage.setItem('promptTemplates', JSON.stringify(defaultTemplates));
       }
