@@ -1,3 +1,4 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -8,6 +9,8 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const toTitle = (str: string) => str.replace(/([A-Za-z])(\w*)/g, (_, a, b) => a.toUpperCase() + b.toLowerCase());
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -50,24 +53,6 @@ serve(async (req) => {
     const cleanUrl = url.trim().replace(/[.,;!?)\]]+$/, "");
     console.log('Analyzing listing URL (cleaned):', cleanUrl);
 
-    // Enhanced browser-like headers with more sophistication to avoid detection
-    const headers = {
-      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-      "Accept-Language": "en-US,en;q=0.9",
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-      "sec-ch-ua": '"Not A(Brand";v="99", "Google Chrome";v="124", "Chromium";v="124"',
-      "sec-ch-ua-mobile": "?0",
-      "sec-ch-ua-platform": '"macOS"',
-      "Referer": "https://www.google.com/search?q=apartments+in+austin",
-      "Cache-Control": "no-cache",
-      "Pragma": "no-cache",
-      "Upgrade-Insecure-Requests": "1",
-      "sec-fetch-site": "cross-site",
-      "sec-fetch-mode": "navigate",
-      "sec-fetch-user": "?1",
-      "sec-fetch-dest": "document",
-    };
-
     // Pre-extract information from the URL itself for Zillow URLs
     let urlExtractedInfo = {};
     if (cleanUrl.includes('zillow.com')) {
@@ -95,6 +80,24 @@ serve(async (req) => {
         urlExtractedInfo = { location, propertyIdentifier };
       }
     }
+
+    // Enhanced browser-like headers with more sophistication to avoid detection
+    const headers = {
+      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+      "sec-ch-ua": '"Not A(Brand";v="99", "Google Chrome";v="124", "Chromium";v="124"',
+      "sec-ch-ua-mobile": "?0",
+      "sec-ch-ua-platform": '"macOS"',
+      "Referer": "https://www.google.com/search?q=apartments+in+austin",
+      "Cache-Control": "no-cache",
+      "Pragma": "no-cache",
+      "Upgrade-Insecure-Requests": "1",
+      "sec-fetch-site": "cross-site",
+      "sec-fetch-mode": "navigate",
+      "sec-fetch-user": "?1",
+      "sec-fetch-dest": "document",
+    };
 
     // Try different approaches for fetching HTML
     let htmlResponse;
@@ -147,7 +150,13 @@ serve(async (req) => {
       );
     }
 
-    // 2️⃣ Ask OpenAI to extract fields
+    // Extract ld+json if available
+    const ldStart = html.indexOf("application/ld+json");
+    const snippet = ldStart !== -1 
+      ? html.slice(Math.max(ldStart - 5000, 0), ldStart + 50000) 
+      : html.slice(0, 80000);
+
+    // Ask OpenAI to extract fields
     if (!OPENAI_API_KEY) {
       console.error('OpenAI API key not configured');
       return new Response(
@@ -189,7 +198,7 @@ ONLY respond with a valid JSON object with these properties:
             },
             {
               role: 'user',
-              content: `Extract the property details from this HTML listing:\n${html.slice(0, 20000)}`
+              content: snippet
             }
           ]
         })
@@ -341,7 +350,7 @@ ONLY respond with a valid JSON object with these properties:
       );
     }
 
-    // 3️⃣ Compare with RentCast if possible
+    // Compare with RentCast if possible
     let verdict = "unknown";
     if (props.zipcode && props.beds && RENTCAST_API_KEY) {
       try {
