@@ -1,11 +1,9 @@
-
 import { ChatMessage } from "@/shared/types";
 import { randomTip } from "@/shared/utils/negotiationTips";
 import { toast } from "@/shared/hooks/use-toast";
 import { analyzeListingWithSupabase } from "@/api/listing-analyzer";
 import { analyzeAddressWithSupabase } from "@/api/address-analyzer";
 
-// Define interface for the listing analyzer API response
 interface ListingAnalysisResponse {
   error?: string;
   message?: string;
@@ -34,23 +32,19 @@ export async function analyzeListingUrl(
   text: string,
   addAgentMessage: (m: ChatMessage) => void
 ) {
-  // Improved regex to better capture real estate platform URLs
   const urlRegex = /(https?:\/\/(www\.)?(zillow|redfin|apartments|trulia|realtor|hotpads)\.com\/[^\s]+)/i;
   const match = text.match(urlRegex);
   
   if (!match) {
-    // Check if text looks like an address and analyze it directly
     if (text.includes(",") || /\d+\s+\w+/.test(text)) {
       return await analyzeAddress(text, addAgentMessage);
     }
     return false;
   }
   
-  // Clean the url by trimming and removing trailing punctuation
   const url = match[0].trim().replace(/[.,;!?)\]]+$/, "");
   console.log("Detected listing URL (cleaned):", url);
   
-  // Add a loading message
   addAgentMessage({
     id: crypto.randomUUID(),
     type: "agent",
@@ -61,24 +55,20 @@ export async function analyzeListingUrl(
   try {
     console.log("Sending request to listing-analyzer API with URL:", url);
     
-    // Call our direct Supabase function instead of using fetch
     const data = await analyzeListingWithSupabase(url);
     
     console.log("Received listing analysis data:", data);
     
-    // Handle explicit error response
     if (data.error) {
       throw new Error(data.error);
     }
 
-    // If there's a user-friendly message, use it in case of missing data
     if (data.message && (!data.address || !data.rent)) {
       throw new Error(data.message);
     }
 
     let analysisText = "";
     if (data.address) {
-      // If we have a property name and it's not already part of the address, show it
       const addressLine = data.propertyName && !data.address.includes(data.propertyName) 
         ? `**${data.propertyName}** (${data.address})`
         : `**${data.address}**`;
@@ -106,18 +96,46 @@ export async function analyzeListingUrl(
         analysisText += `📈 Difference: **${data.deltaPercent}%** (${data.verdict})\n\n`;
       }
       
-      analysisText += `---\n💡 **Negotiation tip:** ${randomTip()}`;
+      addAgentMessage({
+        id: crypto.randomUUID(),
+        type: "agent",
+        text: analysisText,
+        timestamp: new Date()
+      });
+      
+      try {
+        addAgentMessage({
+          id: crypto.randomUUID(),
+          type: "agent",
+          text: "Now retrieving detailed market analysis for this area...",
+          timestamp: new Date()
+        });
+        
+        console.log("Fetching detailed analysis for address:", data.address);
+        const detailedAnalysis = await analyzeAddressWithSupabase({ address: data.address });
+        
+        if (detailedAnalysis && detailedAnalysis.text && detailedAnalysis.text.length > 10) {
+          addAgentMessage({
+            id: crypto.randomUUID(),
+            type: "agent",
+            text: detailedAnalysis.text,
+            timestamp: new Date()
+          });
+        }
+      } catch (analysisError) {
+        console.error("Error getting detailed analysis:", analysisError);
+        
+        addAgentMessage({
+          id: crypto.randomUUID(),
+          type: "agent",
+          text: `💡 **Negotiation tip:** ${randomTip()}`,
+          timestamp: new Date()
+        });
+      }
     } else {
       throw new Error("I couldn't extract all the details from that listing. Try using another link or provide the property details manually.");
     }
 
-    addAgentMessage({
-      id: crypto.randomUUID(),
-      type: "agent",
-      text: analysisText,
-      timestamp: new Date()
-    });
-    
     return true;
   } catch (error) {
     console.error("Error analyzing listing:", error);
@@ -137,7 +155,7 @@ export async function analyzeListingUrl(
       timestamp: new Date()
     });
     
-    return true; // Still return true so we don't process this as a regular message
+    return true;
   }
 }
 
@@ -145,7 +163,6 @@ export async function analyzeAddress(
   text: string,
   addAgentMessage: (m: ChatMessage) => void
 ) {
-  // Add a loading message
   addAgentMessage({
     id: crypto.randomUUID(),
     type: "agent",
@@ -156,23 +173,18 @@ export async function analyzeAddress(
   try {
     console.log("Sending request to address-analyzer API with text:", text);
     
-    // Call our Supabase function to analyze the address
     const data = await analyzeAddressWithSupabase({ address: text });
     
     console.log("Received address analysis data:", data);
     
-    // Handle explicit error response
     if (data.error) {
       throw new Error(data.error);
     }
 
-    // Format the analysis response
     let analysisText = `🔎 **Analysis for ${data.address}**\n\n`;
     
-    // Add the full text response from the AI (containing all the structured data)
     analysisText += data.text;
     
-    // Add a negotiation tip
     analysisText += `\n\n---\n💡 **Negotiation tip:** ${randomTip()}`;
 
     addAgentMessage({
@@ -201,6 +213,6 @@ export async function analyzeAddress(
       timestamp: new Date()
     });
     
-    return true; // Still return true so we don't process this as a regular message
+    return true;
   }
 }
