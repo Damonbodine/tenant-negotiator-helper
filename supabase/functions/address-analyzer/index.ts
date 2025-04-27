@@ -37,26 +37,31 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4.1',
+        model: 'gpt-4o',
         messages: [
           {
             role: 'system',
-            content: `You are a rental market expert that provides insights about rental prices, 
+            content: `You are a rental market expert that provides detailed insights about rental prices, 
                      market conditions, and negotiation tips. When given an address or location, 
-                     provide a structured analysis including:
-                     1. General market trends for that area
-                     2. Average prices for different apartment types (studios, 1BD, 2BD)
-                     3. Factors affecting pricing in that area
-                     4. Negotiation tips specific to that area
-                     Be specific, concise, and data-driven in your response.`
+                     analyze thoroughly and provide:
+                     1. General market trends and dynamics for that specific area
+                     2. Average prices for different apartment types with recent data
+                     3. Detailed factors affecting pricing in that location
+                     4. Multiple specific negotiation strategies for that market
+                     5. Notable amenities and features of the area
+                     6. Recent market changes and future predictions
+                     
+                     Format your response with Markdown for better readability.
+                     Be thorough and detailed in your analysis.`
           },
           {
             role: 'user',
-            content: `Please analyze the rental market for this location: ${address}`
+            content: `Please provide a comprehensive rental market analysis for this location: ${address}`
           }
         ],
         temperature: 0.7,
-        max_tokens: 1500
+        max_tokens: 2500,
+        top_p: 1
       }),
     });
 
@@ -77,7 +82,7 @@ serve(async (req) => {
       JSON.stringify({ 
         address,
         text,
-        model: data.model || 'gpt-4.1'
+        model: data.model || 'gpt-4o'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
