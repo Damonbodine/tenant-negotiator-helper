@@ -1,4 +1,3 @@
-
 import { ChatMessage } from "@/utils/types";
 import { randomTip } from "@/utils/negotiationTips";
 import { analyzeListingWithSupabase } from "@/api/listing-analyzer";
@@ -35,7 +34,9 @@ export async function handleListingUrl(
     const addressToAnalyze = data.address;
     
     // Prepare a brief structured summary
-    let structuredSummary = `🔎 **${addressToAnalyze}**`;
+    let structuredSummary = data.propertyName ? 
+      `🔎 **${data.propertyName}** (${addressToAnalyze})` :
+      `🔎 **${addressToAnalyze}**`;
     
     // Add any additional structured data if available
     if (data.rent) structuredSummary += `\n\n💰 Rent: **$${data.rent}**`;
@@ -48,11 +49,22 @@ export async function handleListingUrl(
       structuredSummary += `\n📈 Price difference: **${data.deltaPercent}%** (${data.verdict})`;
     }
 
-    // Now get detailed analysis using the address analyzer
-    console.log("Fetching detailed analysis for address:", addressToAnalyze);
+    // Pass complete property details to the address analyzer
+    const propertyDetails = {
+      rent: data.rent,
+      beds: data.beds,
+      baths: data.baths,
+      sqft: data.sqft,
+      propertyName: data.propertyName
+    };
+
+    console.log("Fetching detailed analysis for address with details:", { addressToAnalyze, propertyDetails });
     
     try {
-      const detailedAnalysis = await analyzeAddressWithSupabase({ address: addressToAnalyze });
+      const detailedAnalysis = await analyzeAddressWithSupabase({ 
+        address: addressToAnalyze,
+        propertyDetails: propertyDetails
+      });
       console.log("Detailed analysis response received:", detailedAnalysis);
       
       if (detailedAnalysis && detailedAnalysis.text && detailedAnalysis.text.length > 10) {
