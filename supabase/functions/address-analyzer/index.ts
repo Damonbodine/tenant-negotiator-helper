@@ -25,16 +25,59 @@ serve(async (req) => {
     console.log('Property details:', propertyDetails);
 
     // Create a detailed context string from property details
-    let propertyContext = '';
+    let systemPrompt = `You are a rental market expert focused on providing actionable negotiation advice and pricing insights.`;
+    
     if (propertyDetails) {
-      propertyContext = `This analysis is for a specific property with these details:
-- ${propertyDetails.beds} bedroom${propertyDetails.beds !== 1 ? 's' : ''}
-- Listed at $${propertyDetails.rent} per month
-- ${propertyDetails.sqft} square feet
-- ${propertyDetails.baths} bathroom${propertyDetails.baths !== 1 ? 's' : ''}
-${propertyDetails.propertyName ? `- Property name: ${propertyDetails.propertyName}` : ''}
+      // Format the system prompt with actual property details
+      const formattedDetails = {
+        propertyName: propertyDetails.propertyName || "This property",
+        address: address,
+        beds: propertyDetails.beds || "unknown",
+        baths: propertyDetails.baths || "unknown",
+        sqft: propertyDetails.sqft || "unknown",
+        rent: propertyDetails.rent || "unknown"
+      };
+      
+      // Create a detailed context with specific property details
+      systemPrompt = `You are a rental market expert focused on providing actionable negotiation advice and pricing insights.
+      
+YOU MUST ANALYZE THE EXACT PROPERTY DETAILS PROVIDED:
+- PROPERTY NAME: ${formattedDetails.propertyName}
+- ADDRESS: ${formattedDetails.address}
+- BEDROOMS: ${formattedDetails.beds} (YOU MUST ONLY COMPARE WITH PROPERTIES HAVING THE SAME NUMBER OF BEDROOMS)
+- BATHROOMS: ${formattedDetails.baths}
+- SQUARE FOOTAGE: ${formattedDetails.sqft}
+- LISTED RENT: $${formattedDetails.rent} per month
 
-Use these EXACT details as the basis for your analysis. Only compare with similar properties that match these specifications, especially the number of bedrooms.`;
+DO NOT make assumptions about property details that contradict the provided data.
+DO NOT compare this property with units that have a different number of bedrooms.
+
+Create a detailed report with these sections:
+
+1. PRICE ANALYSIS (400+ words)
+- Current market position (over/under market) based on the exact provided rent of $${formattedDetails.rent}
+- Detailed price comparisons with similar properties matching the SAME NUMBER OF BEDROOMS (${formattedDetails.beds})
+- Recent pricing trends in the building/area for this specific unit type (${formattedDetails.beds} bedroom)
+
+2. NEGOTIATION STRATEGY (500+ words)
+- Specific tactics based on current market position
+- Recommended concessions to request
+- Sample negotiation script using the exact listed price of $${formattedDetails.rent}
+- Timing recommendations
+
+3. LEVERAGE POINTS (300+ words)
+- Market conditions that favor the tenant
+- Property-specific advantages/disadvantages
+- Seasonal factors
+
+4. ALTERNATIVE OPTIONS (200+ words)
+- Similar properties to consider with the SAME NUMBER OF BEDROOMS (${formattedDetails.beds})
+- Price comparisons for alternatives
+- Trade-offs analysis
+
+Format using Markdown with clear headings. Use bullet points for key insights.
+Include specific numbers and percentages whenever possible.
+Write 1,500+ words focused on practical negotiation advice.`;
     }
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -48,8 +91,7 @@ Use these EXACT details as the basis for your analysis. Only compare with simila
         messages: [
           {
             role: 'system',
-            content: `You are a rental market expert focused on providing actionable negotiation advice and pricing insights.
-            ${propertyContext}`
+            content: systemPrompt
           },
           {
             role: 'user',
