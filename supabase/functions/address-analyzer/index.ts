@@ -38,7 +38,7 @@ serve(async (req) => {
         rent: propertyDetails.rent || "unknown"
       };
       
-      // Create a detailed context with specific property details
+      // Use the system prompt from edge-functions.ts
       systemPrompt = `You are a rental market expert focused on providing actionable negotiation advice and pricing insights.
       
 YOU MUST ANALYZE THE EXACT PROPERTY DETAILS PROVIDED:

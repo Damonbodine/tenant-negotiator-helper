@@ -53,6 +53,16 @@ serve(async (req) => {
     const cleanUrl = url.trim().replace(/[.,;!?)\]]+$/, "");
     console.log('Analyzing listing URL (cleaned):', cleanUrl);
 
+    // Extract unit fragment identifier
+    const urlParts = cleanUrl.split('#');
+    const unitFragment = urlParts.length > 1 ? urlParts[1] : null;
+    console.log('Unit fragment:', unitFragment);
+    
+    // Look for unit ID pattern
+    const unitIdMatch = unitFragment ? unitFragment.match(/unit-(\d+)/) : null;
+    const unitId = unitIdMatch ? unitIdMatch[1] : null;
+    console.log('Extracted unit ID:', unitId);
+
     // Pre-extract information from the URL itself for Zillow URLs
     let urlExtractedInfo = {};
     if (cleanUrl.includes('zillow.com')) {
@@ -150,11 +160,17 @@ serve(async (req) => {
       );
     }
 
-    // Extract ld+json if available
+    // Extract ld+json if available and capture a larger portion of the HTML
     const ldStart = html.indexOf("application/ld+json");
+    // Increased slice size to ensure we capture more units data
     const snippet = ldStart !== -1 
-      ? html.slice(Math.max(ldStart - 5000, 0), ldStart + 50000) 
-      : html.slice(0, 80000);
+      ? html.slice(Math.max(ldStart - 5000, 0), ldStart + 150000) 
+      : html.slice(0, 150000);
+    
+    // Log a portion of the snippet to check for units data
+    console.log('Snippet preview (first 500 chars):', snippet.substring(0, 500));
+    console.log('Does snippet contain "units"?', snippet.includes('"units"'));
+    console.log('Does snippet contain "pricing"?', snippet.includes('"pricing"'));
 
     // Ask OpenAI to extract fields
     if (!OPENAI_API_KEY) {
@@ -171,6 +187,20 @@ serve(async (req) => {
     console.log('Extracting listing details using OpenAI');
     let extract;
     try {
+      // Enhanced prompt that instructs the model to look for specific unit ID
+      const systemPrompt = `Extract property listing details from HTML. Extract ACTUAL property details, DO NOT hallucinate. If information isn't found, set to null.
+      
+${unitId ? `IMPORTANT: Look specifically for unit with ID "${unitId}" or identifier containing "unit-${unitId}". Prioritize this exact unit over others.` : ''}
+
+ONLY respond with a valid JSON object with these properties:
+- address (string): The full property address including city, state and zip
+- rent (number): Monthly rent in dollars, as number without $ or commas
+- beds (number|string): Number of bedrooms or text description (like "studio")
+- baths (number|string): Number of bathrooms
+- sqft (number|string): Square footage as number
+- zipcode (string): The zip/postal code
+- propertyName (string): Name of apartment complex/building if available`;
+
       const extractResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -180,25 +210,16 @@ serve(async (req) => {
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           temperature: 0,
-          max_tokens: 800,
+          max_tokens: 1000, // Increased token limit
           response_format: { "type": "json_object" },
           messages: [
             {
               role: 'system',
-              content: `Extract property listing details from HTML. Extract ACTUAL property details, DO NOT hallucinate. If information isn't found, set to null.
-
-ONLY respond with a valid JSON object with these properties:
-- address (string): The full property address including city, state and zip
-- rent (number): Monthly rent in dollars, as number without $ or commas
-- beds (number|string): Number of bedrooms or text description (like "studio")
-- baths (number|string): Number of bathrooms
-- sqft (number|string): Square footage as number
-- zipcode (string): The zip/postal code
-- propertyName (string): Name of apartment complex/building if available`
+              content: systemPrompt
             },
             {
               role: 'user',
-              content: snippet
+              content: `Extract details from this HTML for ${unitId ? `unit ID ${unitId}` : 'the property'}. ${unitFragment ? `The URL fragment is '#${unitFragment}'` : ''}\n\n${snippet}`
             }
           ]
         })
@@ -248,8 +269,18 @@ ONLY respond with a valid JSON object with these properties:
     // Parse the properties with enhanced error handling
     let props;
     try {
-      // The response is guaranteed to be valid JSON now
+      // Parse the JSON response
       props = JSON.parse(extract.choices[0].message.content);
+      
+      // Handle rent as string (e.g., "from $1,939+")
+      if (props.rent && typeof props.rent === 'string') {
+        // Extract numeric portion from rent string
+        const rentMatch = props.rent.match(/\d+/);
+        if (rentMatch) {
+          props.rent = Number(rentMatch[0]);
+          console.log('Converted rent string to number:', props.rent);
+        }
+      }
       
       console.log('Extracted property details:', props);
       
@@ -314,7 +345,7 @@ ONLY respond with a valid JSON object with these properties:
       // Validate we have at least some meaningful data
       const hasAddress = props.address && typeof props.address === 'string';
       const hasPropertyName = props.propertyName && typeof props.propertyName === 'string';
-      const hasRent = props.rent && typeof props.rent === 'number';
+      const hasRent = props.rent && (typeof props.rent === 'number' || typeof props.rent === 'string');
       
       if (!hasAddress && !hasPropertyName) {
         console.warn('Missing critical property data', {hasAddress, hasPropertyName, hasRent});
@@ -333,6 +364,48 @@ ONLY respond with a valid JSON object with these properties:
       // If we have a property name but not an address, use property name in the response
       if (!hasAddress && hasPropertyName) {
         props.address = props.propertyName;
+      }
+      
+      // If unitId is present, check if rent looks reasonable (cross-validation)
+      if (unitId && hasRent) {
+        // Look for pricing near the unit ID in the raw HTML
+        const unitIdPosition = html.indexOf(`unit-${unitId}`);
+        if (unitIdPosition > 0) {
+          // Search for price patterns ($X,XXX) within 1000 characters of unit ID
+          const pricingContext = html.substring(Math.max(0, unitIdPosition - 500), 
+                                               Math.min(html.length, unitIdPosition + 1000));
+          const priceMatches = pricingContext.match(/\$(\d{1,3},)?\d{3,4}/g);
+          
+          if (priceMatches && priceMatches.length > 0) {
+            // Convert to number for comparison
+            const nearbyPrices = priceMatches.map(p => 
+              Number(p.replace(/[$,]/g, ''))
+            ).filter(p => p > 500); // Filter out unrealistic prices
+            
+            console.log('Nearby prices found in HTML near unitId:', nearbyPrices);
+            
+            if (nearbyPrices.length > 0) {
+              // Calculate the average nearby price
+              const avgNearbyPrice = nearbyPrices.reduce((a, b) => a + b, 0) / nearbyPrices.length;
+              
+              // Check if the extracted rent is very different from nearby prices
+              const priceDifference = Math.abs(props.rent - avgNearbyPrice);
+              const priceDiffPercent = (priceDifference / avgNearbyPrice) * 100;
+              
+              console.log('Price comparison:', {
+                extractedRent: props.rent,
+                avgNearbyPrice,
+                priceDifference,
+                priceDiffPercent
+              });
+              
+              // If the difference is significant, log a warning but still use the extracted price
+              if (priceDiffPercent > 20 && priceDifference > 200) {
+                console.warn(`Warning: Extracted rent ($${props.rent}) differs significantly from nearby prices (avg: $${avgNearbyPrice.toFixed(0)})`);
+              }
+            }
+          }
+        }
       }
       
     } catch (e) {
@@ -396,6 +469,7 @@ ONLY respond with a valid JSON object with these properties:
       ...props, 
       verdict,
       sourceUrl: cleanUrl,
+      unitId: unitId || undefined,
       message: props.address ? undefined : "We couldn't extract complete details from this listing. Some data may be missing."
     };
     console.log('Final analysis result:', result);
