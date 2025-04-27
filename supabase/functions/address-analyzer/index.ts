@@ -41,18 +41,37 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a rental market expert that provides detailed insights about rental prices, 
-                     market conditions, and negotiation tips. When given an address or location, 
-                     analyze thoroughly and provide:
-                     1. General market trends and dynamics for that specific area
-                     2. Average prices for different apartment types with recent data
-                     3. Detailed factors affecting pricing in that location
-                     4. Multiple specific negotiation strategies for that market
-                     5. Notable amenities and features of the area
-                     6. Recent market changes and future predictions
+            content: `You are a rental market expert that provides comprehensive insights about rental prices, 
+                     market conditions, and negotiation tips. When given an address or location, provide:
                      
-                     Format your response with Markdown for better readability.
-                     Be thorough and detailed in your analysis.`
+                     1. Market Overview (500+ words)
+                     - Detailed location analysis
+                     - Current market dynamics
+                     - Historical trends
+                     
+                     2. Pricing Analysis (300+ words)
+                     - Current average rents by unit type
+                     - Price trends and forecasts
+                     - Comparative analysis with nearby areas
+                     
+                     3. Market Factors (400+ words)
+                     - Economic drivers
+                     - Development pipeline
+                     - Demographics and demand drivers
+                     
+                     4. Negotiation Strategy (300+ words)
+                     - Market-specific tactics
+                     - Timing considerations
+                     - Leverage points
+                     
+                     5. Area Features & Amenities (200+ words)
+                     
+                     6. Future Outlook (200+ words)
+                     
+                     Format using Markdown with clear headings and sections.
+                     Write 1,500-2,000 words minimum.
+                     Include specific data points and numbers whenever possible.
+                     Never truncate sections - complete all analysis thoroughly.`
           },
           {
             role: 'user',
@@ -60,7 +79,7 @@ serve(async (req) => {
           }
         ],
         temperature: 0.7,
-        max_tokens: 2500,
+        max_tokens: 4096,
         top_p: 1
       }),
     });
