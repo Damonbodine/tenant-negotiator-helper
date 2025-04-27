@@ -1,8 +1,9 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/shared/hooks/use-toast';
+import { ListingAnalysisResponse } from '@/shared/types/analyzer';
 
-export const analyzeListingWithSupabase = async (url: string) => {
+export const analyzeListingWithSupabase = async (url: string): Promise<ListingAnalysisResponse> => {
   if (!url) {
     throw new Error('URL is required');
   }
@@ -28,7 +29,6 @@ export const analyzeListingWithSupabase = async (url: string) => {
   } catch (error: any) {
     console.error('Error in analyzeListingWithSupabase:', error);
     
-    // Show a helpful toast message
     toast({
       title: "Listing Analysis Failed",
       description: error.message || "Unable to analyze that listing. Try a different site like Apartments.com or Realtor.com",

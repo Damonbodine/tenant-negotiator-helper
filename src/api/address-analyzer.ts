@@ -1,18 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/shared/hooks/use-toast';
-
-interface AddressAnalysisRequest {
-  address: string;
-}
-
-interface AddressAnalysisResponse {
-  address: string;
-  text: string;
-  model?: string;
-  error?: string;
-  message?: string;
-}
+import { AddressAnalysisRequest, AddressAnalysisResponse } from '@/shared/types/analyzer';
 
 export const analyzeAddressWithSupabase = async (request: AddressAnalysisRequest): Promise<AddressAnalysisResponse> => {
   try {
@@ -36,14 +25,12 @@ export const analyzeAddressWithSupabase = async (request: AddressAnalysisRequest
   } catch (error: any) {
     console.error('Error in analyzeAddressWithSupabase:', error);
     
-    // Show a helpful toast message
     toast({
       title: "Address Analysis Failed",
       description: error.message || "Unable to analyze that address. Please try with a more specific address.",
       variant: "destructive",
     });
     
-    // Return a formatted error that the UI can handle
     return {
       address: request.address,
       text: "",
