@@ -28,23 +28,38 @@ export async function handleListingUrl(
 
     // Generate initial summary with structured data
     const structuredSummary = data.address
-      ? `🔎 ${data.address}\nRent $${data.rent} • Beds ${data.beds}\nMarket avg $${data.marketAverage ?? "n/a"}\n➡️ Looks **${data.verdict}** (${data.deltaPercent ?? "?"}% diff)`
+      ? `🔎 ${data.address}\nRent $${data.rent || 'N/A'} • Beds ${data.beds || 'N/A'}\nMarket avg $${data.marketAverage ?? "N/A"}${data.verdict ? `\n➡️ Looks **${data.verdict}** (${data.deltaPercent ?? "?"}% diff)` : ''}`
       : "⚠️ I couldn't read that listing's basic details.";
 
     // Now get detailed analysis using the address analyzer
     if (data.address) {
       try {
+        console.log("Getting detailed analysis for address:", data.address);
         const detailedAnalysis = await analyzeAddressWithSupabase({ address: data.address });
         
-        // Combine structured summary with detailed analysis
-        const fullAnalysis = `${structuredSummary}\n\n---\n\n${detailedAnalysis.text}\n\n---\n💡 Negotiation tip: ${randomTip()}`;
+        console.log("Detailed analysis received:", detailedAnalysis);
         
-        addAgentMessage({
-          id: crypto.randomUUID(),
-          type: "agent",
-          text: fullAnalysis,
-          timestamp: new Date()
-        });
+        // Check if we received actual text content
+        if (detailedAnalysis && detailedAnalysis.text) {
+          // Combine structured summary with detailed analysis
+          const fullAnalysis = `${structuredSummary}\n\n---\n\n${detailedAnalysis.text}\n\n---\n💡 Negotiation tip: ${randomTip()}`;
+          
+          addAgentMessage({
+            id: crypto.randomUUID(),
+            type: "agent",
+            text: fullAnalysis,
+            timestamp: new Date()
+          });
+        } else {
+          // If the detailed analysis has no text, fall back to structured data
+          console.error("Detailed analysis missing text property:", detailedAnalysis);
+          addAgentMessage({
+            id: crypto.randomUUID(),
+            type: "agent",
+            text: `${structuredSummary}\n\n---\n💡 Negotiation tip: ${randomTip()}`,
+            timestamp: new Date()
+          });
+        }
       } catch (analysisError) {
         // If detailed analysis fails, still show structured data
         console.error("Error getting detailed analysis:", analysisError);
