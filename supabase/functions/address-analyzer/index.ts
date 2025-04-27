@@ -15,13 +15,27 @@ serve(async (req) => {
   }
 
   try {
-    const { address } = await req.json();
+    const { address, propertyDetails } = await req.json();
     
     if (!address || typeof address !== 'string') {
       throw new Error('Address is required and must be a string');
     }
 
     console.log('Analyzing address:', address);
+    console.log('Property details:', propertyDetails);
+
+    // Create a detailed context string from property details
+    let propertyContext = '';
+    if (propertyDetails) {
+      propertyContext = `This analysis is for a specific property with these details:
+- ${propertyDetails.beds} bedroom${propertyDetails.beds !== 1 ? 's' : ''}
+- Listed at $${propertyDetails.rent} per month
+- ${propertyDetails.sqft} square feet
+- ${propertyDetails.baths} bathroom${propertyDetails.baths !== 1 ? 's' : ''}
+${propertyDetails.propertyName ? `- Property name: ${propertyDetails.propertyName}` : ''}
+
+Use these EXACT details as the basis for your analysis. Only compare with similar properties that match these specifications, especially the number of bedrooms.`;
+    }
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -35,33 +49,7 @@ serve(async (req) => {
           {
             role: 'system',
             content: `You are a rental market expert focused on providing actionable negotiation advice and pricing insights.
-            
-            Analyze the provided property and create a detailed report with these sections:
-
-            1. PRICE ANALYSIS (400+ words)
-            - Current market position (over/under market)
-            - Detailed price comparisons with similar properties
-            - Recent pricing trends in the building/area
-            
-            2. NEGOTIATION STRATEGY (500+ words)
-            - Specific tactics based on current market position
-            - Recommended concessions to request
-            - Sample negotiation script
-            - Timing recommendations
-            
-            3. LEVERAGE POINTS (300+ words)
-            - Market conditions that favor the tenant
-            - Property-specific advantages/disadvantages
-            - Seasonal factors
-            
-            4. ALTERNATIVE OPTIONS (200+ words)
-            - Similar properties to consider
-            - Price comparisons for alternatives
-            - Trade-offs analysis
-            
-            Format using Markdown with clear headings. Use bullet points for key insights.
-            Include specific numbers and percentages whenever possible.
-            Write 1,500+ words focused on practical negotiation advice.`
+            ${propertyContext}`
           },
           {
             role: 'user',

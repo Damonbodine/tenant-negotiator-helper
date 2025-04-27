@@ -1,4 +1,3 @@
-
 export interface ListingAnalysisResponse {
   address?: string;
   rent?: number;
@@ -17,6 +16,13 @@ export interface ListingAnalysisResponse {
 
 export interface AddressAnalysisRequest {
   address: string;
+  propertyDetails?: {
+    rent?: number;
+    beds?: number | string;
+    baths?: number | string;
+    sqft?: number | string;
+    propertyName?: string;
+  };
 }
 
 export interface AddressAnalysisResponse {
