@@ -3,6 +3,7 @@ import { ChatMessage } from "@/utils/types";
 import { randomTip } from "@/utils/negotiationTips";
 import { analyzeListingWithSupabase } from "@/api/listing-analyzer";
 import { analyzeAddressWithSupabase } from "@/api/address-analyzer";
+import { AddressAnalysisRequest } from "@/shared/types/analyzer";
 
 export async function handleListingUrl(
   text: string,
@@ -51,15 +52,18 @@ export async function handleListingUrl(
     }
 
     // Pass complete property details to the address analyzer
-    const propertyDetails = {
-      rent: data.rent,
-      beds: data.beds,
-      baths: data.baths,
-      sqft: data.sqft,
-      propertyName: data.propertyName
+    const propertyDetails: AddressAnalysisRequest = {
+      address: addressToAnalyze,
+      propertyDetails: {
+        rent: data.rent,
+        beds: data.beds,
+        baths: data.baths,
+        sqft: data.sqft,
+        propertyName: data.propertyName
+      }
     };
 
-    console.log("Fetching detailed analysis for address with details:", { addressToAnalyze, propertyDetails });
+    console.log("Fetching detailed analysis for address with details:", propertyDetails);
     
     // Send interim message
     addAgentMessage({
@@ -77,10 +81,7 @@ export async function handleListingUrl(
     });
     
     try {
-      const detailedAnalysis = await analyzeAddressWithSupabase({ 
-        address: addressToAnalyze,
-        propertyDetails: propertyDetails
-      });
+      const detailedAnalysis = await analyzeAddressWithSupabase(propertyDetails);
       console.log("Detailed analysis response received:", detailedAnalysis);
       
       if (detailedAnalysis && detailedAnalysis.text && detailedAnalysis.text.length > 10) {
