@@ -25,57 +25,64 @@ export async function handleListingUrl(
   try {
     // First get structured data from listing analyzer
     const data = await analyzeListingWithSupabase(url as string);
+    console.log("Listing data received:", data);
 
-    // Generate initial summary with structured data
-    const structuredSummary = data.address
-      ? `🔎 ${data.address}\nRent $${data.rent || 'N/A'} • Beds ${data.beds || 'N/A'}\nMarket avg $${data.marketAverage ?? "N/A"}${data.verdict ? `\n➡️ Looks **${data.verdict}** (${data.deltaPercent ?? "?"}% diff)` : ''}`
-      : "⚠️ I couldn't read that listing's basic details.";
+    if (!data.address) {
+      throw new Error("Could not extract address information from this listing.");
+    }
+
+    // Store the address for detailed analysis
+    const addressToAnalyze = data.address;
+    
+    // Prepare a brief structured summary
+    let structuredSummary = `🔎 **${addressToAnalyze}**`;
+    
+    // Add any additional structured data if available
+    if (data.rent) structuredSummary += `\n\n💰 Rent: **$${data.rent}**`;
+    if (data.beds) structuredSummary += `\n🛏️ Beds: **${data.beds}**`;
+    if (data.baths) structuredSummary += `\n🚿 Baths: **${data.baths}**`;
+    if (data.sqft) structuredSummary += `\n📏 Area: **${data.sqft} sq ft**`;
+    
+    if (data.marketAverage && data.deltaPercent && data.verdict) {
+      structuredSummary += `\n\n📊 Market average: **$${data.marketAverage}**`;
+      structuredSummary += `\n📈 Price difference: **${data.deltaPercent}%** (${data.verdict})`;
+    }
 
     // Now get detailed analysis using the address analyzer
-    if (data.address) {
-      try {
-        console.log("Getting detailed analysis for address:", data.address);
-        const detailedAnalysis = await analyzeAddressWithSupabase({ address: data.address });
+    console.log("Fetching detailed analysis for address:", addressToAnalyze);
+    
+    try {
+      const detailedAnalysis = await analyzeAddressWithSupabase({ address: addressToAnalyze });
+      console.log("Detailed analysis response received:", detailedAnalysis);
+      
+      if (detailedAnalysis && detailedAnalysis.text && detailedAnalysis.text.length > 10) {
+        // We have detailed analysis text, combine everything
+        const fullAnalysis = `${structuredSummary}\n\n---\n\n${detailedAnalysis.text}\n\n---\n💡 **Negotiation tip:** ${randomTip()}`;
         
-        console.log("Detailed analysis received:", detailedAnalysis);
-        
-        // Check if we received actual text content
-        if (detailedAnalysis && detailedAnalysis.text) {
-          // Combine structured summary with detailed analysis
-          const fullAnalysis = `${structuredSummary}\n\n---\n\n${detailedAnalysis.text}\n\n---\n💡 Negotiation tip: ${randomTip()}`;
-          
-          addAgentMessage({
-            id: crypto.randomUUID(),
-            type: "agent",
-            text: fullAnalysis,
-            timestamp: new Date()
-          });
-        } else {
-          // If the detailed analysis has no text, fall back to structured data
-          console.error("Detailed analysis missing text property:", detailedAnalysis);
-          addAgentMessage({
-            id: crypto.randomUUID(),
-            type: "agent",
-            text: `${structuredSummary}\n\n---\n💡 Negotiation tip: ${randomTip()}`,
-            timestamp: new Date()
-          });
-        }
-      } catch (analysisError) {
-        // If detailed analysis fails, still show structured data
-        console.error("Error getting detailed analysis:", analysisError);
         addAgentMessage({
           id: crypto.randomUUID(),
           type: "agent",
-          text: `${structuredSummary}\n\n---\n💡 Negotiation tip: ${randomTip()}`,
+          text: fullAnalysis,
+          timestamp: new Date()
+        });
+      } else {
+        // Fall back to just the structured data with a tip
+        console.warn("No detailed analysis text received or text too short.");
+        addAgentMessage({
+          id: crypto.randomUUID(),
+          type: "agent",
+          text: `${structuredSummary}\n\n---\n💡 **Negotiation tip:** ${randomTip()}`,
           timestamp: new Date()
         });
       }
-    } else {
-      // Fallback to just showing structured summary
+    } catch (analysisError) {
+      console.error("Error getting detailed analysis:", analysisError);
+      
+      // Still show structured data if detailed analysis fails
       addAgentMessage({
         id: crypto.randomUUID(),
         type: "agent",
-        text: structuredSummary,
+        text: `${structuredSummary}\n\n---\n💡 **Negotiation tip:** ${randomTip()}`,
         timestamp: new Date()
       });
     }
