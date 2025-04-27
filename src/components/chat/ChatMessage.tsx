@@ -1,5 +1,6 @@
 
 import { Card } from "@/components/ui/card";
+import { CollapsibleMessage } from "./CollapsibleMessage";
 
 interface Message {
   id: string;
@@ -24,7 +25,11 @@ export function ChatMessage({ message }: ChatMessageProps) {
             : "bg-card border border-border"}
         `}
       >
-        <p>{message.text}</p>
+        {message.type === "user" ? (
+          <p>{message.text}</p>
+        ) : (
+          <CollapsibleMessage text={message.text} />
+        )}
         <div 
           className={`
             text-xs mt-1 

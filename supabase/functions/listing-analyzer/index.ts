@@ -169,32 +169,27 @@ serve(async (req) => {
           'Authorization': `Bearer ${OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-4.1',
+          model: 'gpt-4o-mini',
           temperature: 0,
+          max_tokens: 800,
+          response_format: { "type": "json_object" },
           messages: [
             {
               role: 'system',
-              content: `You are a helpful assistant that extracts property listing details from HTML. Extract the ACTUAL property details from the HTML. DO NOT make up or hallucinate any information. If you don't see the information in the HTML, set the value to null.
+              content: `Extract property listing details from HTML. Extract ACTUAL property details, DO NOT hallucinate. If information isn't found, set to null.
 
-ONLY respond with a valid JSON object - no markdown formatting, no code blocks, no explanations. The JSON object should have these properties: 
+ONLY respond with a valid JSON object with these properties:
 - address (string): The full property address including city, state and zip
-- rent (number): The monthly rent in dollars, as a number without $ or commas
+- rent (number): Monthly rent in dollars, as number without $ or commas
 - beds (number|string): Number of bedrooms or text description (like "studio")
 - baths (number|string): Number of bathrooms
-- sqft (number|string): Square footage as a number
+- sqft (number|string): Square footage as number
 - zipcode (string): The zip/postal code
-- propertyName (string): The name of the apartment complex or building if available
-
-IMPORTANT INSTRUCTIONS FOR ZILLOW LISTINGS:
-1. For Zillow listings, NEVER return "123 Main St" or any other placeholder address.
-2. Look in the HTML for sections like "BuildingInfo", "LocationInfo", "propertyAddress", or "addressStreet".
-3. The real address is often inside <script> tags with type="application/ld+json".
-4. If you can't find the full address, return the property name and location (city, state) instead.
-5. For zipcode, look for postal_code, addressZipcode, or search for 5-digit numbers in the address section.`
+- propertyName (string): Name of apartment complex/building if available`
             },
             {
               role: 'user',
-              content: `Extract the property details from this HTML. This is a ${cleanUrl.includes('zillow') ? 'Zillow' : 'property'} listing:\n${html.slice(0, 20000)}`
+              content: `Extract the property details from this HTML listing:\n${html.slice(0, 20000)}`
             }
           ]
         })
@@ -244,44 +239,8 @@ IMPORTANT INSTRUCTIONS FOR ZILLOW LISTINGS:
     // Parse the properties with enhanced error handling
     let props;
     try {
-      // Extract the JSON from the content with improved handling of different formats
-      let content = extract.choices[0].message.content.trim();
-      
-      // Remove any non-JSON parts from the response
-      console.log('Raw OpenAI content:', content);
-      
-      // Handle if response is in code blocks
-      if (content.includes('```json')) {
-        content = content.split('```json')[1].split('```')[0].trim();
-      } else if (content.includes('```')) {
-        content = content.split('```')[1].split('```')[0].trim();
-      }
-      
-      // If content doesn't start with curly brace, try to find JSON object
-      if (!content.startsWith('{')) {
-        const jsonMatch = content.match(/({[\s\S]*})/);
-        if (jsonMatch) {
-          content = jsonMatch[0];
-        } else {
-          throw new Error('Could not find valid JSON in AI response');
-        }
-      }
-      
-      // Try to parse the JSON
-      try {
-        props = JSON.parse(content);
-      } catch (e) {
-        // If first attempt fails, try more aggressive cleaning
-        content = content.replace(/[\n\r\t]/g, ' ');
-        const jsonRegex = /{[^}]*}/g;
-        const jsonMatch = content.match(jsonRegex);
-        
-        if (jsonMatch) {
-          props = JSON.parse(jsonMatch[0]);
-        } else {
-          throw new Error('Failed to extract valid JSON from AI response');
-        }
-      }
+      // The response is guaranteed to be valid JSON now
+      props = JSON.parse(extract.choices[0].message.content);
       
       console.log('Extracted property details:', props);
       
