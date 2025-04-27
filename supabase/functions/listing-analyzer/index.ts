@@ -52,15 +52,33 @@ serve(async (req) => {
     const cleanUrl = url.trim().replace(/[.,;!?)\]]+$/, "");
     console.log('Analyzing listing URL (cleaned):', cleanUrl);
 
-    // Extract unit fragment identifier
+    // Enhanced unit ID extraction - handle different formats
+    // Extract unit fragment identifier and any unit numbers
     const urlParts = cleanUrl.split('#');
     const unitFragment = urlParts.length > 1 ? urlParts[1] : null;
     console.log('Unit fragment:', unitFragment);
     
-    // Look for unit ID pattern
-    const unitIdMatch = unitFragment ? unitFragment.match(/unit-(\d+)/) : null;
-    const unitId = unitIdMatch ? unitIdMatch[1] : null;
+    // Better unitId extraction - handle unit-XXXX format and other variants
+    let unitId = null;
+    let unitNumber = null;
+    
+    // Look for unit ID pattern in fragment
+    if (unitFragment) {
+      // Check for unit-XXXXXXXX format
+      const unitIdMatch = unitFragment.match(/unit-(\d+)/);
+      if (unitIdMatch) {
+        unitId = unitIdMatch[1];
+      }
+      
+      // Also look for other formats like "Unit 216"
+      const unitNumberMatch = unitFragment.match(/unit[- ]?(\d+)$/i);
+      if (unitNumberMatch) {
+        unitNumber = unitNumberMatch[1];
+      }
+    }
+    
     console.log('Extracted unit ID:', unitId);
+    console.log('Extracted unit number:', unitNumber);
 
     // Pre-extract information from the URL itself for Zillow URLs
     let urlExtractedInfo = {};
@@ -81,7 +99,7 @@ serve(async (req) => {
       }
       
       // Get property name or identifier from the URL
-      const propertyIdentifier = urlParts.find(part => part.includes('#'))?.split('#')[1] || 
+      const propertyIdentifier = urlParts.find(part => part.includes('#'))?.split('#')[0] || 
                                  urlParts[urlParts.length - 1];
       
       if (location || propertyIdentifier) {
@@ -159,19 +177,66 @@ serve(async (req) => {
       );
     }
 
-    // Extract ld+json if available and capture a larger portion of the HTML
-    const ldStart = html.indexOf("application/ld+json");
-    // Increased slice size to ensure we capture more units data
-    const snippet = ldStart !== -1 
-      ? html.slice(Math.max(ldStart - 5000, 0), ldStart + 150000) 
-      : html.slice(0, 150000);
+    // Check HTML for unit-specific data patterns
+    console.log('Checking for unit-specific data in HTML...');
     
-    // Log a portion of the snippet to check for units data
+    // Search for the unit ID directly in raw HTML with surrounding context
+    let unitContext = '';
+    let unitJson = '';
+    
+    if (unitId) {
+      // Look for the unitId in the HTML with surrounding context
+      const unitIdRegex = new RegExp(`["']${unitId}["'][^{]*?({[^}]+})`, 'i');
+      const unitIdMatch = html.match(unitIdRegex);
+      if (unitIdMatch) {
+        unitContext = unitIdMatch[0];
+        console.log('Found unit ID in HTML with context:', unitContext.substring(0, 200));
+      }
+      
+      // Look for units array in JSON data within the HTML
+      const jsonDataMatch = html.match(/("units"\s*:\s*\[)([^\]]+\])/);
+      if (jsonDataMatch) {
+        unitJson = jsonDataMatch[0];
+        console.log('Found units array in JSON data, length:', unitJson.length);
+      }
+    }
+
+    // Intelligently determine slice size based on content
+    // First try a base size
+    const baseHtml = html.slice(0, 80000);
+    let snippet;
+    
+    // If we don't find units data in the base slice, use a larger slice
+    if (!/("units"\s*:\s*\[)/i.test(baseHtml) && html.length > 80000) {
+      console.log('Units data not found in initial 80k slice, expanding to 150k');
+      snippet = html.slice(0, 150000);
+    } else {
+      console.log('Using base 80k HTML slice');
+      snippet = baseHtml;
+    }
+    
+    // Also look for unitId in the HTML - this is crucial for finding the specific unit
+    if (unitId && !snippet.includes(unitId)) {
+      // If unitId isn't in our snippet, search for it in the full HTML
+      const unitPosition = html.indexOf(unitId);
+      if (unitPosition > 0) {
+        console.log(`UnitId ${unitId} found at position ${unitPosition}, extracting surrounding context`);
+        // Get a section of HTML surrounding the unitId (more before than after to capture property details)
+        const unitSnippet = html.substring(
+          Math.max(0, unitPosition - 10000), 
+          Math.min(html.length, unitPosition + 5000)
+        );
+        // Append this unit-specific section to our snippet
+        snippet += unitSnippet;
+      }
+    }
+    
+    // Log if we found units data
     console.log('Snippet preview (first 500 chars):', snippet.substring(0, 500));
     console.log('Does snippet contain "units"?', snippet.includes('"units"'));
     console.log('Does snippet contain "pricing"?', snippet.includes('"pricing"'));
 
-    // Ask OpenAI to extract fields
+    // Ask OpenAI to extract fields with enhanced unit-specific prompt
     if (!OPENAI_API_KEY) {
       console.error('OpenAI API key not configured');
       return new Response(
@@ -188,8 +253,15 @@ serve(async (req) => {
     try {
       // Enhanced prompt that instructs the model to look for specific unit ID
       const systemPrompt = `Extract property listing details from HTML. Extract ACTUAL property details, DO NOT hallucinate. If information isn't found, set to null.
-      
-${unitId ? `IMPORTANT: Look specifically for unit with ID "${unitId}" or identifier containing "unit-${unitId}". Prioritize this exact unit over others.` : ''}
+
+CRITICAL: You MUST prioritize extracting information about the SPECIFIC UNIT, not general property information.
+${unitId ? `HIGHEST PRIORITY: Find and extract data for unit with ID "${unitId}" ONLY.` : ''}
+${unitNumber ? `ALSO IMPORTANT: Look for unit number "${unitNumber}" (may appear as "Unit ${unitNumber}" or "#${unitNumber}").` : ''}
+
+Search for these patterns to find the specific unit:
+- "id":"${unitId}" or similar in JSON objects
+- "unitId":"${unitId}" or similar in JSON objects
+- Look for beds/baths/price near occurrences of "${unitId}" or "Unit ${unitNumber || ''}"
 
 ONLY respond with a valid JSON object with these properties:
 - address (string): The full property address including city, state and zip
@@ -209,7 +281,7 @@ ONLY respond with a valid JSON object with these properties:
         body: JSON.stringify({
           model: 'gpt-4o-mini',
           temperature: 0,
-          max_tokens: 1000, // Increased token limit
+          max_tokens: 900,
           response_format: { "type": "json_object" },
           messages: [
             {
@@ -218,7 +290,7 @@ ONLY respond with a valid JSON object with these properties:
             },
             {
               role: 'user',
-              content: `Extract details from this HTML for ${unitId ? `unit ID ${unitId}` : 'the property'}. ${unitFragment ? `The URL fragment is '#${unitFragment}'` : ''}\n\n${snippet}`
+              content: `Extract details SPECIFICALLY for unit ID ${unitId || 'not provided'}${unitNumber ? `, unit number ${unitNumber}` : ''}. ${unitFragment ? `The URL fragment is '#${unitFragment}'` : ''}\n\n${snippet}`
             }
           ]
         })
@@ -269,16 +341,17 @@ ONLY respond with a valid JSON object with these properties:
     let props;
     try {
       // Parse the JSON response
-      props = JSON.parse(extract.choices[0].message.content);
+      const rawContent = extract.choices[0].message.content;
+      console.log('Raw content from OpenAI:', rawContent);
+      props = JSON.parse(rawContent);
       
-      // Handle rent as string (e.g., "from $1,939+")
-      if (props.rent && typeof props.rent === 'string') {
-        // Extract numeric portion from rent string
-        const rentMatch = props.rent.match(/\d+/);
-        if (rentMatch) {
-          props.rent = Number(rentMatch[0]);
-          console.log('Converted rent string to number:', props.rent);
+      // Enhanced rent string processing
+      if (props.rent) {
+        if (typeof props.rent === 'string') {
+          // Extract numeric portion from rent string using improved regex
+          props.rent = Number((props.rent+'').match(/\d+[,.]?\d*/)?.[0].replace(/[,]/g,'') || 0);
         }
+        console.log('Processed rent:', props.rent);
       }
       
       console.log('Extracted property details:', props);
@@ -341,6 +414,58 @@ ONLY respond with a valid JSON object with these properties:
         }
       }
       
+      // Cross-validation: Check if extracted rent matches prices in HTML near the unit ID
+      if (unitId && props.rent) {
+        // Look for pricing near the unit ID in the raw HTML
+        const unitIdPosition = html.indexOf(`${unitId}`);
+        if (unitIdPosition > 0) {
+          // Search for price patterns ($X,XXX) within proximity of unit ID
+          const pricingContext = html.substring(
+            Math.max(0, unitIdPosition - 500), 
+            Math.min(html.length, unitIdPosition + 1000)
+          );
+          
+          // Log the context for debugging
+          console.log('Context around unitId:', pricingContext.substring(0, 200));
+          
+          const priceMatches = pricingContext.match(/\$(\d{1,3},)?\d{3,4}/g);
+          
+          if (priceMatches && priceMatches.length > 0) {
+            // Convert to number for comparison
+            const nearbyPrices = priceMatches.map(p => 
+              Number(p.replace(/[$,]/g, ''))
+            ).filter(p => p > 500); // Filter out unrealistic prices
+            
+            console.log('Nearby prices found in HTML near unitId:', nearbyPrices);
+            
+            if (nearbyPrices.length > 0) {
+              // For validation purposes, we'll look at the closest price to our extracted rent
+              const sortedByCloseness = [...nearbyPrices].sort((a, b) => 
+                Math.abs(a - props.rent) - Math.abs(b - props.rent)
+              );
+              
+              const closestPrice = sortedByCloseness[0];
+              const priceDifference = Math.abs(props.rent - closestPrice);
+              const priceDiffPercent = (priceDifference / props.rent) * 100;
+              
+              console.log('Price validation:', {
+                extractedRent: props.rent,
+                closestNearbyPrice: closestPrice,
+                priceDifference,
+                priceDiffPercent
+              });
+              
+              // If the extracted price differs significantly from nearby prices,
+              // consider using the nearby price instead
+              if (priceDiffPercent > 20 && priceDifference > 200) {
+                console.warn(`Warning: Extracted rent ($${props.rent}) differs significantly from nearby price ($${closestPrice}). Using nearby price as it's likely more accurate for the specific unit.`);
+                props.rent = closestPrice;
+              }
+            }
+          }
+        }
+      }
+      
       // Validate we have at least some meaningful data
       const hasAddress = props.address && typeof props.address === 'string';
       const hasPropertyName = props.propertyName && typeof props.propertyName === 'string';
@@ -363,48 +488,6 @@ ONLY respond with a valid JSON object with these properties:
       // If we have a property name but not an address, use property name in the response
       if (!hasAddress && hasPropertyName) {
         props.address = props.propertyName;
-      }
-      
-      // If unitId is present, check if rent looks reasonable (cross-validation)
-      if (unitId && hasRent) {
-        // Look for pricing near the unit ID in the raw HTML
-        const unitIdPosition = html.indexOf(`unit-${unitId}`);
-        if (unitIdPosition > 0) {
-          // Search for price patterns ($X,XXX) within 1000 characters of unit ID
-          const pricingContext = html.substring(Math.max(0, unitIdPosition - 500), 
-                                               Math.min(html.length, unitIdPosition + 1000));
-          const priceMatches = pricingContext.match(/\$(\d{1,3},)?\d{3,4}/g);
-          
-          if (priceMatches && priceMatches.length > 0) {
-            // Convert to number for comparison
-            const nearbyPrices = priceMatches.map(p => 
-              Number(p.replace(/[$,]/g, ''))
-            ).filter(p => p > 500); // Filter out unrealistic prices
-            
-            console.log('Nearby prices found in HTML near unitId:', nearbyPrices);
-            
-            if (nearbyPrices.length > 0) {
-              // Calculate the average nearby price
-              const avgNearbyPrice = nearbyPrices.reduce((a, b) => a + b, 0) / nearbyPrices.length;
-              
-              // Check if the extracted rent is very different from nearby prices
-              const priceDifference = Math.abs(props.rent - avgNearbyPrice);
-              const priceDiffPercent = (priceDifference / avgNearbyPrice) * 100;
-              
-              console.log('Price comparison:', {
-                extractedRent: props.rent,
-                avgNearbyPrice,
-                priceDifference,
-                priceDiffPercent
-              });
-              
-              // If the difference is significant, log a warning but still use the extracted price
-              if (priceDiffPercent > 20 && priceDifference > 200) {
-                console.warn(`Warning: Extracted rent ($${props.rent}) differs significantly from nearby prices (avg: $${avgNearbyPrice.toFixed(0)})`);
-              }
-            }
-          }
-        }
       }
       
     } catch (e) {
