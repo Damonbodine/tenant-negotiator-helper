@@ -25,25 +25,9 @@ const VoicePractice = () => {
 
         {/* Main content section with custom layout */}
         <div className="flex flex-col lg:flex-row gap-6">
-          {/* Left side: ElevenLabs widget */}
-          <div className="lg:w-2/3">
+          {/* Left side: Practice Scenarios */}
+          <div className="lg:w-1/2">
             <Card className="shadow-md border-blue-100 h-full">
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent border-b">
-                <CardTitle>Practice with AI Landlord</CardTitle>
-                <CardDescription>
-                  Start a conversation with our AI landlord to practice your negotiation skills
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <ElevenLabsWidget />
-              </CardContent>
-            </Card>
-          </div>
-          
-          {/* Right side: Scenarios and Tips */}
-          <div className="lg:w-1/3 space-y-6">
-            {/* Scenarios section */}
-            <Card className="shadow-md border-blue-100">
               <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent border-b">
                 <CardTitle>Practice Scenarios</CardTitle>
                 <CardDescription>
@@ -59,7 +43,24 @@ const VoicePractice = () => {
             </Card>
             
             {/* Quick Tips section */}
-            <QuickTips />
+            <div className="mt-6">
+              <QuickTips />
+            </div>
+          </div>
+          
+          {/* Right side: ElevenLabs Widget */}
+          <div className="lg:w-1/2">
+            <Card className="shadow-md border-blue-100 h-full">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent border-b">
+                <CardTitle>Voice Practice</CardTitle>
+                <CardDescription>
+                  Practice your negotiation skills with our AI voice assistant
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6">
+                <ElevenLabsWidget />
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
