@@ -5,19 +5,6 @@ export const ElevenLabsWidget = () => {
   const widgetContainerRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
-    // Add custom styles to head
-    const style = document.createElement('style');
-    style.textContent = `
-      elevenlabs-convai {
-        position: fixed !important;
-        bottom: 20px !important;
-        left: 20px !important;
-        right: auto !important;
-        z-index: 9999 !important;
-      }
-    `;
-    document.head.appendChild(style);
-
     // Load widget script if not already present
     if (!document.querySelector('script[src="https://elevenlabs.io/convai-widget/index.js"]')) {
       const script = document.createElement('script');
@@ -27,26 +14,37 @@ export const ElevenLabsWidget = () => {
       document.body.appendChild(script);
     }
 
-    // Add load event listener for additional positioning
-    window.addEventListener('load', function positionWidget() {
-      const widget = document.querySelector('elevenlabs-convai') as HTMLElement;
-      if (widget) {
-        widget.style.position = 'fixed';
-        widget.style.bottom = '20px';
-        widget.style.left = '20px';
-        widget.style.right = 'auto';
-        widget.style.zIndex = '9999';
+    // Remove any previously injected custom styles
+    const existingStyle = document.querySelector('style[data-elevenlabs-widget]');
+    if (existingStyle) {
+      existingStyle.remove();
+    }
+
+    // Add custom styles to position the widget inside our container
+    const style = document.createElement('style');
+    style.setAttribute('data-elevenlabs-widget', 'true');
+    style.textContent = `
+      elevenlabs-convai {
+        position: relative !important;
+        bottom: auto !important;
+        left: auto !important;
+        right: auto !important;
+        z-index: 1 !important;
+        display: block !important;
+        width: 100% !important;
       }
-      window.removeEventListener('load', positionWidget);
-    });
+    `;
+    document.head.appendChild(style);
 
     return () => {
-      document.head.removeChild(style);
+      if (document.querySelector('style[data-elevenlabs-widget]')) {
+        document.querySelector('style[data-elevenlabs-widget]')?.remove();
+      }
     };
   }, []);
 
   return (
-    <div ref={widgetContainerRef} className="elevenlabs-widget-container min-h-[400px]">
+    <div ref={widgetContainerRef} className="elevenlabs-widget-container min-h-[400px] flex justify-center">
       <elevenlabs-convai agent-id="VT5HhuEwB5po9ZHZGcOk"></elevenlabs-convai>
     </div>
   );
