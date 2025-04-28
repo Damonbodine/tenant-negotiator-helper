@@ -48,9 +48,9 @@ const VoicePractice = () => {
             </div>
           </div>
           
-          {/* Right side: ElevenLabs Widget */}
+          {/* Right side: Voice Practice */}
           <div className="lg:w-1/2">
-            <Card className="shadow-md border-blue-100 h-full">
+            <Card className="shadow-md border-blue-100">
               <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent border-b">
                 <CardTitle>Voice Practice</CardTitle>
                 <CardDescription>
