@@ -52,7 +52,7 @@ const VoicePractice = () => {
                   Practice your negotiation skills with our AI voice assistant
                 </CardDescription>
               </CardHeader>
-              <CardContent className="pt-6 space-y-6">
+              <CardContent className="pt-6 space-y-3">
                 {/* ElevenLabs Widget */}
                 <ElevenLabsWidget />
                 
