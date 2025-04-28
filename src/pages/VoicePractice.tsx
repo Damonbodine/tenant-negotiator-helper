@@ -41,11 +41,6 @@ const VoicePractice = () => {
                 />
               </CardContent>
             </Card>
-            
-            {/* Quick Tips section */}
-            <div className="mt-6">
-              <QuickTips />
-            </div>
           </div>
           
           {/* Right side: Voice Practice */}
@@ -57,8 +52,12 @@ const VoicePractice = () => {
                   Practice your negotiation skills with our AI voice assistant
                 </CardDescription>
               </CardHeader>
-              <CardContent className="pt-6">
+              <CardContent className="pt-6 space-y-6">
+                {/* ElevenLabs Widget */}
                 <ElevenLabsWidget />
+                
+                {/* Quick Tips section moved inside the Voice Practice card */}
+                <QuickTips />
               </CardContent>
             </Card>
           </div>
