@@ -22,7 +22,7 @@ export const NewsletterSignup = () => {
   
   return (
     <div className="border rounded-xl p-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30">
-      <h3 className="text-xl font-semibold mb-2 text-center">Get Rental Market Updates</h3>
+      <h3 className="text-xl font-semibold mb-2 text-center text-black">Get Rental Market Updates</h3>
       <p className="text-gray-600 dark:text-gray-300 mb-4 text-center">
         Stay informed about rental market trends and negotiation tips
       </p>
