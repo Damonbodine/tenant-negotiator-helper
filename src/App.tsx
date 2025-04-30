@@ -1,3 +1,4 @@
+
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Suspense, lazy } from "react";
 import { Toaster } from "@/shared/ui/toaster";
@@ -13,6 +14,7 @@ const VoicePractice = lazy(() => import("@/pages/VoicePractice"));
 const Contact = lazy(() => import("@/pages/Contact"));
 const Auth = lazy(() => import("@/pages/Auth"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
+const Resources = lazy(() => import("@/pages/Resources"));
 const PromptManager = lazy(() => import("@/shared/components/PromptManager"));
 
 function AppRoutes() {
@@ -24,6 +26,7 @@ function AppRoutes() {
         <Route path="/practice/voice" element={<VoicePractice />} />
         <Route path="/prompts" element={<PromptManager />} />
         <Route path="/auth" element={<Auth />} />
+        <Route path="/resources" element={<Resources />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
