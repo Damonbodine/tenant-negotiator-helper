@@ -38,22 +38,20 @@ const Resources = () => {
   return (
     <div className="container py-6">
       <div className="space-y-6">
-        {/* Back navigation */}
-        <div>
-          <Button variant="ghost" size="sm" asChild className="mb-4 hover:bg-cyan-950/30">
+        {/* Header section with back button in upper right */}
+        <div className="flex justify-between items-center">
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold text-cyan-400">Resources</h1>
+            <p className="text-cyan-100/70">
+              Access our collection of guides, templates, and learning materials to help you succeed in rental negotiations.
+            </p>
+          </div>
+          <Button variant="ghost" size="sm" asChild className="hover:bg-cyan-950/30">
             <Link to="/" className="flex items-center gap-1 text-cyan-400">
               <ChevronLeft className="h-4 w-4" />
-              Back to Home
+              Back
             </Link>
           </Button>
-        </div>
-
-        {/* Header section */}
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-cyan-400">Resources</h1>
-          <p className="text-cyan-100/70">
-            Access our collection of guides, templates, and learning materials to help you succeed in rental negotiations.
-          </p>
         </div>
 
         {/* Resource categories */}
