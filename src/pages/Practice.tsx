@@ -2,26 +2,26 @@
 import { ApartmentAnalysis } from "@/components/negotiation/ApartmentAnalysis";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Building, LinkIcon, ExternalLink } from "lucide-react";
+import { ChevronLeft, Building, LinkIcon, ExternalLink } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 
 const Practice = () => {
   return (
     <div className="container py-6">
       <div className="space-y-6">
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+        <div className="flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold text-blue-600">Rent Analysis</h2>
             <p className="text-muted-foreground mt-1">
               Analyze apartment pricing to strengthen your negotiation position
             </p>
           </div>
-          <Link to="/">
-            <Button variant="outline" size="sm" className="gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Dashboard
-            </Button>
-          </Link>
+          <Button variant="ghost" size="sm" asChild className="hover:bg-cyan-950/30">
+            <Link to="/" className="flex items-center gap-1 text-cyan-400">
+              <ChevronLeft className="h-4 w-4" />
+              Back
+            </Link>
+          </Button>
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

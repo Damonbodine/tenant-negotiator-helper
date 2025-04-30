@@ -5,6 +5,9 @@ import { ScenarioSelector } from "@/components/negotiation/ScenarioSelector";
 import { QuickTips } from "@/components/negotiation/QuickTips";
 import { PracticeHeader } from "@/components/negotiation/PracticeHeader";
 import { ElevenLabsWidget } from "@/components/negotiation/ElevenLabsWidget";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft } from "lucide-react";
+import { Link } from "react-router-dom";
 
 declare global {
   namespace JSX {
@@ -20,8 +23,16 @@ const VoicePractice = () => {
   return (
     <div className="container py-6">
       <div className="space-y-6">
-        {/* Header section */}
-        <PracticeHeader />
+        {/* Header section with standardized back button */}
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-blue-600">Voice Practice</h1>
+          <Button variant="ghost" size="sm" asChild className="hover:bg-cyan-950/30">
+            <Link to="/" className="flex items-center gap-1 text-cyan-400">
+              <ChevronLeft className="h-4 w-4" />
+              Back
+            </Link>
+          </Button>
+        </div>
 
         {/* Main content section with custom layout */}
         <div className="flex flex-col lg:flex-row gap-6">
