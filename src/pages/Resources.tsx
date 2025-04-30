@@ -1,7 +1,8 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, ExternalLink } from "lucide-react";
+import { Download, ExternalLink, ChevronLeft } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Resources = () => {
   const resourceCategories = [
@@ -37,6 +38,16 @@ const Resources = () => {
   return (
     <div className="container py-6">
       <div className="space-y-6">
+        {/* Back navigation */}
+        <div>
+          <Button variant="ghost" size="sm" asChild className="mb-4 hover:bg-cyan-950/30">
+            <Link to="/" className="flex items-center gap-1 text-cyan-400">
+              <ChevronLeft className="h-4 w-4" />
+              Back to Home
+            </Link>
+          </Button>
+        </div>
+
         {/* Header section */}
         <div className="space-y-2">
           <h1 className="text-3xl font-bold text-cyan-400">Resources</h1>
