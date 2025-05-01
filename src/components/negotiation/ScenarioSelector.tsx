@@ -1,9 +1,7 @@
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PracticeScenario } from "@/components/PracticeScenario";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
-import { useState, useEffect } from "react";
 
 interface ScenarioSelectorProps {
   selectedScenario: string;
@@ -11,12 +9,6 @@ interface ScenarioSelectorProps {
 }
 
 export function ScenarioSelector({ selectedScenario, onScenarioChange }: ScenarioSelectorProps) {
-  const scenarios = [
-    { id: "standard", name: "Standard" },
-    { id: "luxury", name: "Luxury" },
-    { id: "house", name: "House" }
-  ];
-  
   const [randomScenario, setRandomScenario] = useState<{
     title: string;
     description: string;
@@ -126,84 +118,65 @@ export function ScenarioSelector({ selectedScenario, onScenarioChange }: Scenari
   }, []);
   
   return (
-    <Tabs value={selectedScenario} onValueChange={onScenarioChange}>
-      <TabsList className="grid grid-cols-4 mb-4">
-        {scenarios.map(scenario => (
-          <TabsTrigger key={scenario.id} value={scenario.id}>
-            {scenario.name}
-          </TabsTrigger>
-        ))}
-        <TabsTrigger value="random">Random</TabsTrigger>
-      </TabsList>
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-medium">{randomScenario?.title || "Loading..."}</h3>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={generateRandomScenario}
+          disabled={isLoading}
+          className="gap-2"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Generate New Scenario
+        </Button>
+      </div>
       
-      {scenarios.map(scenario => (
-        <TabsContent key={scenario.id} value={scenario.id} className="mt-0">
-          <PracticeScenario scenario={scenario.id} />
-        </TabsContent>
-      ))}
-      
-      <TabsContent value="random" className="mt-0">
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-medium">{randomScenario?.title || "Loading..."}</h3>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={generateRandomScenario}
-              disabled={isLoading}
-              className="gap-2"
-            >
-              <RefreshCw className="h-4 w-4" />
-              New Scenario
-            </Button>
+      {randomScenario ? (
+        <>
+          <p className="text-muted-foreground text-sm">{randomScenario.description}</p>
+          
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p className="font-medium">Market Rate:</p>
+              <p className="text-muted-foreground">{randomScenario.marketRate}</p>
+            </div>
+            <div>
+              <p className="font-medium">Asking Price:</p>
+              <p className="text-muted-foreground">{randomScenario.askingPrice}</p>
+            </div>
+            <div>
+              <p className="font-medium">Property Age:</p>
+              <p className="text-muted-foreground">{randomScenario.propertyAge}</p>
+            </div>
+            <div>
+              <p className="font-medium">Occupancy:</p>
+              <p className="text-muted-foreground">{randomScenario.occupancyRate}</p>
+            </div>
           </div>
           
-          {randomScenario ? (
-            <>
-              <p className="text-muted-foreground text-sm">{randomScenario.description}</p>
-              
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="font-medium">Market Rate:</p>
-                  <p className="text-muted-foreground">{randomScenario.marketRate}</p>
-                </div>
-                <div>
-                  <p className="font-medium">Asking Price:</p>
-                  <p className="text-muted-foreground">{randomScenario.askingPrice}</p>
-                </div>
-                <div>
-                  <p className="font-medium">Property Age:</p>
-                  <p className="text-muted-foreground">{randomScenario.propertyAge}</p>
-                </div>
-                <div>
-                  <p className="font-medium">Occupancy:</p>
-                  <p className="text-muted-foreground">{randomScenario.occupancyRate}</p>
-                </div>
-              </div>
-              
-              <div className="text-sm">
-                <p className="font-medium">Amenities:</p>
-                <ul className="list-disc pl-5 text-muted-foreground">
-                  {randomScenario.amenities.map((amenity, index) => (
-                    <li key={index}>{amenity}</li>
-                  ))}
-                </ul>
-              </div>
-              
-              <div className="text-sm">
-                <p className="font-medium">Negotiation Tips:</p>
-                <ul className="list-disc pl-5 text-muted-foreground">
-                  {randomScenario.tips.map((tip, index) => (
-                    <li key={index}>{tip}</li>
-                  ))}
-                </ul>
-              </div>
-            </>
-          ) : (
-            <p>Generating random scenario...</p>
-          )}
-        </div>
-      </TabsContent>
-    </Tabs>
+          <div className="text-sm">
+            <p className="font-medium">Amenities:</p>
+            <ul className="list-disc pl-5 text-muted-foreground">
+              {randomScenario.amenities.map((amenity, index) => (
+                <li key={index}>{amenity}</li>
+              ))}
+            </ul>
+          </div>
+          
+          <div className="text-sm">
+            <p className="font-medium">Negotiation Tips:</p>
+            <ul className="list-disc pl-5 text-muted-foreground">
+              {randomScenario.tips.map((tip, index) => (
+                <li key={index}>{tip}</li>
+              ))}
+            </ul>
+          </div>
+        </>
+      ) : (
+        <p>Generating random scenario...</p>
+      )}
+    </div>
   );
 }

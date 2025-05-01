@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState } from "react";
 import { ScenarioSelector } from "@/components/negotiation/ScenarioSelector";
@@ -7,6 +8,7 @@ import { ElevenLabsWidget } from "@/components/negotiation/ElevenLabsWidget";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { Link } from "react-router-dom";
+
 declare global {
   namespace JSX {
     interface IntrinsicElements {
@@ -14,8 +16,11 @@ declare global {
     }
   }
 }
+
 const VoicePractice = () => {
-  const [selectedScenario, setSelectedScenario] = useState("standard");
+  // Updated to use "random" as the default scenario
+  const [selectedScenario, setSelectedScenario] = useState("random");
+  
   return <div className="container py-6">
       <div className="space-y-6">
         {/* Header section with standardized back button */}
@@ -35,9 +40,9 @@ const VoicePractice = () => {
           <div className="lg:w-1/2">
             <Card className="shadow-md border-blue-100 h-full">
               <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent border-b bg-slate-500">
-                <CardTitle className="text-slate-950">Practice Scenarios</CardTitle>
+                <CardTitle className="text-slate-950">Random Scenario Generator</CardTitle>
                 <CardDescription className="text-slate-950">
-                  Choose a scenario to practice different negotiation contexts
+                  Generate randomized negotiation scenarios to practice
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
@@ -68,4 +73,5 @@ const VoicePractice = () => {
       </div>
     </div>;
 };
+
 export default VoicePractice;
