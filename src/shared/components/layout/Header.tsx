@@ -17,10 +17,7 @@ export const Header = () => {
             </Button>
           </Link>
           <a href="/renters-playbook.pdf" target="_blank" rel="noopener noreferrer">
-            <Button variant="ghost" size="sm" className="gap-1">
-              <BookOpen className="h-4 w-4" />
-              Playbook
-            </Button>
+            
           </a>
         </nav>
       </div>
