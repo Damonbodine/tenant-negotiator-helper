@@ -1,9 +1,6 @@
-
 import { useEffect, useRef } from "react";
-
 export const ElevenLabsWidget = () => {
   const widgetContainerRef = useRef<HTMLDivElement>(null);
-  
   useEffect(() => {
     // Load widget script if not already present
     if (!document.querySelector('script[src="https://elevenlabs.io/convai-widget/index.js"]')) {
@@ -35,17 +32,13 @@ export const ElevenLabsWidget = () => {
       }
     `;
     document.head.appendChild(style);
-
     return () => {
       if (document.querySelector('style[data-elevenlabs-widget]')) {
         document.querySelector('style[data-elevenlabs-widget]')?.remove();
       }
     };
   }, []);
-
-  return (
-    <div ref={widgetContainerRef} className="elevenlabs-widget-container min-h-[400px] flex justify-center">
+  return <div ref={widgetContainerRef} className="elevenlabs-widget-container min-h-[400px] flex justify-center mx-0 my-0 px-[102px]">
       <elevenlabs-convai agent-id="VT5HhuEwB5po9ZHZGcOk"></elevenlabs-convai>
-    </div>
-  );
+    </div>;
 };

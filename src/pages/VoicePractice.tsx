@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState } from "react";
 import { ScenarioSelector } from "@/components/negotiation/ScenarioSelector";
@@ -8,7 +7,6 @@ import { ElevenLabsWidget } from "@/components/negotiation/ElevenLabsWidget";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { Link } from "react-router-dom";
-
 declare global {
   namespace JSX {
     interface IntrinsicElements {
@@ -16,12 +14,9 @@ declare global {
     }
   }
 }
-
 const VoicePractice = () => {
   const [selectedScenario, setSelectedScenario] = useState("standard");
-
-  return (
-    <div className="container py-6">
+  return <div className="container py-6">
       <div className="space-y-6">
         {/* Header section with standardized back button */}
         <div className="flex justify-between items-center">
@@ -39,17 +34,14 @@ const VoicePractice = () => {
           {/* Left side: Practice Scenarios */}
           <div className="lg:w-1/2">
             <Card className="shadow-md border-blue-100 h-full">
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent border-b">
-                <CardTitle>Practice Scenarios</CardTitle>
-                <CardDescription>
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent border-b bg-slate-500">
+                <CardTitle className="text-slate-950">Practice Scenarios</CardTitle>
+                <CardDescription className="text-slate-950">
                   Choose a scenario to practice different negotiation contexts
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
-                <ScenarioSelector 
-                  selectedScenario={selectedScenario}
-                  onScenarioChange={setSelectedScenario}
-                />
+                <ScenarioSelector selectedScenario={selectedScenario} onScenarioChange={setSelectedScenario} />
               </CardContent>
             </Card>
           </div>
@@ -57,9 +49,9 @@ const VoicePractice = () => {
           {/* Right side: Voice Practice */}
           <div className="lg:w-1/2">
             <Card className="shadow-md border-blue-100">
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent border-b">
-                <CardTitle>Voice Practice</CardTitle>
-                <CardDescription>
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent border-b bg-slate-500">
+                <CardTitle className="text-slate-950">Voice Practice</CardTitle>
+                <CardDescription className="text-slate-950">
                   Practice your negotiation skills with our AI voice assistant
                 </CardDescription>
               </CardHeader>
@@ -74,8 +66,6 @@ const VoicePractice = () => {
           </div>
         </div>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default VoicePractice;
