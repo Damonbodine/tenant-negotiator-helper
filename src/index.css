@@ -91,6 +91,23 @@
   .content-card {
     @apply bg-white shadow-xl rounded-lg;
   }
+  
+  /* New styles for resource templates */
+  .resource-template {
+    @apply bg-black text-white border border-gray-700 rounded-md overflow-hidden;
+  }
+  
+  .resource-template-header {
+    @apply bg-gray-900 p-4 rounded-t-md;
+  }
+  
+  .resource-template-content {
+    @apply p-4 font-mono text-sm whitespace-pre-wrap bg-black text-white;
+  }
+  
+  .resource-template-footer {
+    @apply p-3 bg-gray-900 rounded-b-md text-gray-300;
+  }
 }
 
 @layer utilities {
