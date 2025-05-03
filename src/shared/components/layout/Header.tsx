@@ -2,7 +2,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Home, MessageSquare, BookOpen } from "lucide-react";
+import { Home, MessageSquare } from "lucide-react";
 
 export const Header = () => {
   return <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -18,18 +18,6 @@ export const Header = () => {
               Contact
             </Button>
           </Link>
-          <Link to="/resources">
-            <Button variant="ghost" size="sm" className="gap-1">
-              <BookOpen className="h-4 w-4" />
-              Resources
-            </Button>
-          </Link>
-          <a href="/renters-playbook.pdf" target="_blank" rel="noopener noreferrer">
-            <Button variant="outline" size="sm" className="gap-1">
-              <BookOpen className="h-4 w-4" />
-              Renter's Playbook
-            </Button>
-          </a>
         </nav>
       </div>
     </header>;
