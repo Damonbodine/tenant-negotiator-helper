@@ -68,7 +68,7 @@ const Resources = () => {
             Negotiating your rent doesn't have to be awkward. Whether you're renewing your lease or moving into a new place, a well-written email can set the tone for a positive negotiation. Here are ready-to-use templates you can customize based on your situation — plus some quick tips to boost your chances.
           </p>
           
-          <div className="p-4 rounded-md bg-gray-950">
+          <div className="p-4 rounded-md bg-black text-white">
             <h3 className="font-medium mb-2">Quick Tips Before Sending:</h3>
             <ul className="list-disc pl-5 space-y-1">
               <li>Do your homework: Know the average rent for similar apartments in your area.</li>
@@ -78,14 +78,14 @@ const Resources = () => {
             </ul>
           </div>
           
-          <div className="border border-gray-700 rounded-md">
-            <div className="bg-gray-900 p-4 rounded-t-md">
+          <div className="resource-template">
+            <div className="resource-template-header">
               <h3 className="font-medium flex items-center gap-2 text-white">
                 <span className="text-blue-400">Template 1:</span> Lease Renewal — Asking for Lower Rent
               </h3>
               <div className="text-sm text-gray-300">Subject: Lease Renewal — Rent Adjustment Discussion</div>
             </div>
-            <div className="p-4 font-mono text-sm whitespace-pre-wrap bg-black text-white">
+            <div className="resource-template-content">
             {`Hi [Landlord's Name],
 
 I hope you're doing well! As my lease approaches renewal, I've been reviewing current rental market trends in [Neighborhood/City], and I've noticed that similar apartments are now renting for around [$MarketRate].
@@ -99,7 +99,7 @@ Thank you for your consideration!
 Best,  
 [Your Name]`}
             </div>
-            <div className="p-3 bg-gray-900 rounded-b-md">
+            <div className="resource-template-footer">
               <div className="flex items-center gap-2">
                 <Badge variant="secondary" className="bg-green-900 text-green-100">
                   Pro Tip
@@ -109,14 +109,14 @@ Best,
             </div>
           </div>
           
-          <div className="border border-gray-700 rounded-md">
-            <div className="bg-gray-900 p-4 rounded-t-md">
+          <div className="resource-template">
+            <div className="resource-template-header">
               <h3 className="font-medium flex items-center gap-2 text-white">
                 <span className="text-blue-400">Template 2:</span> New Lease — Negotiating After Receiving Initial Offer
               </h3>
               <div className="text-sm text-gray-300">Subject: Rental Application — Rent Discussion</div>
             </div>
-            <div className="p-4 bg-black text-white font-mono text-sm whitespace-pre-wrap">
+            <div className="resource-template-content">
             {`Hi [Landlord/Agent's Name],
 
 Thank you for considering my application for [Apartment Address]! I'm very interested in the unit and excited about the possibility of living there.
@@ -130,7 +130,7 @@ Thank you again for your time — I'm happy to discuss at your convenience.
 Best,  
 [Your Name]`}
             </div>
-            <div className="p-3 bg-gray-900 rounded-b-md">
+            <div className="resource-template-footer">
               <div className="flex items-center gap-2">
                 <Badge variant="secondary" className="bg-green-900 text-green-100">
                   Pro Tip
@@ -140,14 +140,14 @@ Best,
             </div>
           </div>
           
-          <div className="border border-gray-700 rounded-md">
-            <div className="bg-gray-900 p-4 rounded-t-md">
+          <div className="resource-template">
+            <div className="resource-template-header">
               <h3 className="font-medium flex items-center gap-2 text-white">
                 <span className="text-blue-400">Template 3:</span> Renewal — Asking for Concessions (Instead of Rent Cut)
               </h3>
               <div className="text-sm text-gray-300">Subject: Lease Renewal — Request for Concession</div>
             </div>
-            <div className="p-4 bg-black text-white font-mono text-sm whitespace-pre-wrap">
+            <div className="resource-template-content">
             {`Hi [Landlord's Name],
 
 I hope you're well. I'm looking forward to potentially renewing my lease at [Apartment Address].
@@ -161,7 +161,7 @@ Thanks so much!
 Best,  
 [Your Name]`}
             </div>
-            <div className="p-3 bg-gray-900 rounded-b-md">
+            <div className="resource-template-footer">
               <div className="flex items-center gap-2">
                 <Badge variant="secondary" className="bg-green-900 text-green-100">
                   Pro Tip
@@ -171,7 +171,7 @@ Best,
             </div>
           </div>
           
-          <div className="bg-gray-900 p-4 rounded-md">
+          <div className="bg-black p-4 rounded-md">
             <h3 className="font-medium mb-2 text-white">Bonus: Best Times to Negotiate</h3>
             <ul className="list-disc pl-5 space-y-1 text-gray-300">
               <li>60–90 days before your lease ends</li>
@@ -200,11 +200,11 @@ Best,
           </p>
           
           <div className="space-y-4">
-            <div className="border border-gray-700 rounded-lg overflow-hidden">
-              <div className="bg-gray-900 p-4">
+            <div className="resource-template">
+              <div className="resource-template-header">
                 <h3 className="font-medium text-white">Step-by-Step: How to Compare Rental Prices</h3>
               </div>
-              <div className="p-4 space-y-4 bg-black text-white">
+              <div className="resource-template-content">
                 <div>
                   <h4 className="font-medium text-blue-400">1. Pick 3–5 Comparable Apartments</h4>
                   <ul className="list-disc pl-5 mt-2 space-y-1">
@@ -279,20 +279,13 @@ Best,
               </div>
             </div>
             
-            <div className="bg-gray-900 p-4 rounded-md">
+            <div className="bg-black p-4 rounded-md">
               <h3 className="font-medium mb-2 text-white">Pro Tips for Better Results</h3>
-              <ul className="list-disc pl-5 space-y-1 text-gray-300">
+              <ul className="list-disc pl-5 space-y-1 text-white">
                 <li>Screenshot listings — if a landlord removes them later, you still have proof</li>
                 <li>Compare recently rented units, not just listed ones — active listings can sometimes be overpriced</li>
                 <li>Use the same radius — try to stay within 1 mile unless in very spread-out suburban areas</li>
               </ul>
-            </div>
-            
-            <div className="flex justify-center">
-              <Button className="gap-2">
-                <Download className="h-4 w-4" />
-                Download Free Comparison Spreadsheet Template
-              </Button>
             </div>
           </div>
           
@@ -313,11 +306,11 @@ Best,
             Use this essential Move-In Checklist to document your unit's condition, protect your security deposit, and ensure nothing gets missed.
           </p>
           
-          <div className="border border-gray-700 rounded-lg overflow-hidden">
-            <div className="bg-gray-900 p-4">
+          <div className="resource-template">
+            <div className="resource-template-header">
               <h3 className="font-medium text-white">Complete Move-In Inspection Checklist</h3>
             </div>
-            <div className="p-4 grid md:grid-cols-2 gap-6 bg-black text-white">
+            <div className="resource-template-content grid md:grid-cols-2 gap-6">
               <div>
                 <h4 className="font-medium text-blue-400 mb-2">General Condition</h4>
                 <ul className="space-y-2">
@@ -464,9 +457,9 @@ Best,
             </div>
           </div>
           
-          <div className="bg-gray-900 p-4 rounded-md">
+          <div className="bg-black p-4 rounded-md">
             <h3 className="font-medium mb-2 text-white">Pro Tips for Move-In</h3>
-            <ul className="space-y-2 text-gray-300">
+            <ul className="space-y-2 text-white">
               <li className="flex items-center gap-3">
                 <div className="text-blue-400">📸</div>
                 <span>Take photos of any imperfections and email them to yourself and your landlord the day you move in</span>
@@ -480,13 +473,6 @@ Best,
                 <span>Confirm mailbox keys, building fobs, and access cards are provided</span>
               </li>
             </ul>
-          </div>
-          
-          <div className="flex justify-center">
-            <Button className="gap-2">
-              <Download className="h-4 w-4" />
-              Download Printable Move-In Checklist PDF
-            </Button>
           </div>
           
           <div className="flex justify-end">
@@ -505,11 +491,11 @@ Best,
             Want your full security deposit back? Landlords often withhold deposits for avoidable reasons — but a little preparation can make sure you walk away with 100% of what's yours. Here's your complete guide to securing a full return when you move out.
           </p>
           
-          <div className="border border-gray-700 rounded-lg overflow-hidden">
-            <div className="bg-gray-900 p-4">
+          <div className="resource-template">
+            <div className="resource-template-header">
               <h3 className="font-medium text-white">Steps to Maximize Your Security Deposit Return</h3>
             </div>
-            <div className="p-4 space-y-4 bg-black text-white">
+            <div className="resource-template-content space-y-4">
               <div>
                 <h4 className="font-medium text-blue-400">1. Document the Apartment at Move-In</h4>
                 <ul className="list-disc pl-5 mt-2 space-y-1">
@@ -572,9 +558,9 @@ Best,
             </div>
           </div>
           
-          <div className="bg-gray-900 p-4 rounded-md">
+          <div className="bg-black p-4 rounded-md">
             <h3 className="font-medium mb-2 text-white">Pro Tips</h3>
-            <ul className="space-y-2 text-gray-300">
+            <ul className="space-y-2 text-white">
               <li className="flex items-center gap-3">
                 <div className="text-blue-400">📸</div>
                 <span>Take photos of the cleaned, empty apartment right before you leave</span>
@@ -606,511 +592,14 @@ Best,
             Touring a new apartment can be overwhelming — but it's your best chance to spot hidden issues before signing. Use this Apartment Viewing Checklist to stay sharp, ask the right questions, and avoid costly surprises.
           </p>
           
-          <div className="border border-gray-700 rounded-lg overflow-hidden">
-            <div className="bg-gray-900 p-4">
+          <div className="resource-template">
+            <div className="resource-template-header">
               <h3 className="font-medium text-white">Essential Apartment Viewing Checklist</h3>
             </div>
-            <div className="p-4 grid md:grid-cols-2 gap-6 bg-black text-white">
+            <div className="resource-template-content grid md:grid-cols-2 gap-6">
               <div>
                 <h4 className="font-medium text-blue-400 mb-2">General Condition</h4>
                 <ul className="space-y-2">
                   <li className="flex items-start gap-2">
                     <div className="mt-1 h-5 w-5 rounded border border-gray-700 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                    </div>
-                    <span>Are the walls, ceilings, and floors in good shape?</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <div className="mt-1 h-5 w-5 rounded border border-gray-700 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                    </div>
-                    <span>Are there any odors (mold, smoke, pets)?</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <div className="mt-1 h-5 w-5 rounded border border-gray-700 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                    </div>
-                    <span>Do all windows open, close, and lock properly?</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <div className="mt-1 h-5 w-5 rounded border border-gray-700 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                    </div>
-                    <span>Are hallways and common areas clean and well-lit?</span>
-                  </li>
-                </ul>
-              </div>
-              
-              <div>
-                <h4 className="font-medium text-blue-400 mb-2">Appliances and Utilities</h4>
-                <ul className="space-y-2">
-                  <li className="flex items-start gap-2">
-                    <div className="mt-1 h-5 w-5 rounded border border-gray-700 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                    </div>
-                    <span>Test the oven, stove, microwave, dishwasher, fridge, and freezer</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <div className="mt-1 h-5 w-5 rounded border border-gray-700 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                    </div>
-                    <span>Turn on faucets — check water pressure and hot water availability</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <div className="mt-1 h-5 w-5 rounded border border-gray-700 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                    </div>
-                    <span>Flush toilets and run showers/tubs</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <div className="mt-1 h-5 w-5 rounded border border-gray-700 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                    </div>
-                    <span>Check heating, A/C, and thermostat (especially in extreme seasons)</span>
-                  </li>
-                </ul>
-              </div>
-              
-              <div>
-                <h4 className="font-medium text-blue-400 mb-2">Safety Features</h4>
-                <ul className="space-y-2">
-                  <li className="flex items-start gap-2">
-                    <div className="mt-1 h-5 w-5 rounded border border-gray-700 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                    </div>
-                    <span>Are smoke detectors and carbon monoxide detectors installed and functional?</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <div className="mt-1 h-5 w-5 rounded border border-gray-700 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                    </div>
-                    <span>Are fire extinguishers, sprinkler systems, or emergency exits available?</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <div className="mt-1 h-5 w-5 rounded border border-gray-700 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                    </div>
-                    <span>Is the main entrance secure? (Check front door locks and building access)</span>
-                  </li>
-                </ul>
-              </div>
-              
-              <div>
-                <h4 className="font-medium text-blue-400 mb-2">Noise Levels</h4>
-                <ul className="space-y-2">
-                  <li className="flex items-start gap-2">
-                    <div className="mt-1 h-5 w-5 rounded border border-gray-700 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                    </div>
-                    <span>Listen for noise from neighboring units, streets, or mechanical systems</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <div className="mt-1 h-5 w-5 rounded border border-gray-700 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
-                        <path d="M20 6L9 17l-5-5" />
-                      </svg>
-                    </div>
-                    <span>Visit at different times of day if possible</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-gray-900 p-4 rounded-md">
-            <h3 className="font-medium mb-2 text-white">Pro Tips</h3>
-            <ul className="space-y-2 text-gray-300">
-              <li className="flex items-center gap-3">
-                <div className="text-blue-400">📝</div>
-                <span>Bring a printed checklist and fill it out during the tour</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <div className="text-blue-400">📸</div>
-                <span>Take photos or short videos during your visit — especially of problem areas</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <div className="text-blue-400">💬</div>
-                <span>Ask current tenants (if available) about building management and maintenance responsiveness</span>
-              </li>
-            </ul>
-          </div>
-          
-          <div className="flex justify-end">
-            <Button variant="outline" asChild className="gap-1">
-              <Link to="/resources">
-                <ChevronLeft className="h-4 w-4" /> Back to Resources
-              </Link>
-            </Button>
-          </div>
-        </div>
-    },
-    "lease-red-flags": {
-      title: "Lease Agreement Red Flags",
-      content: <div className="space-y-6">
-          <p>
-            Before you sign a lease, know what you're agreeing to. Some lease clauses can trap renters in expensive, unfair, or risky situations. Here's a guide to common red flags — and what to do if you spot them.
-          </p>
-          
-          <div className="border border-gray-700 rounded-lg overflow-hidden">
-            <div className="bg-gray-900 p-4">
-              <h3 className="font-medium text-white">Top Lease Red Flags to Watch Out For</h3>
-            </div>
-            <div className="p-4 space-y-4 bg-black text-white">
-              <div className="border-b border-gray-700 pb-4">
-                <h4 className="font-medium text-blue-400">1. Excessive Late Fees</h4>
-                <ul className="list-disc pl-5 mt-2 space-y-1">
-                  <li>Some leases charge huge late fees ($100+ after just 1–2 days late)</li>
-                  <li>Check if late fees are reasonable and comply with your state's laws</li>
-                </ul>
-              </div>
-              
-              <div className="border-b border-gray-700 pb-4">
-                <h4 className="font-medium text-blue-400">2. Automatic Lease Renewal without Notice</h4>
-                <ul className="list-disc pl-5 mt-2 space-y-1">
-                  <li>Some leases auto-renew unless you cancel months before the end date</li>
-                  <li>Look for language like "automatic renewal unless tenant provides 60 days written notice"</li>
-                </ul>
-              </div>
-              
-              <div className="border-b border-gray-700 pb-4">
-                <h4 className="font-medium text-blue-400">3. "As-Is" Rental Terms</h4>
-                <ul className="list-disc pl-5 mt-2 space-y-1">
-                  <li>"As-is" language can mean you're accepting hidden damage or problems</li>
-                  <li>Ask for a full walk-through and written documentation of any pre-existing issues</li>
-                </ul>
-              </div>
-              
-              <div className="border-b border-gray-700 pb-4">
-                <h4 className="font-medium text-blue-400">4. Maintenance Waivers</h4>
-                <ul className="list-disc pl-5 mt-2 space-y-1">
-                  <li>Landlords are legally required to maintain habitable conditions</li>
-                  <li>Watch out for clauses that try to shift maintenance responsibility onto tenants improperly</li>
-                </ul>
-              </div>
-              
-              <div className="border-b border-gray-700 pb-4">
-                <h4 className="font-medium text-blue-400">5. Hidden Fees</h4>
-                <ul className="list-disc pl-5 mt-2 space-y-1">
-                  <li>Carefully review for:</li>
-                  <ul className="list-disc pl-5 mt-2 space-y-1">
-                    <li>Admin fees</li>
-                    <li>Parking fees</li>
-                    <li>Key/fob replacement fees</li>
-                    <li>Amenity usage fees</li>
-                  </ul>
-                </ul>
-              </div>
-              
-              <div className="border-b border-gray-700 pb-4">
-                <h4 className="font-medium text-blue-400">6. Unclear Security Deposit Return Policy</h4>
-                <ul className="list-disc pl-5 mt-2 space-y-1">
-                  <li>The lease should specify how soon your deposit will be returned and under what conditions</li>
-                  <li>Watch out if it says "at landlord's discretion" without a timeline</li>
-                </ul>
-              </div>
-              
-              <div className="border-b border-gray-700 pb-4">
-                <h4 className="font-medium text-blue-400">7. Entry Without Notice</h4>
-                <ul className="list-disc pl-5 mt-2 space-y-1">
-                  <li>Landlords typically must give 24–48 hours notice before entering (except emergencies)</li>
-                  <li>Watch for vague language giving landlords unlimited entry rights</li>
-                </ul>
-              </div>
-              
-              <div>
-                <h4 className="font-medium text-blue-400">8. Early Termination Penalties</h4>
-                <ul className="list-disc pl-5 mt-2 space-y-1">
-                  <li>Check if the lease allows for any flexibility (subletting, lease break fees) if you need to move</li>
-                  <li>Some leases impose huge penalties (like full rent owed for entire remaining lease)</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-gray-900 p-4 rounded-md">
-            <h3 className="font-medium mb-2 text-white">Pro Tips</h3>
-            <ul className="space-y-2 text-gray-300">
-              <li className="flex items-center gap-3">
-                <div className="text-blue-400">📜</div>
-                <span>Ask for a draft lease to review before paying any deposits or application fees</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <div className="text-blue-400">🖊️</div>
-                <span>Never sign a blank or incomplete lease (some shady landlords "fill in" after)</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <div className="text-blue-400">⚖️</div>
-                <span>If unsure about any clause, have a tenant rights organization review it (often free!)</span>
-              </li>
-            </ul>
-          </div>
-          
-          <div className="flex justify-end">
-            <Button variant="outline" asChild className="gap-1">
-              <Link to="/resources">
-                <ChevronLeft className="h-4 w-4" /> Back to Resources
-              </Link>
-            </Button>
-          </div>
-        </div>
-    },
-    "renters-insurance": {
-      title: "Renters Insurance 101",
-      content: <div className="space-y-6">
-          <p>
-            Your landlord's insurance doesn't cover your stuff. If there's a fire, flood, or break-in, you could lose everything — unless you have renters insurance. Here's everything you need to know to protect your belongings, and your peace of mind.
-          </p>
-          
-          <div className="border border-gray-700 rounded-lg overflow-hidden">
-            <div className="bg-gray-900 p-4">
-              <h3 className="font-medium text-white">What Is Renters Insurance?</h3>
-            </div>
-            <div className="p-4 bg-black text-white">
-              <p className="mb-4">Renters insurance is a low-cost policy that protects you and your belongings in case of:</p>
-              <ul className="list-disc pl-5 mt-2 space-y-1">
-                <li>Fire or smoke damage</li>
-                <li>Theft or vandalism</li>
-                <li>Water damage (non-flood)</li>
-                <li>Guest injuries in your apartment (liability coverage)</li>
-                <li>Temporary housing if your unit becomes unlivable</li>
-              </ul>
-            </div>
-          </div>
-          
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="border border-gray-700 rounded-lg overflow-hidden">
-              <div className="bg-gray-900 p-4">
-                <h3 className="font-medium text-white">What Does It Cover?</h3>
-              </div>
-              <div className="p-4 space-y-3 bg-black text-white">
-                <div>
-                  <h4 className="font-medium text-blue-400">✅ Personal Property</h4>
-                  <ul className="list-disc pl-5 mt-1 space-y-1">
-                    <li>Covers furniture, clothing, electronics, kitchenware, etc.</li>
-                    <li>Usually offers $10,000–$50,000 in coverage</li>
-                  </ul>
-                </div>
-                
-                <div>
-                  <h4 className="font-medium text-blue-400">✅ Liability</h4>
-                  <ul className="list-disc pl-5 mt-1 space-y-1">
-                    <li>If someone is injured in your apartment, you're covered for medical and legal costs (usually up to $100,000)</li>
-                  </ul>
-                </div>
-                
-                <div>
-                  <h4 className="font-medium text-blue-400">✅ Loss of Use</h4>
-                  <ul className="list-disc pl-5 mt-1 space-y-1">
-                    <li>If a covered event makes your place uninhabitable, renters insurance can pay for a hotel or temporary housing</li>
-                  </ul>
-                </div>
-                
-                <div>
-                  <h4 className="font-medium text-blue-400">✅ Optional Add-Ons</h4>
-                  <ul className="list-disc pl-5 mt-1 space-y-1">
-                    <li>Replacement Cost Coverage (they reimburse what it costs to replace items, not just their depreciated value)</li>
-                    <li>Coverage for expensive items like jewelry or high-end electronics</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-            
-            <div className="border border-gray-700 rounded-lg overflow-hidden">
-              <div className="bg-gray-900 p-4">
-                <h3 className="font-medium text-white">What's Not Covered?</h3>
-              </div>
-              <div className="p-4 space-y-2 bg-black text-white">
-                <div className="flex items-center gap-2">
-                  <span className="text-red-500 font-bold">🚫</span>
-                  <span>Floods</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-red-500 font-bold">🚫</span>
-                  <span>Earthquakes (unless added)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-red-500 font-bold">🚫</span>
-                  <span>Pests (bed bugs, mice, etc.)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-red-500 font-bold">🚫</span>
-                  <span>Roommates' belongings (they need their own policy!)</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="border border-gray-700 rounded-lg overflow-hidden">
-              <div className="bg-gray-900 p-4">
-                <h3 className="font-medium text-white">How Much Does It Cost?</h3>
-              </div>
-              <div className="p-4 space-y-2 bg-black text-white">
-                <div className="flex items-center gap-2">
-                  <span className="text-green-500 font-medium">💰</span>
-                  <span>On average: $10–$20/month</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-green-500 font-medium">💰</span>
-                  <span>Often bundled with auto insurance for even lower rates</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-green-500 font-medium">💰</span>
-                  <span>Some landlords require proof of coverage — usually minimum $100,000 liability</span>
-                </div>
-              </div>
-            </div>
-            
-            <div className="border border-gray-700 rounded-lg overflow-hidden">
-              <div className="bg-gray-900 p-4">
-                <h3 className="font-medium text-white">How to Get It (Fast)</h3>
-              </div>
-              <div className="p-4 space-y-2 bg-black text-white">
-                <div className="flex items-start gap-2">
-                  <span className="font-medium text-blue-400">1.</span>
-                  <span>Choose a Provider (Popular options include Lemonade, State Farm, Allstate, GEICO)</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="font-medium text-blue-400">2.</span>
-                  <span>Estimate Your Stuff (Use your phone camera to record your belongings + create a quick spreadsheet)</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="font-medium text-blue-400">3.</span>
-                  <span>Pick Your Deductible (Lower = higher monthly cost)</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="font-medium text-blue-400">4.</span>
-                  <span>Buy Online — most policies take under 10 minutes to purchase</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-gray-900 p-4 rounded-md">
-            <h3 className="font-medium mb-2 text-white">Pro Tips</h3>
-            <ul className="space-y-2 text-gray-300">
-              <li className="flex items-center gap-3">
-                <div className="text-blue-400">📝</div>
-                <span>List serial numbers for major items like laptops and TVs</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <div className="text-blue-400">📦</div>
-                <span>Store digital copies of your policy and receipts in Google Drive or Dropbox</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <div className="text-blue-400">🧍🏽‍♀️</div>
-                <span>Each roommate needs their own renters insurance policy unless you're legally married</span>
-              </li>
-            </ul>
-          </div>
-          
-          <div className="flex justify-end">
-            <Button variant="outline" asChild className="gap-1">
-              <Link to="/resources">
-                <ChevronLeft className="h-4 w-4" /> Back to Resources
-              </Link>
-            </Button>
-          </div>
-        </div>
-    }
-  };
-
-  // Determine if viewing the main resources page or a specific resource
-  const path = window.location.pathname;
-  const resourceId = path.split('/resources/')[1];
-  return <div className="container py-6">
-      <div className="space-y-6">
-        {/* Main Resources Page */}
-        {!resourceId ? <>
-            {/* Header section with back button in upper right */}
-            <div className="flex justify-between items-center">
-              <div className="space-y-2">
-                <h1 className="text-3xl font-bold text-cyan-400">Resources</h1>
-                <p className="text-cyan-100/70">
-                  Access our collection of guides, templates, and learning materials to help you succeed in rental negotiations.
-                </p>
-              </div>
-              <Button variant="ghost" size="sm" asChild className="hover:bg-cyan-950/30">
-                <Link to="/" className="flex items-center gap-1 text-cyan-400">
-                  <ChevronLeft className="h-4 w-4" />
-                  Back
-                </Link>
-              </Button>
-            </div>
-
-            {/* Resource categories */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {resourceCategories.map(category => <Card key={category.title} className="shadow-md border-blue-100">
-                  <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent border-b">
-                    <div className="flex items-center gap-2">
-                      {category.icon}
-                      <CardTitle>{category.title}</CardTitle>
-                    </div>
-                    <CardDescription>
-                      {category.description}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="pt-6">
-                    <ul className="space-y-3">
-                      {category.resources.map(resource => <li key={resource.title} className="flex items-center justify-between">
-                          <div>
-                            <div className="font-medium">{resource.title}</div>
-                            <div className="text-sm text-muted-foreground">{resource.description}</div>
-                          </div>
-                          <Button variant="outline" size="sm" asChild className="ml-2 whitespace-nowrap">
-                            <Link to={resource.link} className="flex items-center gap-1">
-                              <ExternalLink className="h-4 w-4" />
-                              View
-                            </Link>
-                          </Button>
-                        </li>)}
-                    </ul>
-                  </CardContent>
-                </Card>)}
-            </div>
-          </> :
-      // Individual Resource Page
-      resourceContent[resourceId] ? <Card className="shadow-md border-blue-100">
-              <CardHeader className="bg-gradient-to-r from-blue-900 to-black dark:from-blue-900/80 dark:to-black border-b">
-                <CardTitle className="text-xl text-white">{resourceContent[resourceId].title}</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6 bg-background">
-                {resourceContent[resourceId].content}
-              </CardContent>
-            </Card> : <div className="text-center py-12">
-              <h2 className="text-2xl font-bold text-red-500">Resource not found</h2>
-              <p className="mt-2 text-muted-foreground">The resource you're looking for doesn't exist.</p>
-              <Button variant="outline" asChild className="mt-4 gap-1">
-                <Link to="/resources">
-                  <ChevronLeft className="h-4 w-4" /> Back to Resources
-                </Link>
-              </Button>
-            </div>}
-      </div>
-    </div>;
-};
-export default Resources;
+                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15"
