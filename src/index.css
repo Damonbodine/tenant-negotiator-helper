@@ -129,6 +129,22 @@
   .checklist-icon {
     @apply mt-1 h-5 w-5 rounded border border-gray-700 flex items-center justify-center;
   }
+  
+  /* Alphabetical list styling */
+  .list-alpha {
+    counter-reset: list-alpha;
+  }
+  
+  .list-alpha > li {
+    counter-increment: list-alpha;
+    position: relative;
+  }
+  
+  .list-alpha > li::before {
+    content: counter(list-alpha, lower-alpha) ". ";
+    position: absolute;
+    left: -1.5rem;
+  }
 }
 
 @layer utilities {
