@@ -17,6 +17,7 @@ const Auth = lazy(() => import("@/pages/Auth"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const Resources = lazy(() => import("@/pages/Resources"));
 const Terms = lazy(() => import("@/pages/Terms"));
+const Privacy = lazy(() => import("@/pages/Privacy"));
 const PromptManager = lazy(() => import("@/shared/components/PromptManager"));
 
 function AppRoutes() {
@@ -31,6 +32,7 @@ function AppRoutes() {
         <Route path="/resources" element={<Resources />} />
         <Route path="/resources/:resourceId" element={<Resources />} />
         <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
