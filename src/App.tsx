@@ -6,6 +6,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 import { Footer } from "@/shared/components/layout/Footer";
 import { ErrorBoundary } from "@/shared/ui/ErrorBoundary";
+import { Header } from "@/shared/components/layout/Header";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("@/pages/index"));
@@ -27,6 +28,7 @@ function AppRoutes() {
         <Route path="/prompts" element={<PromptManager />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/resources" element={<Resources />} />
+        <Route path="/resources/:resourceId" element={<Resources />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
@@ -47,6 +49,7 @@ function App() {
       <AuthProvider>
         <Router>
           <div className="flex flex-col min-h-screen">
+            <Header />
             <div className="flex-1">
               <AppRoutes />
             </div>
