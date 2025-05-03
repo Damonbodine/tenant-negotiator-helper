@@ -3,87 +3,71 @@ import { Button } from "@/components/ui/button";
 import { Download, ExternalLink, ChevronLeft, Mail, ClipboardCheck, Home, Shield, AlertTriangle, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-
 const Resources = () => {
-  const resourceCategories = [
-    {
-      title: "Negotiation Templates",
-      description: "Ready-to-use email templates and scripts for rent negotiations",
-      icon: <Mail className="h-5 w-5 text-blue-500" />,
-      resources: [
-        { 
-          title: "Rent Negotiation Email Templates", 
-          description: "Ready-to-use templates for rent reduction, renewals, and more", 
-          link: "/resources/negotiation-templates", 
-          type: "page",
-          badge: "Popular"
-        },
-        { 
-          title: "Rental Price Comparison Guide", 
-          description: "Learn how to research comparable rental prices in your area", 
-          link: "/resources/price-comparison", 
-          type: "page" 
-        },
-      ]
-    },
-    {
-      title: "Moving Guides",
-      description: "Checklists and guides for moving in, inspections, and security deposits",
-      icon: <ClipboardCheck className="h-5 w-5 text-green-500" />,
-      resources: [
-        { 
-          title: "Move-In Apartment Checklist", 
-          description: "Complete checklist to document your unit's condition", 
-          link: "/resources/move-in-checklist", 
-          type: "page" 
-        },
-        { 
-          title: "Security Deposit Recovery Guide", 
-          description: "Tips to maximize your security deposit return", 
-          link: "/resources/security-deposit", 
-          type: "page" 
-        },
-        { 
-          title: "Apartment Viewing Checklist", 
-          description: "What to look for when touring potential apartments", 
-          link: "/resources/viewing-checklist", 
-          type: "page" 
-        },
-      ]
-    },
-    {
-      title: "Legal & Protection",
-      description: "Information on lease agreements, tenant rights, and rental insurance",
-      icon: <Shield className="h-5 w-5 text-red-500" />,
-      resources: [
-        { 
-          title: "Lease Agreement Red Flags", 
-          description: "How to identify problematic clauses in your lease", 
-          link: "/resources/lease-red-flags", 
-          type: "page",
-          badge: "Essential"
-        },
-        { 
-          title: "Renters Insurance 101", 
-          description: "Everything you need to know about protecting your belongings", 
-          link: "/resources/renters-insurance", 
-          type: "page" 
-        },
-      ]
-    },
-  ];
+  const resourceCategories = [{
+    title: "Negotiation Templates",
+    description: "Ready-to-use email templates and scripts for rent negotiations",
+    icon: <Mail className="h-5 w-5 text-blue-500" />,
+    resources: [{
+      title: "Rent Negotiation Email Templates",
+      description: "Ready-to-use templates for rent reduction, renewals, and more",
+      link: "/resources/negotiation-templates",
+      type: "page",
+      badge: "Popular"
+    }, {
+      title: "Rental Price Comparison Guide",
+      description: "Learn how to research comparable rental prices in your area",
+      link: "/resources/price-comparison",
+      type: "page"
+    }]
+  }, {
+    title: "Moving Guides",
+    description: "Checklists and guides for moving in, inspections, and security deposits",
+    icon: <ClipboardCheck className="h-5 w-5 text-green-500" />,
+    resources: [{
+      title: "Move-In Apartment Checklist",
+      description: "Complete checklist to document your unit's condition",
+      link: "/resources/move-in-checklist",
+      type: "page"
+    }, {
+      title: "Security Deposit Recovery Guide",
+      description: "Tips to maximize your security deposit return",
+      link: "/resources/security-deposit",
+      type: "page"
+    }, {
+      title: "Apartment Viewing Checklist",
+      description: "What to look for when touring potential apartments",
+      link: "/resources/viewing-checklist",
+      type: "page"
+    }]
+  }, {
+    title: "Legal & Protection",
+    description: "Information on lease agreements, tenant rights, and rental insurance",
+    icon: <Shield className="h-5 w-5 text-red-500" />,
+    resources: [{
+      title: "Lease Agreement Red Flags",
+      description: "How to identify problematic clauses in your lease",
+      link: "/resources/lease-red-flags",
+      type: "page",
+      badge: "Essential"
+    }, {
+      title: "Renters Insurance 101",
+      description: "Everything you need to know about protecting your belongings",
+      link: "/resources/renters-insurance",
+      type: "page"
+    }]
+  }];
 
   // Resource content for each individual resource
   const resourceContent = {
     "negotiation-templates": {
       title: "Rent Negotiation Email Templates",
-      content: (
-        <div className="space-y-6">
+      content: <div className="space-y-6">
           <p>
             Negotiating your rent doesn't have to be awkward. Whether you're renewing your lease or moving into a new place, a well-written email can set the tone for a positive negotiation. Here are ready-to-use templates you can customize based on your situation — plus some quick tips to boost your chances.
           </p>
           
-          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-md">
+          <div className="p-4 rounded-md bg-gray-950">
             <h3 className="font-medium mb-2">Quick Tips Before Sending:</h3>
             <ul className="list-disc pl-5 space-y-1">
               <li>Do your homework: Know the average rent for similar apartments in your area.</li>
@@ -100,8 +84,8 @@ const Resources = () => {
               </h3>
               <div className="text-sm text-muted-foreground">Subject: Lease Renewal — Rent Adjustment Discussion</div>
             </div>
-            <div className="p-4 bg-white dark:bg-slate-900 font-mono text-sm whitespace-pre-wrap">
-{`Hi [Landlord's Name],
+            <div className="p-4 font-mono text-sm whitespace-pre-wrap bg-zinc-950">
+            {`Hi [Landlord's Name],
 
 I hope you're doing well! As my lease approaches renewal, I've been reviewing current rental market trends in [Neighborhood/City], and I've noticed that similar apartments are now renting for around [$MarketRate].
 
@@ -132,7 +116,7 @@ Best,
               <div className="text-sm text-muted-foreground">Subject: Rental Application — Rent Discussion</div>
             </div>
             <div className="p-4 bg-white dark:bg-slate-900 font-mono text-sm whitespace-pre-wrap">
-{`Hi [Landlord/Agent's Name],
+            {`Hi [Landlord/Agent's Name],
 
 Thank you for considering my application for [Apartment Address]! I'm very interested in the unit and excited about the possibility of living there.
 
@@ -163,7 +147,7 @@ Best,
               <div className="text-sm text-muted-foreground">Subject: Lease Renewal — Request for Concession</div>
             </div>
             <div className="p-4 bg-white dark:bg-slate-900 font-mono text-sm whitespace-pre-wrap">
-{`Hi [Landlord's Name],
+            {`Hi [Landlord's Name],
 
 I hope you're well. I'm looking forward to potentially renewing my lease at [Apartment Address].
 
@@ -204,12 +188,10 @@ Best,
             </Button>
           </div>
         </div>
-      )
     },
     "price-comparison": {
       title: "Rental Price Comparison Tool Guide",
-      content: (
-        <div className="space-y-6">
+      content: <div className="space-y-6">
           <p>
             Before you negotiate or sign any lease, it's crucial to understand the rental market around you. 
             Knowing what similar apartments are renting for gives you powerful leverage — and helps you avoid overpaying.
@@ -321,12 +303,10 @@ Best,
             </Button>
           </div>
         </div>
-      )
     },
     "move-in-checklist": {
       title: "Move-In Apartment Checklist",
-      content: (
-        <div className="space-y-6">
+      content: <div className="space-y-6">
           <p>
             Moving into a new apartment is exciting — but small oversights can cost you later.
             Use this essential Move-In Checklist to document your unit's condition, protect your security deposit, and ensure nothing gets missed.
@@ -516,12 +496,10 @@ Best,
             </Button>
           </div>
         </div>
-      )
     },
     "security-deposit": {
       title: "Security Deposit Recovery Guide",
-      content: (
-        <div className="space-y-6">
+      content: <div className="space-y-6">
           <p>
             Want your full security deposit back? Landlords often withhold deposits for avoidable reasons — but a little preparation can make sure you walk away with 100% of what's yours. Here's your complete guide to securing a full return when you move out.
           </p>
@@ -619,12 +597,10 @@ Best,
             </Button>
           </div>
         </div>
-      )
     },
     "viewing-checklist": {
       title: "Apartment Viewing Checklist",
-      content: (
-        <div className="space-y-6">
+      content: <div className="space-y-6">
           <p>
             Touring a new apartment can be overwhelming — but it's your best chance to spot hidden issues before signing. Use this Apartment Viewing Checklist to stay sharp, ask the right questions, and avoid costly surprises.
           </p>
@@ -790,12 +766,10 @@ Best,
             </Button>
           </div>
         </div>
-      )
     },
     "lease-red-flags": {
       title: "Lease Agreement Red Flags",
-      content: (
-        <div className="space-y-6">
+      content: <div className="space-y-6">
           <p>
             Before you sign a lease, know what you're agreeing to. Some lease clauses can trap renters in expensive, unfair, or risky situations. Here's a guide to common red flags — and what to do if you spot them.
           </p>
@@ -902,12 +876,10 @@ Best,
             </Button>
           </div>
         </div>
-      )
     },
     "renters-insurance": {
       title: "Renters Insurance 101",
-      content: (
-        <div className="space-y-6">
+      content: <div className="space-y-6">
           <p>
             Your landlord's insurance doesn't cover your stuff. If there's a fire, flood, or break-in, you could lose everything — unless you have renters insurance. Here's everything you need to know to protect your belongings, and your peace of mind.
           </p>
@@ -1063,20 +1035,16 @@ Best,
             </Button>
           </div>
         </div>
-      )
     }
   };
 
   // Determine if viewing the main resources page or a specific resource
   const path = window.location.pathname;
   const resourceId = path.split('/resources/')[1];
-  
-  return (
-    <div className="container py-6">
+  return <div className="container py-6">
       <div className="space-y-6">
         {/* Main Resources Page */}
-        {!resourceId ? (
-          <>
+        {!resourceId ? <>
             {/* Header section with back button in upper right */}
             <div className="flex justify-between items-center">
               <div className="space-y-2">
@@ -1095,8 +1063,7 @@ Best,
 
             {/* Resource categories */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {resourceCategories.map((category) => (
-                <Card key={category.title} className="shadow-md border-blue-100">
+              {resourceCategories.map(category => <Card key={category.title} className="shadow-md border-blue-100">
                   <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent border-b">
                     <div className="flex items-center gap-2">
                       {category.icon}
@@ -1108,44 +1075,32 @@ Best,
                   </CardHeader>
                   <CardContent className="pt-6">
                     <ul className="space-y-3">
-                      {category.resources.map((resource) => (
-                        <li key={resource.title} className="flex items-center justify-between">
+                      {category.resources.map(resource => <li key={resource.title} className="flex items-center justify-between">
                           <div>
                             <div className="font-medium">{resource.title}</div>
                             <div className="text-sm text-muted-foreground">{resource.description}</div>
                           </div>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            asChild
-                            className="ml-2 whitespace-nowrap"
-                          >
+                          <Button variant="outline" size="sm" asChild className="ml-2 whitespace-nowrap">
                             <Link to={resource.link} className="flex items-center gap-1">
                               <ExternalLink className="h-4 w-4" />
                               View
                             </Link>
                           </Button>
-                        </li>
-                      ))}
+                        </li>)}
                     </ul>
                   </CardContent>
-                </Card>
-              ))}
+                </Card>)}
             </div>
-          </>
-        ) : (
-          // Individual Resource Page
-          resourceContent[resourceId] ? (
-            <Card className="shadow-md border-blue-100">
+          </> :
+      // Individual Resource Page
+      resourceContent[resourceId] ? <Card className="shadow-md border-blue-100">
               <CardHeader className="bg-gradient-to-r from-blue-50 to-transparent dark:from-blue-900/20 dark:to-transparent border-b">
                 <CardTitle className="text-xl">{resourceContent[resourceId].title}</CardTitle>
               </CardHeader>
               <CardContent className="pt-6">
                 {resourceContent[resourceId].content}
               </CardContent>
-            </Card>
-          ) : (
-            <div className="text-center py-12">
+            </Card> : <div className="text-center py-12">
               <h2 className="text-2xl font-bold text-red-500">Resource not found</h2>
               <p className="mt-2 text-muted-foreground">The resource you're looking for doesn't exist.</p>
               <Button variant="outline" asChild className="mt-4 gap-1">
@@ -1153,12 +1108,8 @@ Best,
                   <ChevronLeft className="h-4 w-4" /> Back to Resources
                 </Link>
               </Button>
-            </div>
-          )
-        )}
+            </div>}
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default Resources;
