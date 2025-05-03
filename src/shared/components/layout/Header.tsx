@@ -18,12 +18,6 @@ export const Header = () => {
               Resources
             </Button>
           </Link>
-          <Link to="/terms">
-            <Button variant="ghost" size="sm" className="gap-1">
-              <FileText className="h-4 w-4" />
-              Terms
-            </Button>
-          </Link>
           <Link to="/contact">
             <Button variant="ghost" size="sm" className="gap-1">
               <MessageSquare className="h-4 w-4" />
