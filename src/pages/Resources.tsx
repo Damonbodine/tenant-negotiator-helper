@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, ExternalLink, ChevronLeft, Mail, ClipboardCheck, Home, Shield, AlertTriangle, FileText } from "lucide-react";
@@ -117,7 +116,7 @@ Best,
             </div>
             <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-b-md">
               <div className="flex items-center gap-2">
-                <Badge variant="success" className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300">
+                <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300">
                   Pro Tip
                 </Badge>
                 <span className="text-sm">Attach 2–3 comparable listings showing the lower market price if possible.</span>
@@ -148,7 +147,7 @@ Best,
             </div>
             <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-b-md">
               <div className="flex items-center gap-2">
-                <Badge variant="success" className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300">
+                <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300">
                   Pro Tip
                 </Badge>
                 <span className="text-sm">Always offer a friendly alternative ("or move-in incentive") — it gives landlords flexibility.</span>
@@ -179,7 +178,7 @@ Best,
             </div>
             <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-b-md">
               <div className="flex items-center gap-2">
-                <Badge variant="success" className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300">
+                <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300">
                   Pro Tip
                 </Badge>
                 <span className="text-sm">Focus on what's easy for them to give you — small incentives often cost landlords less than reducing rent.</span>
