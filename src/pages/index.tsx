@@ -1,5 +1,5 @@
+
 import { useState, lazy, Suspense } from "react";
-import { Header } from "@/shared/components/layout/Header";
 import { FeatureCards } from "@/components/marketing/FeatureCards";
 import { NewsletterSignup } from "@/shared/components/marketing/NewsletterSignup";
 import { Button } from "@/shared/ui/button";
@@ -22,16 +22,13 @@ const Index = () => {
     }
   };
   return <div className="min-h-screen flex flex-col bg-background">
-      <Header />
-      
       <main className="flex-1 container flex flex-col items-center justify-center py-12">
         {activeJourney ? <Suspense fallback={<div className="w-full flex justify-center p-12">
               <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
             </div>}>
             {activeJourney === "market" && <div className="w-full max-w-4xl h-[calc(100vh-10rem)]">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold text-blue-600">
-            </h2>
+                  <h2 className="text-2xl font-bold text-blue-600">Market Insights</h2>
                   <button onClick={() => setActiveJourney(null)} className="px-4 py-2 rounded-lg bg-blue-100 hover:bg-blue-200 transition-colors text-blue-600">
                     Back to options
                   </button>
