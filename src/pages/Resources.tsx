@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, ExternalLink, ChevronLeft, Mail, ClipboardCheck, Home, Shield, AlertTriangle, FileText } from "lucide-react";
@@ -457,9 +458,9 @@ Best,
             </div>
           </div>
           
-          <div className="bg-black p-4 rounded-md">
-            <h3 className="font-medium mb-2 text-white">Pro Tips for Move-In</h3>
-            <ul className="space-y-2 text-white">
+          <div className="pro-tip">
+            <h3 className="pro-tip-header">Pro Tips for Move-In</h3>
+            <ul className="space-y-2 pro-tip-content">
               <li className="flex items-center gap-3">
                 <div className="text-blue-400">📸</div>
                 <span>Take photos of any imperfections and email them to yourself and your landlord the day you move in</span>
@@ -558,9 +559,9 @@ Best,
             </div>
           </div>
           
-          <div className="bg-black p-4 rounded-md">
-            <h3 className="font-medium mb-2 text-white">Pro Tips</h3>
-            <ul className="space-y-2 text-white">
+          <div className="pro-tip">
+            <h3 className="pro-tip-header">Pro Tips</h3>
+            <ul className="space-y-2 pro-tip-content">
               <li className="flex items-center gap-3">
                 <div className="text-blue-400">📸</div>
                 <span>Take photos of the cleaned, empty apartment right before you leave</span>
@@ -602,4 +603,96 @@ Best,
                 <ul className="space-y-2">
                   <li className="flex items-start gap-2">
                     <div className="mt-1 h-5 w-5 rounded border border-gray-700 flex items-center justify-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15"
+                      <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
+                        <path d="M20 6L9 17l-5-5" />
+                      </svg>
+                    </div>
+                    <span>Check walls, ceilings, and floors for cracks, stains, dents, or damage</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          
+          <div className="pro-tip">
+            <h3 className="pro-tip-header">Pro Tips for Viewing</h3>
+            <ul className="space-y-2 pro-tip-content">
+              <li className="flex items-center gap-3">
+                <div className="text-blue-400">🕒</div>
+                <span>Visit at different times of day to check noise levels and natural lighting</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <div className="text-blue-400">📱</div>
+                <span>Check cell reception in all rooms — especially if you work from home</span>
+              </li>
+            </ul>
+          </div>
+          
+          <div className="flex justify-end">
+            <Button variant="outline" asChild className="gap-1">
+              <Link to="/resources">
+                <ChevronLeft className="h-4 w-4" /> Back to Resources
+              </Link>
+            </Button>
+          </div>
+        </div>
+    }
+  };
+
+  return (
+    <div className="container py-8 bg-background">
+      <div className="flex items-center gap-2 mb-8">
+        <Button variant="outline" asChild>
+          <Link to="/">
+            <Home className="h-4 w-4 mr-2" />
+            Home
+          </Link>
+        </Button>
+        <h1 className="text-3xl font-bold">Resources</h1>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {resourceCategories.map((category, index) => (
+          <Card key={index} className="bg-card text-card-foreground">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                {category.icon}
+                <CardTitle>{category.title}</CardTitle>
+              </div>
+              <CardDescription>{category.description}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-4">
+                {category.resources.map((resource, idx) => (
+                  <li key={idx} className="flex flex-col">
+                    <div className="flex items-start gap-2">
+                      <div className="flex-shrink-0 mt-1">
+                        <FileText className="h-4 w-4 text-blue-500" />
+                      </div>
+                      <div className="flex-1">
+                        <Link 
+                          to={resource.link} 
+                          className="font-medium hover:text-blue-500 transition-colors"
+                        >
+                          {resource.title}
+                          {resource.badge && (
+                            <Badge variant="secondary" className="ml-2 bg-blue-900 text-blue-100">
+                              {resource.badge}
+                            </Badge>
+                          )}
+                        </Link>
+                        <p className="text-sm text-muted-foreground">{resource.description}</p>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default Resources;
