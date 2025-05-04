@@ -1,9 +1,9 @@
+
 export interface ChatMessage {
   id: string;
   type: 'user' | 'agent';
   text: string;
   timestamp: Date;
-  isRead?: boolean;
 }
 
 export interface PromptTemplate {
