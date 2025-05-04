@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,6 +12,7 @@ import { Input } from "@/shared/ui/input";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
+import { DebugInfo } from "@/components/negotiation/DebugInfo";
 
 // Define the schema for our form
 const formSchema = z.object({
@@ -65,6 +67,13 @@ const ScriptBuilder = () => {
   const [editedScript, setEditedScript] = useState<ScriptResponse | null>(null);
   const [savedScripts, setSavedScripts] = useState<{ id: string; name: string; script: ScriptResponse }[]>([]);
   const [scriptName, setScriptName] = useState("My Negotiation Script");
+  const [debugSubmit, setDebugSubmit] = useState<{httpStatus: number | null, error: string | null, startTime: string | null, endTime: string | null}>({
+    httpStatus: null,
+    error: null,
+    startTime: null,
+    endTime: null
+  });
+  const [showDebugInfo, setShowDebugInfo] = useState(true);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -76,6 +85,7 @@ const ScriptBuilder = () => {
       marketInfo: "",
       additionalContext: "",
     },
+    mode: "onSubmit", // Default, but explicitly set for clarity
   });
 
   console.log("Rendering ScriptBuilder, current step:", currentStep);
@@ -100,6 +110,13 @@ const ScriptBuilder = () => {
 
   const generateScript = async (data: FormValues) => {
     setIsLoading(true);
+    setDebugSubmit({
+      ...debugSubmit,
+      startTime: new Date().toISOString(),
+      error: null,
+      httpStatus: null
+    });
+    
     try {
       console.log("Sending data to script-generator:", data);
       
@@ -116,8 +133,19 @@ const ScriptBuilder = () => {
         }
       });
       
+      setDebugSubmit({
+        ...debugSubmit,
+        endTime: new Date().toISOString(),
+        httpStatus: 200
+      });
+      
       if (error) {
         console.error("Error from script-generator:", error);
+        setDebugSubmit({
+          ...debugSubmit,
+          error: JSON.stringify(error),
+          httpStatus: error.status || 500
+        });
         throw new Error(error.message);
       }
       
@@ -133,6 +161,12 @@ const ScriptBuilder = () => {
       });
     } catch (error) {
       console.error("Error generating script:", error);
+      setDebugSubmit({
+        ...debugSubmit,
+        endTime: new Date().toISOString(),
+        error: error instanceof Error ? error.message : JSON.stringify(error)
+      });
+      
       toast({
         title: "Error",
         description: "Failed to generate negotiation script. Please try again.",
@@ -159,16 +193,17 @@ const ScriptBuilder = () => {
     });
   };
 
+  // Simple direct navigation function for the Goals step - no validation
+  const handleSkipValidation = () => {
+    console.log("Skip validation button clicked, jumping to next step");
+    nextStep();
+  };
+
   const handleGoalsSubmit = (data: FormValues) => {
-    console.log("Goals form submitted:", data);
+    console.log("Goals form submitted with data:", data);
     console.log("Form validation state:", form.formState);
     
-    // Skip validation for testing if needed
-    // const goalsValue = form.getValues("goals");
-    // if (goalsValue.length < 10) {
-    //   console.log("Goals too short, but proceeding anyway for testing");
-    // }
-    
+    // We're intentionally simplifying - just move to next step if valid
     nextStep();
   };
 
@@ -206,10 +241,21 @@ const ScriptBuilder = () => {
                       </FormItem>
                     )}
                   />
-                  <div className="flex justify-end">
-                    <Button type="submit" onClick={() => {
-                      console.log("Next button clicked, current form values:", form.getValues());
-                    }}>
+                  <div className="flex justify-between">
+                    {/* Development helper button - direct navigation */}
+                    {showDebugInfo && (
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={handleSkipValidation}
+                        className="bg-yellow-100 border-yellow-300 text-yellow-800 hover:bg-yellow-200"
+                      >
+                        Skip Validation (Dev)
+                      </Button>
+                    )}
+                    
+                    {/* Regular submit button - no inline onClick */}
+                    <Button type="submit">
                       Next <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </div>
@@ -615,6 +661,17 @@ const ScriptBuilder = () => {
           <li className={`step ${currentStep >= ScriptBuilderStep.Practice ? "step-primary" : ""}`}>Practice</li>
         </ul>
       </div>
+      
+      {/* Debug info component */}
+      {showDebugInfo && (
+        <DebugInfo 
+          showDebugInfo={showDebugInfo}
+          httpStatus={debugSubmit.httpStatus}
+          requestStartTime={debugSubmit.startTime}
+          requestEndTime={debugSubmit.endTime}
+          rawErrorResponse={debugSubmit.error}
+        />
+      )}
       
       {renderFormStep()}
     </div>
