@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -94,6 +93,8 @@ const ScriptBuilder = () => {
   const generateScript = async (data: FormValues) => {
     setIsLoading(true);
     try {
+      console.log("Sending data to script-generator:", data);
+      
       const { data: response, error } = await supabase.functions.invoke('script-generator', {
         body: { 
           goals: data.goals,
@@ -108,17 +109,25 @@ const ScriptBuilder = () => {
       });
       
       if (error) {
+        console.error("Error from script-generator:", error);
         throw new Error(error.message);
       }
+      
+      console.log("Response from script-generator:", response);
       
       setGeneratedScript(response);
       setEditedScript(response);
       nextStep();
+      
+      toast({
+        title: "Script generated",
+        description: "Your negotiation script has been created successfully!",
+      });
     } catch (error) {
       console.error("Error generating script:", error);
       toast({
         title: "Error",
-        description: "Failed to generate negotiation script",
+        description: "Failed to generate negotiation script. Please try again.",
         variant: "destructive",
       });
     } finally {

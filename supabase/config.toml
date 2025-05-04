@@ -15,4 +15,3 @@ verify_jwt = false
 
 [functions.script-generator]
 verify_jwt = false
-
