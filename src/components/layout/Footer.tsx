@@ -7,7 +7,7 @@ export function Footer() {
       <div className="container mx-auto px-4">
         <div className="flex flex-col md:flex-row justify-between items-center">
           <div className="text-sm text-gray-500 mb-4 md:mb-0">
-            © {new Date().getFullYear()} Rent Negotiator. All rights reserved.
+            © {new Date().getFullYear()} Renters Mentor. All rights reserved.
           </div>
           
           <div className="flex gap-6">
@@ -25,7 +25,7 @@ export function Footer() {
         
         <div className="mt-4 text-xs text-center text-gray-400 max-w-3xl mx-auto">
           <p>
-            DISCLAIMER: Rent Negotiator is not a licensed real estate broker, attorney, or financial advisor. 
+            DISCLAIMER: Renters Mentor is not a licensed real estate broker, attorney, or financial advisor. 
             All information provided is for general informational purposes only and should not be considered 
             legal, financial, or professional advice. Please consult with qualified professionals 
             regarding your specific situation.
