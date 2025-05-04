@@ -145,6 +145,54 @@
     position: absolute;
     left: -1.5rem;
   }
+
+  /* Custom steps UI component styling */
+  .steps {
+    @apply flex w-full;
+  }
+
+  .steps-horizontal {
+    @apply flex-row justify-between;
+  }
+
+  .step {
+    @apply flex-1 relative text-center;
+  }
+
+  .step::before {
+    @apply content-[''] absolute h-0.5 w-full left-0 top-1/2 -translate-y-1/2 bg-gray-700;
+    content: "";
+  }
+
+  .step:first-child::before {
+    @apply w-1/2 left-1/2;
+  }
+
+  .step:last-child::before {
+    @apply w-1/2;
+  }
+
+  .step::after {
+    @apply content-[''] absolute w-6 h-6 rounded-full bg-gray-700 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-xs flex items-center justify-center text-white font-bold z-10;
+    content: "";
+  }
+
+  .step-primary::after {
+    @apply bg-primary;
+  }
+
+  .step-primary::before {
+    @apply bg-primary;
+  }
+
+  /* Step text styling */
+  .step {
+    @apply pt-8 text-sm;
+  }
+
+  .step-primary {
+    @apply text-primary font-semibold;
+  }
 }
 
 @layer utilities {
@@ -169,3 +217,4 @@
     @apply bg-white/90 shadow-md;
   }
 }
+

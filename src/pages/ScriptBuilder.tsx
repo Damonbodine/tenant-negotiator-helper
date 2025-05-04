@@ -78,14 +78,22 @@ const ScriptBuilder = () => {
     },
   });
 
+  console.log("Rendering ScriptBuilder, current step:", currentStep);
+  console.log("Form state:", form.getValues());
+  console.log("Form errors:", form.formState.errors);
+
   const nextStep = () => {
+    console.log("Next step clicked, current step:", currentStep);
     if (currentStep < ScriptBuilderStep.Practice) {
+      console.log("Moving to next step:", currentStep + 1);
       setCurrentStep(prev => (prev + 1) as ScriptBuilderStep);
     }
   };
 
   const prevStep = () => {
+    console.log("Prev step clicked, current step:", currentStep);
     if (currentStep > ScriptBuilderStep.Goals) {
+      console.log("Moving to previous step:", currentStep - 1);
       setCurrentStep(prev => (prev - 1) as ScriptBuilderStep);
     }
   };
@@ -151,6 +159,19 @@ const ScriptBuilder = () => {
     });
   };
 
+  const handleGoalsSubmit = (data: FormValues) => {
+    console.log("Goals form submitted:", data);
+    console.log("Form validation state:", form.formState);
+    
+    // Skip validation for testing if needed
+    // const goalsValue = form.getValues("goals");
+    // if (goalsValue.length < 10) {
+    //   console.log("Goals too short, but proceeding anyway for testing");
+    // }
+    
+    nextStep();
+  };
+
   const renderFormStep = () => {
     switch (currentStep) {
       case ScriptBuilderStep.Goals:
@@ -164,7 +185,7 @@ const ScriptBuilder = () => {
             </CardHeader>
             <CardContent>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(nextStep)} className="space-y-6">
+                <form onSubmit={form.handleSubmit(handleGoalsSubmit)} className="space-y-6">
                   <FormField
                     control={form.control}
                     name="goals"
@@ -186,7 +207,9 @@ const ScriptBuilder = () => {
                     )}
                   />
                   <div className="flex justify-end">
-                    <Button type="submit">
+                    <Button type="submit" onClick={() => {
+                      console.log("Next button clicked, current form values:", form.getValues());
+                    }}>
                       Next <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </div>
