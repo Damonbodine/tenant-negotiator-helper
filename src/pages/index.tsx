@@ -1,6 +1,7 @@
+
 import { useState, lazy, Suspense } from "react";
 import { FeatureCards } from "@/components/marketing/FeatureCards";
-import { NewsletterSignup } from "@/shared/components/marketing/NewsletterSignup";
+import { TestimonialCarousel } from "@/components/marketing/TestimonialCarousel";
 import { Button } from "@/shared/ui/button";
 import { Loader2, Search } from "lucide-react";
 import { Input } from "@/shared/ui/input";
@@ -65,7 +66,7 @@ const Index = () => {
             </div>
             
             <FeatureCards setActiveJourney={setActiveJourney} />
-            <NewsletterSignup />
+            <TestimonialCarousel />
           </div>}
       </main>
     </div>;
