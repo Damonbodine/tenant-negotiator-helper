@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -67,11 +66,20 @@ const ScriptBuilder = () => {
   const [editedScript, setEditedScript] = useState<ScriptResponse | null>(null);
   const [savedScripts, setSavedScripts] = useState<{ id: string; name: string; script: ScriptResponse }[]>([]);
   const [scriptName, setScriptName] = useState("My Negotiation Script");
-  const [debugSubmit, setDebugSubmit] = useState<{httpStatus: number | null, error: string | null, startTime: string | null, endTime: string | null}>({
+  const [debugSubmit, setDebugSubmit] = useState<{
+    httpStatus: number | null, 
+    error: string | null, 
+    startTime: string | null, 
+    endTime: string | null,
+    formState: string | null,
+    validationTrigger: string | null
+  }>({
     httpStatus: null,
     error: null,
     startTime: null,
-    endTime: null
+    endTime: null,
+    formState: null,
+    validationTrigger: null
   });
   const [showDebugInfo, setShowDebugInfo] = useState(true);
 
@@ -199,11 +207,47 @@ const ScriptBuilder = () => {
     nextStep();
   };
 
+  // New handler for the Next button in the Goals step
+  const handleGoalsNext = async () => {
+    console.log("Goals Next button clicked - validating goals field");
+    setDebugSubmit({
+      ...debugSubmit,
+      validationTrigger: "Goals Next Button - " + new Date().toISOString()
+    });
+    
+    // Only validate the goals field
+    const isGoalsValid = await form.trigger("goals");
+    console.log("Goals validation result:", isGoalsValid);
+    
+    // Update debug info
+    setDebugSubmit({
+      ...debugSubmit,
+      formState: JSON.stringify({
+        values: form.getValues(),
+        errors: form.formState.errors,
+        isValid: isGoalsValid
+      })
+    });
+    
+    if (isGoalsValid) {
+      console.log("Goals validation passed, moving to next step");
+      nextStep();
+    } else {
+      console.log("Goals validation failed, staying on current step");
+      toast({
+        title: "Validation Error",
+        description: "Please ensure your negotiation goals are at least 10 characters.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleGoalsSubmit = (data: FormValues) => {
     console.log("Goals form submitted with data:", data);
     console.log("Form validation state:", form.formState);
     
-    // We're intentionally simplifying - just move to next step if valid
+    // For debugging only - this should not happen as we're using the button handler above
+    console.log("WARNING: Form submission handler triggered instead of button handler");
     nextStep();
   };
 
@@ -254,8 +298,8 @@ const ScriptBuilder = () => {
                       </Button>
                     )}
                     
-                    {/* Regular submit button - no inline onClick */}
-                    <Button type="submit">
+                    {/* Changed from submit button to regular button with validation */}
+                    <Button type="button" onClick={handleGoalsNext}>
                       Next <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </div>
@@ -662,7 +706,7 @@ const ScriptBuilder = () => {
         </ul>
       </div>
       
-      {/* Debug info component */}
+      {/* Enhanced debug info component with form state details */}
       {showDebugInfo && (
         <DebugInfo 
           showDebugInfo={showDebugInfo}
@@ -670,6 +714,11 @@ const ScriptBuilder = () => {
           requestStartTime={debugSubmit.startTime}
           requestEndTime={debugSubmit.endTime}
           rawErrorResponse={debugSubmit.error}
+          additionalInfo={{
+            formState: debugSubmit.formState,
+            validationTrigger: debugSubmit.validationTrigger,
+            currentStep: ScriptBuilderStep[currentStep]
+          }}
         />
       )}
       
