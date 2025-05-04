@@ -6,7 +6,7 @@ export const Footer = () => {
     <footer className="py-6 border-t">
       <div className="container flex flex-col items-center gap-2 md:flex-row md:justify-between">
         <p className="text-sm text-muted-foreground">
-          © {new Date().getFullYear()} Tenant Negotiator. All rights reserved.
+          © {new Date().getFullYear()} Renters Mentor. All rights reserved.
         </p>
         <div className="flex items-center gap-4">
           <Link 
