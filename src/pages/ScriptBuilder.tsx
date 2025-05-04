@@ -16,19 +16,18 @@ import { DebugInfo } from "@/components/negotiation/DebugInfo";
 // Define the schema for our form
 const formSchema = z.object({
   goals: z.string().min(10, {
-    message: "Goals must be at least 10 characters.",
+    message: "Goals must be at least 10 characters."
   }),
   propertyType: z.string().min(1, {
-    message: "Property type is required",
+    message: "Property type is required"
   }),
   currentRent: z.string().min(1, {
-    message: "Current rent is required",
+    message: "Current rent is required"
   }),
   targetRent: z.string().optional(),
   marketInfo: z.string().optional(),
-  additionalContext: z.string().optional(),
+  additionalContext: z.string().optional()
 });
-
 type FormValues = z.infer<typeof formSchema>;
 
 // Define the steps in our wizard
@@ -57,22 +56,27 @@ interface ScriptResponse {
     suggestions: string[];
   };
 }
-
 const ScriptBuilder = () => {
-  const { toast } = useToast();
+  const {
+    toast
+  } = useToast();
   const [currentStep, setCurrentStep] = useState<ScriptBuilderStep>(ScriptBuilderStep.Goals);
   const [isLoading, setIsLoading] = useState(false);
   const [generatedScript, setGeneratedScript] = useState<ScriptResponse | null>(null);
   const [editedScript, setEditedScript] = useState<ScriptResponse | null>(null);
-  const [savedScripts, setSavedScripts] = useState<{ id: string; name: string; script: ScriptResponse }[]>([]);
+  const [savedScripts, setSavedScripts] = useState<{
+    id: string;
+    name: string;
+    script: ScriptResponse;
+  }[]>([]);
   const [scriptName, setScriptName] = useState("My Negotiation Script");
   const [debugSubmit, setDebugSubmit] = useState<{
-    httpStatus: number | null, 
-    error: string | null, 
-    startTime: string | null, 
-    endTime: string | null,
-    formState: string | null,
-    validationTrigger: string | null
+    httpStatus: number | null;
+    error: string | null;
+    startTime: string | null;
+    endTime: string | null;
+    formState: string | null;
+    validationTrigger: string | null;
   }>({
     httpStatus: null,
     error: null,
@@ -82,7 +86,6 @@ const ScriptBuilder = () => {
     validationTrigger: null
   });
   const [showDebugInfo, setShowDebugInfo] = useState(true);
-
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -91,31 +94,27 @@ const ScriptBuilder = () => {
       currentRent: "",
       targetRent: "",
       marketInfo: "",
-      additionalContext: "",
+      additionalContext: ""
     },
-    mode: "onSubmit", // Default, but explicitly set for clarity
+    mode: "onSubmit" // Default, but explicitly set for clarity
   });
-
   console.log("Rendering ScriptBuilder, current step:", currentStep);
   console.log("Form state:", form.getValues());
   console.log("Form errors:", form.formState.errors);
-
   const nextStep = () => {
     console.log("Next step clicked, current step:", currentStep);
     if (currentStep < ScriptBuilderStep.Practice) {
       console.log("Moving to next step:", currentStep + 1);
-      setCurrentStep(prev => (prev + 1) as ScriptBuilderStep);
+      setCurrentStep(prev => prev + 1 as ScriptBuilderStep);
     }
   };
-
   const prevStep = () => {
     console.log("Prev step clicked, current step:", currentStep);
     if (currentStep > ScriptBuilderStep.Goals) {
       console.log("Moving to previous step:", currentStep - 1);
-      setCurrentStep(prev => (prev - 1) as ScriptBuilderStep);
+      setCurrentStep(prev => prev - 1 as ScriptBuilderStep);
     }
   };
-
   const generateScript = async (data: FormValues) => {
     setIsLoading(true);
     setDebugSubmit({
@@ -124,29 +123,28 @@ const ScriptBuilder = () => {
       error: null,
       httpStatus: null
     });
-    
     try {
       console.log("Sending data to script-generator:", data);
-      
-      const { data: response, error } = await supabase.functions.invoke('script-generator', {
-        body: { 
+      const {
+        data: response,
+        error
+      } = await supabase.functions.invoke('script-generator', {
+        body: {
           goals: data.goals,
           propertyDetails: {
             propertyType: data.propertyType,
             currentRent: data.currentRent,
-            targetRent: data.targetRent || "",
+            targetRent: data.targetRent || ""
           },
           marketInfo: data.marketInfo || "",
-          additionalContext: data.additionalContext || "",
+          additionalContext: data.additionalContext || ""
         }
       });
-      
       setDebugSubmit({
         ...debugSubmit,
         endTime: new Date().toISOString(),
         httpStatus: 200
       });
-      
       if (error) {
         console.error("Error from script-generator:", error);
         setDebugSubmit({
@@ -156,16 +154,13 @@ const ScriptBuilder = () => {
         });
         throw new Error(error.message);
       }
-      
       console.log("Response from script-generator:", response);
-      
       setGeneratedScript(response);
       setEditedScript(response);
       nextStep();
-      
       toast({
         title: "Script generated",
-        description: "Your negotiation script has been created successfully!",
+        description: "Your negotiation script has been created successfully!"
       });
     } catch (error) {
       console.error("Error generating script:", error);
@@ -174,30 +169,26 @@ const ScriptBuilder = () => {
         endTime: new Date().toISOString(),
         error: error instanceof Error ? error.message : JSON.stringify(error)
       });
-      
       toast({
         title: "Error",
         description: "Failed to generate negotiation script. Please try again.",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsLoading(false);
     }
   };
-
   const saveScript = () => {
     if (!editedScript) return;
-    
     const newScript = {
       id: Math.random().toString(36).substring(7),
       name: scriptName,
-      script: editedScript,
+      script: editedScript
     };
-    
     setSavedScripts(prev => [...prev, newScript]);
     toast({
       title: "Script saved",
-      description: `"${scriptName}" has been saved successfully`,
+      description: `"${scriptName}" has been saved successfully`
     });
   };
 
@@ -214,11 +205,11 @@ const ScriptBuilder = () => {
       ...debugSubmit,
       validationTrigger: "Goals Next Button - " + new Date().toISOString()
     });
-    
+
     // Only validate the goals field
     const isGoalsValid = await form.trigger("goals");
     console.log("Goals validation result:", isGoalsValid);
-    
+
     // Update debug info
     setDebugSubmit({
       ...debugSubmit,
@@ -228,7 +219,6 @@ const ScriptBuilder = () => {
         isValid: isGoalsValid
       })
     });
-    
     if (isGoalsValid) {
       console.log("Goals validation passed, moving to next step");
       nextStep();
@@ -237,25 +227,22 @@ const ScriptBuilder = () => {
       toast({
         title: "Validation Error",
         description: "Please ensure your negotiation goals are at least 10 characters.",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
-
   const handleGoalsSubmit = (data: FormValues) => {
     console.log("Goals form submitted with data:", data);
     console.log("Form validation state:", form.formState);
-    
+
     // For debugging only - this should not happen as we're using the button handler above
     console.log("WARNING: Form submission handler triggered instead of button handler");
     nextStep();
   };
-
   const renderFormStep = () => {
     switch (currentStep) {
       case ScriptBuilderStep.Goals:
-        return (
-          <Card className="w-full max-w-3xl mx-auto">
+        return <Card className="w-full max-w-3xl mx-auto">
             <CardHeader>
               <CardTitle>What are your negotiation goals?</CardTitle>
               <CardDescription>
@@ -265,38 +252,21 @@ const ScriptBuilder = () => {
             <CardContent>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleGoalsSubmit)} className="space-y-6">
-                  <FormField
-                    control={form.control}
-                    name="goals"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="goals" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>Negotiation Goals</FormLabel>
                         <FormControl>
-                          <Textarea
-                            placeholder="I want to negotiate my rent down by $200 per month because similar units in the area are listed for less..."
-                            className="min-h-[150px]"
-                            {...field}
-                          />
+                          <Textarea placeholder="I want to negotiate my rent down by $200 per month because similar units in the area are listed for less..." className="min-h-[150px]" {...field} />
                         </FormControl>
                         <FormDescription>
                           Be specific about what you want and why you think it's reasonable.
                         </FormDescription>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
                   <div className="flex justify-between">
                     {/* Development helper button - direct navigation */}
-                    {showDebugInfo && (
-                      <Button 
-                        type="button" 
-                        variant="outline" 
-                        onClick={handleSkipValidation}
-                        className="bg-yellow-100 border-yellow-300 text-yellow-800 hover:bg-yellow-200"
-                      >
-                        Skip Validation (Dev)
-                      </Button>
-                    )}
+                    {showDebugInfo}
                     
                     {/* Changed from submit button to regular button with validation */}
                     <Button type="button" onClick={handleGoalsNext}>
@@ -306,12 +276,9 @@ const ScriptBuilder = () => {
                 </form>
               </Form>
             </CardContent>
-          </Card>
-        );
-        
+          </Card>;
       case ScriptBuilderStep.Details:
-        return (
-          <Card className="w-full max-w-3xl mx-auto">
+        return <Card className="w-full max-w-3xl mx-auto">
             <CardHeader>
               <CardTitle>Property & Market Details</CardTitle>
               <CardDescription>
@@ -322,39 +289,29 @@ const ScriptBuilder = () => {
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(generateScript)} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="propertyType"
-                      render={({ field }) => (
-                        <FormItem>
+                    <FormField control={form.control} name="propertyType" render={({
+                    field
+                  }) => <FormItem>
                           <FormLabel>Property Type</FormLabel>
                           <FormControl>
                             <Input placeholder="e.g., 1 bedroom apartment" {...field} />
                           </FormControl>
                           <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="currentRent"
-                      render={({ field }) => (
-                        <FormItem>
+                        </FormItem>} />
+                    <FormField control={form.control} name="currentRent" render={({
+                    field
+                  }) => <FormItem>
                           <FormLabel>Current Rent</FormLabel>
                           <FormControl>
                             <Input placeholder="e.g., $1500/month" {...field} />
                           </FormControl>
                           <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                        </FormItem>} />
                   </div>
                   
-                  <FormField
-                    control={form.control}
-                    name="targetRent"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="targetRent" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>Target Rent (Optional)</FormLabel>
                         <FormControl>
                           <Input placeholder="e.g., $1300/month" {...field} />
@@ -363,75 +320,52 @@ const ScriptBuilder = () => {
                           What's your ideal outcome? Leave blank if unsure.
                         </FormDescription>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
                   
-                  <FormField
-                    control={form.control}
-                    name="marketInfo"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="marketInfo" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>Market Information (Optional)</FormLabel>
                         <FormControl>
-                          <Textarea
-                            placeholder="e.g., Similar units in the area are renting for $1300-$1400, vacancy rates in the building are high..."
-                            {...field}
-                          />
+                          <Textarea placeholder="e.g., Similar units in the area are renting for $1300-$1400, vacancy rates in the building are high..." {...field} />
                         </FormControl>
                         <FormDescription>
                           Add any market data that strengthens your position.
                         </FormDescription>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
                   
-                  <FormField
-                    control={form.control}
-                    name="additionalContext"
-                    render={({ field }) => (
-                      <FormItem>
+                  <FormField control={form.control} name="additionalContext" render={({
+                  field
+                }) => <FormItem>
                         <FormLabel>Additional Context (Optional)</FormLabel>
                         <FormControl>
-                          <Textarea
-                            placeholder="e.g., I've been a tenant for 3 years with no late payments, I'm willing to sign a longer lease..."
-                            {...field}
-                          />
+                          <Textarea placeholder="e.g., I've been a tenant for 3 years with no late payments, I'm willing to sign a longer lease..." {...field} />
                         </FormControl>
                         <FormDescription>
                           Any other information that might be relevant for the negotiation.
                         </FormDescription>
                         <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormItem>} />
                   
                   <div className="flex justify-between">
                     <Button type="button" variant="outline" onClick={prevStep}>
                       <ArrowLeft className="mr-2 h-4 w-4" /> Back
                     </Button>
                     <Button type="submit" disabled={isLoading}>
-                      {isLoading ? (
-                        <>
+                      {isLoading ? <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating
-                        </>
-                      ) : (
-                        <>
+                        </> : <>
                           Generate Script <ArrowRight className="ml-2 h-4 w-4" />
-                        </>
-                      )}
+                        </>}
                     </Button>
                   </div>
                 </form>
               </Form>
             </CardContent>
-          </Card>
-        );
-        
+          </Card>;
       case ScriptBuilderStep.Script:
-        return (
-          <Card className="w-full max-w-4xl mx-auto">
+        return <Card className="w-full max-w-4xl mx-auto">
             <CardHeader>
               <div className="flex justify-between items-center">
                 <div>
@@ -441,12 +375,7 @@ const ScriptBuilder = () => {
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Input 
-                    className="w-64"
-                    placeholder="Script name" 
-                    value={scriptName} 
-                    onChange={(e) => setScriptName(e.target.value)} 
-                  />
+                  <Input className="w-64" placeholder="Script name" value={scriptName} onChange={e => setScriptName(e.target.value)} />
                   <Button onClick={saveScript}>
                     <Save className="mr-2 h-4 w-4" /> Save
                   </Button>
@@ -454,8 +383,7 @@ const ScriptBuilder = () => {
               </div>
             </CardHeader>
             <CardContent>
-              {editedScript && (
-                <div className="space-y-6">
+              {editedScript && <div className="space-y-6">
                   <Tabs defaultValue="script" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger value="script">Script</TabsTrigger>
@@ -465,92 +393,78 @@ const ScriptBuilder = () => {
                       <div className="space-y-4">
                         <div>
                           <h3 className="font-bold text-lg mb-2">Introduction</h3>
-                          <Textarea 
-                            className="min-h-[100px]"
-                            value={editedScript.introduction}
-                            onChange={(e) => setEditedScript({
-                              ...editedScript,
-                              introduction: e.target.value
-                            })}
-                          />
+                          <Textarea className="min-h-[100px]" value={editedScript.introduction} onChange={e => setEditedScript({
+                        ...editedScript,
+                        introduction: e.target.value
+                      })} />
                         </div>
                         
                         <div>
                           <h3 className="font-bold text-lg mb-2">Main Points</h3>
-                          {editedScript.mainPoints.map((point, i) => (
-                            <div key={i} className="border rounded-md p-4 mb-4">
-                              <h4 className="font-semibold mb-2">Point {i+1}</h4>
-                              <Textarea 
-                                className="mb-2"
-                                value={point.point}
-                                onChange={(e) => {
-                                  const updatedPoints = [...editedScript.mainPoints];
-                                  updatedPoints[i] = { ...point, point: e.target.value };
-                                  setEditedScript({
-                                    ...editedScript,
-                                    mainPoints: updatedPoints
-                                  });
-                                }}
-                              />
+                          {editedScript.mainPoints.map((point, i) => <div key={i} className="border rounded-md p-4 mb-4">
+                              <h4 className="font-semibold mb-2">Point {i + 1}</h4>
+                              <Textarea className="mb-2" value={point.point} onChange={e => {
+                          const updatedPoints = [...editedScript.mainPoints];
+                          updatedPoints[i] = {
+                            ...point,
+                            point: e.target.value
+                          };
+                          setEditedScript({
+                            ...editedScript,
+                            mainPoints: updatedPoints
+                          });
+                        }} />
                               <h4 className="font-semibold mb-2">Supporting Reasoning</h4>
-                              <Textarea 
-                                value={point.reasoning}
-                                onChange={(e) => {
-                                  const updatedPoints = [...editedScript.mainPoints];
-                                  updatedPoints[i] = { ...point, reasoning: e.target.value };
-                                  setEditedScript({
-                                    ...editedScript,
-                                    mainPoints: updatedPoints
-                                  });
-                                }}
-                              />
-                            </div>
-                          ))}
+                              <Textarea value={point.reasoning} onChange={e => {
+                          const updatedPoints = [...editedScript.mainPoints];
+                          updatedPoints[i] = {
+                            ...point,
+                            reasoning: e.target.value
+                          };
+                          setEditedScript({
+                            ...editedScript,
+                            mainPoints: updatedPoints
+                          });
+                        }} />
+                            </div>)}
                         </div>
                         
                         <div>
                           <h3 className="font-bold text-lg mb-2">Objection Responses</h3>
-                          {editedScript.objectionResponses.map((obj, i) => (
-                            <div key={i} className="border rounded-md p-4 mb-4">
+                          {editedScript.objectionResponses.map((obj, i) => <div key={i} className="border rounded-md p-4 mb-4">
                               <h4 className="font-semibold mb-2">Potential Objection</h4>
-                              <Textarea 
-                                className="mb-2"
-                                value={obj.objection}
-                                onChange={(e) => {
-                                  const updatedObjs = [...editedScript.objectionResponses];
-                                  updatedObjs[i] = { ...obj, objection: e.target.value };
-                                  setEditedScript({
-                                    ...editedScript,
-                                    objectionResponses: updatedObjs
-                                  });
-                                }}
-                              />
+                              <Textarea className="mb-2" value={obj.objection} onChange={e => {
+                          const updatedObjs = [...editedScript.objectionResponses];
+                          updatedObjs[i] = {
+                            ...obj,
+                            objection: e.target.value
+                          };
+                          setEditedScript({
+                            ...editedScript,
+                            objectionResponses: updatedObjs
+                          });
+                        }} />
                               <h4 className="font-semibold mb-2">Your Response</h4>
-                              <Textarea 
-                                value={obj.response}
-                                onChange={(e) => {
-                                  const updatedObjs = [...editedScript.objectionResponses];
-                                  updatedObjs[i] = { ...obj, response: e.target.value };
-                                  setEditedScript({
-                                    ...editedScript,
-                                    objectionResponses: updatedObjs
-                                  });
-                                }}
-                              />
-                            </div>
-                          ))}
+                              <Textarea value={obj.response} onChange={e => {
+                          const updatedObjs = [...editedScript.objectionResponses];
+                          updatedObjs[i] = {
+                            ...obj,
+                            response: e.target.value
+                          };
+                          setEditedScript({
+                            ...editedScript,
+                            objectionResponses: updatedObjs
+                          });
+                        }} />
+                            </div>)}
                         </div>
                         
                         <div>
                           <h3 className="font-bold text-lg mb-2">Closing Statement</h3>
-                          <Textarea 
-                            className="min-h-[100px]"
-                            value={editedScript.closing}
-                            onChange={(e) => setEditedScript({
-                              ...editedScript,
-                              closing: e.target.value
-                            })}
-                          />
+                          <Textarea className="min-h-[100px]" value={editedScript.closing} onChange={e => setEditedScript({
+                        ...editedScript,
+                        closing: e.target.value
+                      })} />
                         </div>
                       </div>
                     </TabsContent>
@@ -566,10 +480,9 @@ const ScriptBuilder = () => {
                               <span className="font-medium">Persuasiveness Score</span>
                               <div className="flex items-center">
                                 <div className="w-32 h-2 bg-gray-200 rounded-full mr-2">
-                                  <div 
-                                    className="h-2 bg-blue-500 rounded-full" 
-                                    style={{ width: `${editedScript.feedback.persuasiveness * 10}%` }}
-                                  />
+                                  <div className="h-2 bg-blue-500 rounded-full" style={{
+                                width: `${editedScript.feedback.persuasiveness * 10}%`
+                              }} />
                                 </div>
                                 <span>{editedScript.feedback.persuasiveness}/10</span>
                               </div>
@@ -590,9 +503,7 @@ const ScriptBuilder = () => {
                             <div className="space-y-2">
                               <span className="font-medium">Improvement Suggestions</span>
                               <ul className="space-y-1 list-disc pl-5">
-                                {editedScript.feedback.suggestions.map((suggestion, i) => (
-                                  <li key={i} className="text-sm text-gray-600">{suggestion}</li>
-                                ))}
+                                {editedScript.feedback.suggestions.map((suggestion, i) => <li key={i} className="text-sm text-gray-600">{suggestion}</li>)}
                               </ul>
                             </div>
                           </div>
@@ -600,8 +511,7 @@ const ScriptBuilder = () => {
                       </Card>
                     </TabsContent>
                   </Tabs>
-                </div>
-              )}
+                </div>}
             </CardContent>
             <CardFooter className="flex justify-between">
               <Button variant="outline" onClick={prevStep}>
@@ -611,12 +521,9 @@ const ScriptBuilder = () => {
                 Practice Script <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </CardFooter>
-          </Card>
-        );
-        
+          </Card>;
       case ScriptBuilderStep.Practice:
-        return (
-          <Card className="w-full max-w-4xl mx-auto">
+        return <Card className="w-full max-w-4xl mx-auto">
             <CardHeader>
               <CardTitle>Practice Your Negotiation</CardTitle>
               <CardDescription>
@@ -634,36 +541,30 @@ const ScriptBuilder = () => {
                 <div className="border-t pt-4">
                   <h3 className="font-bold text-lg mb-4">Saved Scripts</h3>
                   
-                  {savedScripts.length === 0 ? (
-                    <p className="text-center text-gray-500 py-4">
+                  {savedScripts.length === 0 ? <p className="text-center text-gray-500 py-4">
                       No saved scripts yet. Save your script to access it later.
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      {savedScripts.map(script => (
-                        <div key={script.id} className="flex items-center justify-between p-3 border rounded-md">
+                    </p> : <div className="space-y-2">
+                      {savedScripts.map(script => <div key={script.id} className="flex items-center justify-between p-3 border rounded-md">
                           <span>{script.name}</span>
                           <div className="flex gap-2">
                             <Button variant="outline" size="sm" onClick={() => {
-                              setEditedScript(script.script);
-                              setCurrentStep(ScriptBuilderStep.Script);
-                            }}>
+                        setEditedScript(script.script);
+                        setCurrentStep(ScriptBuilderStep.Script);
+                      }}>
                               Edit
                             </Button>
                             <Button variant="ghost" size="sm" onClick={() => {
-                              setSavedScripts(prev => prev.filter(s => s.id !== script.id));
-                              toast({
-                                title: "Script deleted",
-                                description: `"${script.name}" has been removed`,
-                              });
-                            }}>
+                        setSavedScripts(prev => prev.filter(s => s.id !== script.id));
+                        toast({
+                          title: "Script deleted",
+                          description: `"${script.name}" has been removed`
+                        });
+                      }}>
                               Delete
                             </Button>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                        </div>)}
+                    </div>}
                 </div>
               </div>
             </CardContent>
@@ -672,24 +573,20 @@ const ScriptBuilder = () => {
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back to Script
               </Button>
               <Button variant="default" onClick={() => {
-                setCurrentStep(ScriptBuilderStep.Goals);
-                form.reset();
-                setGeneratedScript(null);
-                setEditedScript(null);
-              }}>
+              setCurrentStep(ScriptBuilderStep.Goals);
+              form.reset();
+              setGeneratedScript(null);
+              setEditedScript(null);
+            }}>
                 <Check className="mr-2 h-4 w-4" /> Create New Script
               </Button>
             </CardFooter>
-          </Card>
-        );
-      
+          </Card>;
       default:
         return null;
     }
   };
-
-  return (
-    <div className="container max-w-4xl py-12">
+  return <div className="container max-w-4xl py-12">
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold mb-2">Negotiation Script Builder</h1>
         <p className="text-lg text-muted-foreground">
@@ -707,24 +604,13 @@ const ScriptBuilder = () => {
       </div>
       
       {/* Enhanced debug info component with form state details */}
-      {showDebugInfo && (
-        <DebugInfo 
-          showDebugInfo={showDebugInfo}
-          httpStatus={debugSubmit.httpStatus}
-          requestStartTime={debugSubmit.startTime}
-          requestEndTime={debugSubmit.endTime}
-          rawErrorResponse={debugSubmit.error}
-          additionalInfo={{
-            formState: debugSubmit.formState,
-            validationTrigger: debugSubmit.validationTrigger,
-            currentStep: ScriptBuilderStep[currentStep]
-          }}
-        />
-      )}
+      {showDebugInfo && <DebugInfo showDebugInfo={showDebugInfo} httpStatus={debugSubmit.httpStatus} requestStartTime={debugSubmit.startTime} requestEndTime={debugSubmit.endTime} rawErrorResponse={debugSubmit.error} additionalInfo={{
+      formState: debugSubmit.formState,
+      validationTrigger: debugSubmit.validationTrigger,
+      currentStep: ScriptBuilderStep[currentStep]
+    }} />}
       
       {renderFormStep()}
-    </div>
-  );
+    </div>;
 };
-
 export default ScriptBuilder;
