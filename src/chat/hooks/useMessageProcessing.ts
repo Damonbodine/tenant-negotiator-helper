@@ -4,6 +4,8 @@ import { agentService } from "@/shared/services/agentService";
 import { voiceClient } from "@/shared/services/voiceClient";
 import { analyzeListingUrl } from "@/listingAnalyzer/services/listingAnalyzerService";
 import { ChatType } from "@/chat/hooks/useAgentChat";
+import { chatPersistenceService } from "@/shared/services/chatPersistenceService";
+import { v4 as uuidv4 } from 'uuid';
 
 // --- Suggestions and triggers mapping ---
 const suggestionList = [
@@ -102,6 +104,7 @@ interface UseMessageProcessingProps {
   handleError: (error: any) => void;
   selectedVoice: string;
   chatType?: ChatType;
+  setIsTyping?: (isTyping: boolean) => void;
 }
 
 export async function processUserMessage(messageText: string, {
@@ -113,21 +116,31 @@ export async function processUserMessage(messageText: string, {
   audioRef,
   handleError,
   selectedVoice,
-  chatType = "general"
+  chatType = "general",
+  setIsTyping
 }: UseMessageProcessingProps) {
   if (!messageText.trim() || setIsLoading) return;
   
   const userMessage: ChatMessage = {
-    id: Date.now().toString(),
+    id: uuidv4(),
     type: "user",
     text: messageText,
-    timestamp: new Date()
+    timestamp: new Date(),
+    isRead: true // User's own messages are always read
   };
   
   setMessages((prev: ChatMessage[]) => [...prev, userMessage]);
   setInput("");
   setIsLoading(true);
   setSuggestions([]);
+  
+  // Save user message to persistence layer
+  try {
+    await chatPersistenceService.saveMessage(userMessage);
+  } catch (error) {
+    console.error("Error saving user message:", error);
+    // Continue even if saving fails
+  }
 
   const getIsFirstInteraction = (history: ChatMessage[]) => {
     // Only count user and agent messages for determining if this is the first interaction
@@ -136,27 +149,44 @@ export async function processUserMessage(messageText: string, {
   };
   
   try {
-    // Create a function that matches the expected signature
+    // Create a function that matches the expected signature for adding agent messages
     const addAgentMessage = (msg: ChatMessage) => {
-      setMessages(prev => [...prev, msg]);
+      // Ensure the message has an ID and timestamp if not provided
+      const enhancedMsg = {
+        ...msg,
+        id: msg.id || uuidv4(),
+        timestamp: msg.timestamp || new Date(),
+        isRead: false // New agent messages are unread initially
+      };
+      
+      setMessages(prev => [...prev, enhancedMsg]);
+      
+      // Save agent message to persistence layer
+      chatPersistenceService.saveMessage(enhancedMsg).catch(err => {
+        console.error("Error saving agent message:", err);
+      });
+      
+      return enhancedMsg;
     };
 
     // Check if it's a URL for analysis
     const wasListingAnalyzed = await analyzeListingUrl(messageText, addAgentMessage);
     if (wasListingAnalyzed) {
-      // Show suggestions after a listing analysis, use a default market suggestions
+      // Show suggestions after a listing analysis, use default market suggestions
       setSuggestions([
         "Need help crafting a message to ask your landlord for a rent reduction?",
         "Want to compare your rent to the city average?",
         "Want a quick negotiation tip that works almost every time?"
       ]);
       setIsLoading(false);
+      if (setIsTyping) setIsTyping(false);
       return;
     }
 
     if (!(await voiceClient.hasApiKey())) {
       setShowApiKeyInput(true);
       setIsLoading(false);
+      if (setIsTyping) setIsTyping(false);
       return;
     }
 
@@ -178,13 +208,22 @@ export async function processUserMessage(messageText: string, {
     }
 
     const finalAgentMessage: ChatMessage = {
-      id: Date.now().toString(),
+      id: uuidv4(),
       type: "agent",
       text: response.text,
-      timestamp: new Date()
+      timestamp: new Date(),
+      isRead: false // New agent messages are unread initially
     };
 
+    // Add the agent message to the UI
     setMessages((prev: ChatMessage[]) => [...prev, finalAgentMessage]);
+    
+    // Save agent message to persistence layer
+    try {
+      await chatPersistenceService.saveMessage(finalAgentMessage);
+    } catch (error) {
+      console.error("Error saving agent response:", error);
+    }
 
     // SUGGESTIONS: Analyze input + history and add suggestions for next steps
     // Create a history array with the current interaction
@@ -218,6 +257,6 @@ export async function processUserMessage(messageText: string, {
     handleError(error);
   } finally {
     setIsLoading(false);
+    if (setIsTyping) setIsTyping(false);
   }
 }
-
