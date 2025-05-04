@@ -10,7 +10,7 @@ interface ChatHistoryRecord {
   message_type: 'user' | 'agent';
   message_text: string;
   created_at: string;
-  is_read?: boolean;
+  is_read: boolean | null;
 }
 
 // Anonymous user ID for non-authenticated users
@@ -70,9 +70,10 @@ export const chatPersistenceService = {
       }
       
       // Convert database records to ChatMessage objects
-      return (data || []).map((record: ChatHistoryRecord) => ({
+      // Since we cast the data type explicitly to ensure type safety
+      return (data as ChatHistoryRecord[] || []).map((record: ChatHistoryRecord) => ({
         id: record.id,
-        type: record.message_type as 'user' | 'agent',
+        type: record.message_type,
         text: record.message_text,
         timestamp: new Date(record.created_at),
         isRead: record.is_read !== false // Default to read if not specified

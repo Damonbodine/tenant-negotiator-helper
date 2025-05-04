@@ -12,12 +12,12 @@ import { v4 as uuidv4 } from 'uuid';
 import { formatDistanceToNow } from "date-fns";
 
 interface MarketInsightsProps {
-  // Define any props here
+  initialAddress?: string; // Added prop for initial address
 }
 
-const MarketInsights: React.FC<MarketInsightsProps> = () => {
+const MarketInsights: React.FC<MarketInsightsProps> = ({ initialAddress = "" }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(initialAddress || "");
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const { toast } = useToast();
@@ -34,10 +34,36 @@ const MarketInsights: React.FC<MarketInsightsProps> = () => {
         isRead: true
       };
       setMessages((prevMessages) => [...prevMessages, newMessage]);
+      
+      // If initial address is provided, simulate a search
+      if (initialAddress) {
+        const userMessage: ChatMessage = {
+          id: uuidv4(),
+          type: "user",
+          text: initialAddress,
+          timestamp: new Date(),
+          isRead: true
+        };
+        
+        setMessages((prevMessages) => [...prevMessages, userMessage]);
+        // Simulate analysis for the initial address
+        setIsTyping(true);
+        setTimeout(() => {
+          setIsTyping(false);
+          const agentResponse: ChatMessage = {
+            id: uuidv4(),
+            type: "agent",
+            text: `I'm analyzing ${initialAddress}. This is a simulated response to your initial address input.`,
+            timestamp: new Date(),
+            isRead: false
+          };
+          setMessages((prevMessages) => [...prevMessages, agentResponse]);
+        }, 2000);
+      }
     }, 500);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [initialAddress]);
 
   const handleSendMessage = () => {
     if (!input.trim() || isLoading) return;
