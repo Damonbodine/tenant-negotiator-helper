@@ -1,11 +1,13 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, ExternalLink, ChevronLeft, Mail, ClipboardCheck, Home, Shield, AlertTriangle, FileText } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 
 const Resources = () => {
+  // Get the resourceId from URL params
+  const { resourceId } = useParams();
+  
   const resourceCategories = [{
     title: "Negotiation Templates",
     description: "Ready-to-use email templates and scripts for rent negotiations",
@@ -639,6 +641,26 @@ Best,
     }
   };
 
+  // If a resourceId is specified, show that specific resource
+  if (resourceId && resourceContent[resourceId]) {
+    return (
+      <div className="container py-8 bg-background">
+        <div className="flex items-center gap-2 mb-8">
+          <Button variant="outline" asChild>
+            <Link to="/">
+              <Home className="h-4 w-4 mr-2" />
+              Home
+            </Link>
+          </Button>
+          <h1 className="text-3xl font-bold">{resourceContent[resourceId].title}</h1>
+        </div>
+        
+        {resourceContent[resourceId].content}
+      </div>
+    );
+  }
+
+  // Otherwise show the resource listing page (default view)
   return (
     <div className="container py-8 bg-background">
       <div className="flex items-center gap-2 mb-8">
