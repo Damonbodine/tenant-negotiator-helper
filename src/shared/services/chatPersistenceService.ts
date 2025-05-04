@@ -32,7 +32,8 @@ export const chatPersistenceService = {
           id: message.id,
           user_id: userId,
           message_type: message.type,
-          message_text: message.text
+          message_text: message.text,
+          // Since is_read doesn't exist in the database schema, we won't insert it
         });
       
       if (error) {
@@ -89,6 +90,12 @@ export const chatPersistenceService = {
     if (!messageIds.length) return true;
     
     try {
+      // Since is_read doesn't exist in the database schema,
+      // we'll log this intention but not perform the update
+      console.log('Would mark messages as read:', messageIds);
+      return true;
+      
+      /* This would be the implementation if the column existed
       const { error } = await supabase
         .from('chat_history')
         .update({ is_read: true })
@@ -100,6 +107,7 @@ export const chatPersistenceService = {
       }
       
       return true;
+      */
     } catch (error) {
       console.error('Exception marking messages as read:', error);
       return false;
@@ -137,6 +145,12 @@ export const chatPersistenceService = {
    */
   async getUnreadCount(): Promise<number> {
     try {
+      // Since is_read doesn't exist in the database schema,
+      // we'll log this intention but return 0
+      console.log('Would get unread count');
+      return 0;
+      
+      /* This would be the implementation if the column existed
       // Get current user or use anonymous ID
       const { data: { session } } = await supabase.auth.getSession();
       const userId = session?.user?.id || ANONYMOUS_USER_ID;
@@ -153,6 +167,7 @@ export const chatPersistenceService = {
       }
       
       return data?.length || 0;
+      */
     } catch (error) {
       console.error('Exception getting unread count:', error);
       return 0;

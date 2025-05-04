@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { ChatMessage } from "@/shared/types";
 import { ScrollArea } from "@/shared/ui/scroll-area";

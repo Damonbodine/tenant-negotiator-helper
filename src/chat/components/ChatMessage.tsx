@@ -49,7 +49,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
             <span title={formattedTime.exact}>{formattedTime.relative}</span>
           </div>
           
-          {message.type === "user" && (
+          {message.type === "user" && message.isRead !== undefined && (
             <div className="flex items-center" title={message.isRead ? "Read" : "Delivered"}>
               <CheckCheck className={`h-3 w-3 ${message.isRead ? "opacity-100" : "opacity-50"}`} />
             </div>
