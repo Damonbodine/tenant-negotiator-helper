@@ -1,3 +1,4 @@
+
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Suspense, lazy } from "react";
 import { Toaster } from "@/shared/ui/toaster";
@@ -19,6 +20,7 @@ const Terms = lazy(() => import("@/pages/Terms"));
 const Privacy = lazy(() => import("@/pages/Privacy"));
 const PromptManager = lazy(() => import("@/shared/components/PromptManager"));
 const LeaseAnalyzer = lazy(() => import("@/pages/LeaseAnalyzer"));
+const ScriptBuilder = lazy(() => import("@/pages/ScriptBuilder"));
 
 function AppRoutes() {
   return (
@@ -34,6 +36,7 @@ function AppRoutes() {
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/lease-analyzer" element={<LeaseAnalyzer />} />
+        <Route path="/script-builder" element={<ScriptBuilder />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>

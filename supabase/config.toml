@@ -13,3 +13,6 @@ verify_jwt = false
 [functions.lease-analyzer]
 verify_jwt = false
 
+[functions.script-generator]
+verify_jwt = false
+
