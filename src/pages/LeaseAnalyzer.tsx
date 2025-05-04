@@ -1,10 +1,10 @@
-
 import { useState, useRef } from "react";
 import { Upload, FileText, AlertCircle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/integrations/supabase/client";
 
 const LeaseAnalyzer = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -85,51 +85,53 @@ const LeaseAnalyzer = () => {
     fileInputRef.current?.click();
   };
 
+  const extractTextFromFile = async (file: File): Promise<string> => {
+    // For plain text files, just read the text
+    if (file.type === 'text/plain') {
+      return await file.text();
+    }
+
+    // For other file types (PDF, DOC, DOCX) we would need to use a dedicated library
+    // or service to extract text. For simplicity in this prototype, we'll just read the 
+    // first few KB as text and add a note about proper extraction
+    
+    const text = await file.text();
+    return `${text.slice(0, 10000)}... 
+    [Note: This is a simplified text extraction from a ${file.type} file. 
+    In a production application, we would use proper document parsing libraries or services.]`;
+  };
+
   const handleAnalyze = async () => {
     if (!file) return;
     
     setIsAnalyzing(true);
     
     try {
-      // For now, we'll just simulate the analysis with a timeout
-      // In a real implementation, this would call a Supabase edge function to process the file
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Extract text from the file
+      const documentText = await extractTextFromFile(file);
       
-      // Mock response - in a real implementation this would come from the backend
-      setAnalysisResults({
-        summary: "This is a standard 12-month residential lease agreement with some notable clauses regarding security deposit, maintenance responsibilities, and early termination options.",
-        complexTerms: [
-          { 
-            term: "Indemnification Clause (Section 14)", 
-            explanation: "This clause requires you (the tenant) to protect the landlord from legal responsibility for damages or injuries that occur in the rental property, even if not directly caused by you."
-          },
-          { 
-            term: "Joint and Several Liability (Section 8)", 
-            explanation: "If you have roommates, this means each person is individually responsible for the full rent and all obligations in the lease. If one roommate doesn't pay, the others must cover their share."
-          },
-          {
-            term: "Automatical Renewal (Section 22)",
-            explanation: "Your lease will automatically renew unless you provide written notice before the deadline specified. This means you could be locked into another term if you forget to give notice."
-          }
-        ],
-        unusualClauses: [
-          {
-            clause: "Excessive Late Fee (Section 4)",
-            concern: "The late fee of 10% of monthly rent exceeds what's typical in most jurisdictions (usually 5% or a flat fee)."
-          },
-          {
-            clause: "24-Hour Entry Right (Section 17)",
-            concern: "The landlord claims right to enter with only 24 hours notice. Many states require 48-72 hours notice except in emergencies."
-          }
-        ],
-        questions: [
-          "Can the automatic renewal clause be modified to require mutual agreement?",
-          "Is the 10% late fee negotiable to align with standard practices?",
-          "Can the entry notice period be extended to 48 hours?",
-          "What specific maintenance tasks am I responsible for versus the landlord?",
-          "Are there any restrictions on guest stays that aren't clearly defined?"
-        ]
+      // Call the Supabase edge function to analyze the document
+      const { data, error } = await supabase.functions.invoke('lease-analyzer', {
+        body: {
+          documentText,
+          documentType: file.type,
+          fileName: file.name
+        }
       });
+
+      if (error) {
+        console.error("Error calling lease-analyzer function:", error);
+        toast({
+          variant: "destructive",
+          title: "Analysis failed",
+          description: error.message || "We couldn't analyze your lease document. Please try again later.",
+        });
+        return;
+      }
+
+      console.log("Lease analysis result:", data);
+      setAnalysisResults(data);
+      
     } catch (error) {
       console.error("Error analyzing lease:", error);
       toast({

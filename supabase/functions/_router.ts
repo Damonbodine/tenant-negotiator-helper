@@ -105,6 +105,72 @@ serve(async (req: Request) => {
           }
         );
       }
+    } else if (path === '/api/lease-analyzer' || path.startsWith('/api/lease-analyzer')) {
+      console.log('Routing to lease-analyzer function');
+      
+      // Parse request body safely
+      let requestBody;
+      try {
+        requestBody = await req.json();
+        console.log('Request body:', requestBody);
+      } catch (e) {
+        console.error('Error parsing request body:', e);
+        return new Response(
+          JSON.stringify({ error: 'Invalid request body' }),
+          { 
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+      
+      try {
+        // Call the lease-analyzer function
+        const { data, error } = await supabase.functions.invoke('lease-analyzer', {
+          body: requestBody,
+        });
+
+        if (error) {
+          console.error('Error invoking lease-analyzer:', error);
+          return new Response(
+            JSON.stringify({ error: error.message || 'Invocation error' }),
+            { 
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
+        }
+
+        // Make sure we never return empty data
+        if (!data) {
+          console.error('No data returned from lease-analyzer');
+          return new Response(
+            JSON.stringify({ error: 'No data returned from analyzer' }),
+            { 
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
+        }
+
+        console.log('Lease analyzer response:', data);
+        return new Response(
+          JSON.stringify(data),
+          { 
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
+      } catch (error) {
+        console.error('Error in lease-analyzer invocation:', error);
+        return new Response(
+          JSON.stringify({ error: error.message || 'Function invocation error' }),
+          { 
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
     }
 
     // If no matching route is found
