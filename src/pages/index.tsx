@@ -1,4 +1,3 @@
-
 import { useState, lazy, Suspense } from "react";
 import { FeatureCards } from "@/components/marketing/FeatureCards";
 import { NewsletterSignup } from "@/shared/components/marketing/NewsletterSignup";
@@ -51,9 +50,7 @@ const Index = () => {
               <h2 className="text-5xl font-bold mb-6 gradient-heading">
                 Don't overpay for your next apartment.
               </h2>
-              <p className="text-xl text-cyan-400/90 font-medium mb-8">
-                Arm yourself with data to get the best price on rent
-              </p>
+              <p className="text-xl text-cyan-400/90 font-medium mb-8">Learn how to get the best price on rent</p>
               
               {/* Quick address analysis form */}
               <form onSubmit={handleAddressAnalyze} className="max-w-lg mx-auto">
