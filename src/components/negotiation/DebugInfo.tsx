@@ -8,9 +8,17 @@ interface DebugInfoProps {
   requestStartTime: string | null;
   requestEndTime: string | null;
   rawErrorResponse: string | null;
+  additionalInfo?: Record<string, any>;
 }
 
-export function DebugInfo({ showDebugInfo, httpStatus, requestStartTime, requestEndTime, rawErrorResponse }: DebugInfoProps) {
+export function DebugInfo({ 
+  showDebugInfo, 
+  httpStatus, 
+  requestStartTime, 
+  requestEndTime, 
+  rawErrorResponse,
+  additionalInfo = {} 
+}: DebugInfoProps) {
   if (!showDebugInfo) return null;
 
   return (
@@ -33,6 +41,23 @@ export function DebugInfo({ showDebugInfo, httpStatus, requestStartTime, request
               <div><strong>Duration:</strong> {
                 new Date(requestEndTime).getTime() - new Date(requestStartTime).getTime()
               } ms</div>
+            )}
+            
+            {/* Display any additional debugging information */}
+            {Object.keys(additionalInfo).length > 0 && (
+              <div className="mt-4 border-t border-gray-200 pt-3">
+                <div className="font-semibold mb-1">Component State:</div>
+                {Object.entries(additionalInfo).map(([key, value]) => (
+                  <div key={key} className="flex flex-col mt-2">
+                    <strong>{key}:</strong>
+                    <div className="p-1 bg-gray-100 rounded-md overflow-auto max-h-44">
+                      <pre className="text-xs whitespace-pre-wrap">{
+                        typeof value === 'string' ? value : JSON.stringify(value, null, 2)
+                      }</pre>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </AlertDescription>
