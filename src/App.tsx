@@ -14,6 +14,7 @@ const Practice = lazy(() => import("@/pages/Practice"));
 const VoicePractice = lazy(() => import("@/pages/VoicePractice"));
 const Contact = lazy(() => import("@/pages/Contact"));
 const Auth = lazy(() => import("@/pages/Auth"));
+const Profile = lazy(() => import("@/pages/Profile"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const Resources = lazy(() => import("@/pages/Resources"));
 const Terms = lazy(() => import("@/pages/Terms"));
@@ -31,6 +32,7 @@ function AppRoutes() {
         <Route path="/practice/voice" element={<VoicePractice />} />
         <Route path="/prompts" element={<PromptManager />} />
         <Route path="/auth" element={<Auth />} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="/resources" element={<Resources />} />
         <Route path="/resources/:resourceId" element={<Resources />} />
         <Route path="/terms" element={<Terms />} />
