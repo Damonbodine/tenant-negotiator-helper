@@ -1,4 +1,3 @@
-
 import { useState, lazy, Suspense } from "react";
 import { FeatureCards } from "@/components/marketing/FeatureCards";
 import { TestimonialCarousel } from "@/components/marketing/TestimonialCarousel";
@@ -48,10 +47,8 @@ const Index = () => {
               </div>}
           </Suspense> : <div className="space-y-16 w-full max-w-4xl">
             <div className="text-center">
-              <h2 className="text-5xl font-bold mb-6 gradient-heading">
-                Don't overpay for your next apartment.
-              </h2>
-              <p className="text-xl text-cyan-400/90 font-medium mb-8">Learn how to get the best price on your next rental</p>
+              <h2 className="text-5xl font-bold mb-6 gradient-heading">Don't overpay for rent</h2>
+              <p className="text-xl text-cyan-400/90 font-medium mb-8">Learn how to get the best price on your next lease with A.I. </p>
               
               {/* Quick address analysis form */}
               <form onSubmit={handleAddressAnalyze} className="max-w-lg mx-auto">
