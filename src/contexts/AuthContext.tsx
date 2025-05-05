@@ -10,6 +10,9 @@ interface AuthContextType {
   isLoading: boolean;
   authError: string | null;
   signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -90,6 +93,90 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const signInWithEmail = async (email: string, password: string) => {
+    setIsLoading(true);
+    setAuthError(null);
+    
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) {
+        console.error("Error signing in with email:", error);
+        setAuthError(error.message);
+        throw error;
+      }
+    } catch (error) {
+      console.error("Unexpected error during email sign in:", error);
+      setAuthError(error.message || "An unexpected error occurred");
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const signUpWithEmail = async (email: string, password: string) => {
+    setIsLoading(true);
+    setAuthError(null);
+    
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth`
+        }
+      });
+      
+      if (error) {
+        console.error("Error signing up with email:", error);
+        setAuthError(error.message);
+        throw error;
+      }
+      
+      toast({
+        title: "Registration successful",
+        description: "Please check your email for a confirmation link.",
+      });
+    } catch (error) {
+      console.error("Unexpected error during registration:", error);
+      setAuthError(error.message || "An unexpected error occurred");
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    setIsLoading(true);
+    setAuthError(null);
+    
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth?reset=true`,
+      });
+      
+      if (error) {
+        console.error("Error resetting password:", error);
+        setAuthError(error.message);
+        throw error;
+      }
+      
+      toast({
+        title: "Password reset email sent",
+        description: "Please check your email for a password reset link.",
+      });
+    } catch (error) {
+      console.error("Unexpected error during password reset:", error);
+      setAuthError(error.message || "An unexpected error occurred");
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const signOut = async () => {
     setIsLoading(true);
     
@@ -117,6 +204,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isLoading, 
       authError, 
       signInWithGoogle, 
+      signInWithEmail,
+      signUpWithEmail,
+      resetPassword,
       signOut 
     }}>
       {children}

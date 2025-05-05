@@ -37,6 +37,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_read: boolean | null
           message_text: string
           message_type: string
           user_id: string
@@ -44,6 +45,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          is_read?: boolean | null
           message_text: string
           message_type: string
           user_id: string
@@ -51,6 +53,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_read?: boolean | null
           message_text?: string
           message_type?: string
           user_id?: string
