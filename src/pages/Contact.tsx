@@ -1,9 +1,10 @@
 
 import { useState } from "react";
 import { Header } from "@/shared/components/layout/Header";
-import { Button } from "@/shared/ui/button";
-import { Input } from "@/shared/ui/input";
-import { Textarea } from "@/shared/ui/textarea";
+import { Footer } from "@/shared/components/layout/Footer";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/shared/hooks/use-toast";
 
 export default function Contact() {
@@ -47,11 +48,11 @@ export default function Contact() {
     <div className="min-h-screen flex flex-col">
       <Header />
       <main className="flex-1 container max-w-2xl py-12">
-        <h1 className="text-3xl font-bold text-cyan-400 mb-6">Contact Us</h1>
+        <h1 className="text-3xl font-bold mb-6">Contact Us</h1>
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <label htmlFor="name" className="text-sm font-medium text-cyan-400">
+            <label htmlFor="name" className="text-sm font-medium">
               Name
             </label>
             <Input
@@ -59,14 +60,13 @@ export default function Contact() {
               value={formData.name}
               onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
               required
-              className="bg-cyan-950/30 border-cyan-400/20"
               placeholder="Your name"
               disabled={isSubmitting}
             />
           </div>
           
           <div className="space-y-2">
-            <label htmlFor="email" className="text-sm font-medium text-cyan-400">
+            <label htmlFor="email" className="text-sm font-medium">
               Email
             </label>
             <Input
@@ -75,14 +75,13 @@ export default function Contact() {
               value={formData.email}
               onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
               required
-              className="bg-cyan-950/30 border-cyan-400/20"
               placeholder="your.email@example.com"
               disabled={isSubmitting}
             />
           </div>
           
           <div className="space-y-2">
-            <label htmlFor="message" className="text-sm font-medium text-cyan-400">
+            <label htmlFor="message" className="text-sm font-medium">
               Message
             </label>
             <Textarea
@@ -90,7 +89,7 @@ export default function Contact() {
               value={formData.message}
               onChange={(e) => setFormData(prev => ({ ...prev, message: e.target.value }))}
               required
-              className="bg-cyan-950/30 border-cyan-400/20 min-h-[150px]"
+              className="min-h-[150px]"
               placeholder="How can we help you?"
               disabled={isSubmitting}
             />
@@ -98,13 +97,13 @@ export default function Contact() {
           
           <Button 
             type="submit" 
-            className="w-full bg-cyan-400 hover:bg-cyan-500 text-cyan-950"
             disabled={isSubmitting}
           >
             {isSubmitting ? "Sending..." : "Send Message"}
           </Button>
         </form>
       </main>
+      <Footer />
     </div>
   );
 }
