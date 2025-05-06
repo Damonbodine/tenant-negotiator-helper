@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -18,8 +17,8 @@ export function PropertyInputForm({ onSubmit, isLoading }: PropertyInputFormProp
     { address: "", zipCode: "", bedrooms: 0, bathrooms: 0, squareFootage: 0, price: 0 },
     { address: "", zipCode: "", bedrooms: 0, bathrooms: 0, squareFootage: 0, price: 0 }
   ]);
-  const [urlInput, setUrlInput] = useState("");
-  const [isExtracting, setIsExtracting] = useState(false);
+  const [urlInputs, setUrlInputs] = useState<string[]>(["", "", "", ""]);
+  const [extractingIndices, setExtractingIndices] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState("manual");
 
   const handleAddProperty = () => {
@@ -45,10 +44,16 @@ export function PropertyInputForm({ onSubmit, isLoading }: PropertyInputFormProp
     setProperties(newProperties);
   };
 
-  const handleUrlSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleUrlInputChange = (index: number, value: string) => {
+    const newUrlInputs = [...urlInputs];
+    newUrlInputs[index] = value;
+    setUrlInputs(newUrlInputs);
+  };
+
+  const handleUrlExtract = async (index: number) => {
+    const url = urlInputs[index];
     
-    if (!urlInput) {
+    if (!url) {
       toast({
         title: "URL Required",
         description: "Please enter a property listing URL",
@@ -57,11 +62,12 @@ export function PropertyInputForm({ onSubmit, isLoading }: PropertyInputFormProp
       return;
     }
 
-    setIsExtracting(true);
+    // Add index to extracting state
+    setExtractingIndices(prev => [...prev, index]);
     
     try {
       // Extract property details from URL
-      const data = await analyzeListingWithSupabase(urlInput);
+      const data = await analyzeListingWithSupabase(url);
       
       if (!data.address) {
         throw new Error("Could not extract address from this listing");
@@ -76,17 +82,18 @@ export function PropertyInputForm({ onSubmit, isLoading }: PropertyInputFormProp
         squareFootage: typeof data.sqft === 'number' ? data.sqft : 0,
         price: typeof data.rent === 'number' ? data.rent : 0,
         propertyType: data.propertyName || undefined,
-        url: urlInput
+        url: url
       };
       
-      // Add this property to the list
+      // Add this property to the list, replacing property at the same index
       const newProperties = [...properties];
       
-      // Replace the first empty property or add a new one
-      const emptyIndex = newProperties.findIndex(p => !p.address);
-      if (emptyIndex >= 0) {
-        newProperties[emptyIndex] = extractedProperty;
-      } else if (newProperties.length < 4) {
+      // If we already have 4 properties, replace the one at this index
+      if (index < newProperties.length) {
+        newProperties[index] = extractedProperty;
+      } 
+      // Otherwise, add it if we're under the 4 property limit
+      else if (newProperties.length < 4) {
         newProperties.push(extractedProperty);
       } else {
         toast({
@@ -94,20 +101,21 @@ export function PropertyInputForm({ onSubmit, isLoading }: PropertyInputFormProp
           description: "You can compare up to 4 properties. Please remove one to add another.",
           variant: "destructive",
         });
-        setIsExtracting(false);
+        setExtractingIndices(prev => prev.filter(i => i !== index));
         return;
       }
       
       setProperties(newProperties);
-      setUrlInput("");
+      
+      // Clear the URL input field
+      const newUrlInputs = [...urlInputs];
+      newUrlInputs[index] = "";
+      setUrlInputs(newUrlInputs);
       
       toast({
         title: "Property Added",
         description: `Successfully extracted details for ${data.address}`,
       });
-      
-      // Switch to manual tab after successful extraction
-      setActiveTab("manual");
     } catch (error) {
       console.error("Error extracting property data:", error);
       toast({
@@ -118,7 +126,8 @@ export function PropertyInputForm({ onSubmit, isLoading }: PropertyInputFormProp
         variant: "destructive",
       });
     } finally {
-      setIsExtracting(false);
+      // Remove index from extracting state
+      setExtractingIndices(prev => prev.filter(i => i !== index));
     }
   };
 
@@ -139,6 +148,12 @@ export function PropertyInputForm({ onSubmit, isLoading }: PropertyInputFormProp
     onSubmit(properties);
   };
 
+  const clearUrl = (index: number) => {
+    const newUrlInputs = [...urlInputs];
+    newUrlInputs[index] = "";
+    setUrlInputs(newUrlInputs);
+  };
+
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -149,28 +164,79 @@ export function PropertyInputForm({ onSubmit, isLoading }: PropertyInputFormProp
         
         <TabsContent value="url" className="space-y-4 pt-4">
           <div className="text-sm text-muted-foreground mb-2">
-            Enter a property listing URL from sites like Zillow, Apartments.com, Realtor.com, etc.
+            Enter property listing URLs from sites like Zillow, Apartments.com, Realtor.com, etc.
           </div>
-          <form onSubmit={handleUrlSubmit} className="flex gap-2">
-            <Input
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              placeholder="https://www.apartments.com/property/..."
-              className="flex-1"
-              disabled={isExtracting}
-            />
-            <Button type="submit" disabled={isExtracting || !urlInput}>
-              {isExtracting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Extracting
-                </>
-              ) : (
-                <>
-                  <LinkIcon className="h-4 w-4 mr-2" /> Extract
-                </>
-              )}
+          <div className="space-y-4">
+            {urlInputs.map((urlInput, index) => (
+              <div key={index} className="flex gap-2 items-center">
+                <div className="flex-shrink-0 text-xs font-medium text-muted-foreground w-8">
+                  #{index + 1}
+                </div>
+                <div className="flex flex-1 gap-2">
+                  <Input
+                    value={urlInput}
+                    onChange={(e) => handleUrlInputChange(index, e.target.value)}
+                    placeholder="https://www.apartments.com/property/..."
+                    className="flex-1"
+                    disabled={extractingIndices.includes(index)}
+                  />
+                  <Button 
+                    type="button" 
+                    onClick={() => clearUrl(index)} 
+                    variant="outline" 
+                    size="icon"
+                    disabled={!urlInput || extractingIndices.includes(index)}
+                    className="px-2"
+                  >
+                    <Trash className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                  <Button 
+                    type="button"
+                    onClick={() => handleUrlExtract(index)}
+                    disabled={extractingIndices.includes(index) || !urlInput}
+                  >
+                    {extractingIndices.includes(index) ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Extracting
+                      </>
+                    ) : (
+                      <>
+                        <LinkIcon className="h-4 w-4 mr-2" /> Extract
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex justify-between mt-4">
+            <div className="text-sm text-muted-foreground">
+              {properties.filter(p => p.address).length}/4 properties added
+            </div>
+            <Button 
+              type="button" 
+              onClick={() => setActiveTab("manual")}
+              variant="outline"
+            >
+              Edit Properties Manually
             </Button>
-          </form>
+          </div>
+
+          <Button 
+            type="button" 
+            className="w-full mt-4" 
+            onClick={handleSubmit}
+            disabled={isLoading || properties.filter(p => p.address).length < 2}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Analyzing Properties
+              </>
+            ) : (
+              "Compare Properties"
+            )}
+          </Button>
         </TabsContent>
         
         <TabsContent value="manual" className="space-y-4 pt-4">
