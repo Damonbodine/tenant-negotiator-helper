@@ -44,7 +44,10 @@ export const Header = () => {
         </Link>
         <nav className="ml-auto flex gap-2">
           <Link to="/resources">
-            
+            <Button variant="ghost" size="sm" className="gap-1">
+              <FileText className="h-4 w-4" />
+              Resources
+            </Button>
           </Link>
           <Link to="/contact">
             <Button variant="ghost" size="sm" className="gap-1">
