@@ -1,21 +1,16 @@
-
 import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Home, MessageSquare, FileText, User, LogIn, LogOut, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { 
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-
 export const Header = () => {
-  const { user, signOut, isLoading } = useAuth();
-
+  const {
+    user,
+    signOut,
+    isLoading
+  } = useAuth();
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -23,20 +18,11 @@ export const Header = () => {
       console.error("Error signing out:", error);
     }
   };
-
   const getInitials = (name: string | null) => {
     if (!name) return "RM";
-    
-    return name
-      .split(" ")
-      .map(part => part[0])
-      .join("")
-      .toUpperCase()
-      .substring(0, 2);
+    return name.split(" ").map(part => part[0]).join("").toUpperCase().substring(0, 2);
   };
-
-  return (
-    <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+  return <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 items-center">
         <Link to="/" className="flex items-center gap-2 font-bold">
           <Home className="h-5 w-5 text-blue-500" />
@@ -44,10 +30,7 @@ export const Header = () => {
         </Link>
         <nav className="ml-auto flex gap-2">
           <Link to="/resources">
-            <Button variant="ghost" size="sm" className="gap-1">
-              <FileText className="h-4 w-4" />
-              Resources
-            </Button>
+            
           </Link>
           <Link to="/contact">
             <Button variant="ghost" size="sm" className="gap-1">
@@ -56,13 +39,10 @@ export const Header = () => {
             </Button>
           </Link>
 
-          {isLoading ? (
-            <Button variant="ghost" size="sm" disabled className="gap-1">
+          {isLoading ? <Button variant="ghost" size="sm" disabled className="gap-1">
               <Loader2 className="h-4 w-4 animate-spin" />
               <span className="hidden md:inline">Loading...</span>
-            </Button>
-          ) : user ? (
-            <DropdownMenu>
+            </Button> : user ? <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="gap-2">
                   <Avatar className="h-8 w-8">
@@ -85,17 +65,13 @@ export const Header = () => {
                   <span>Sign out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Link to="/auth">
+            </DropdownMenu> : <Link to="/auth">
               <Button variant="default" size="sm" className="gap-1">
                 <LogIn className="h-4 w-4" />
                 <span>Sign in</span>
               </Button>
-            </Link>
-          )}
+            </Link>}
         </nav>
       </div>
-    </header>
-  );
+    </header>;
 };
