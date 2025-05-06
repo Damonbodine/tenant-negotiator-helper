@@ -2,7 +2,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Home, MessageSquare, FileText, User, LogIn, LogOut } from "lucide-react";
+import { Home, MessageSquare, FileText, User, LogIn, LogOut, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
   DropdownMenu,
@@ -14,7 +14,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export const Header = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isLoading } = useAuth();
 
   const handleSignOut = async () => {
     try {
@@ -56,7 +56,12 @@ export const Header = () => {
             </Button>
           </Link>
 
-          {user ? (
+          {isLoading ? (
+            <Button variant="ghost" size="sm" disabled className="gap-1">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="hidden md:inline">Loading...</span>
+            </Button>
+          ) : user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="gap-2">

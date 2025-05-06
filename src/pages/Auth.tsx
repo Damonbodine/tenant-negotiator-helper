@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Home, LogIn, Mail, Key, UserPlus } from 'lucide-react';
+import { Home, LogIn, Mail, Key, UserPlus, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { useForm } from 'react-hook-form';
 
@@ -25,6 +25,7 @@ const Auth = () => {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
+  const [googleAuthAttempted, setGoogleAuthAttempted] = useState(false);
 
   const loginForm = useForm<FormInputs>();
   const registerForm = useForm<FormInputs>();
@@ -43,7 +44,13 @@ const Auth = () => {
     const reset = urlParams.get('reset');
     
     if (error) {
-      setLoginError(errorDescription || 'Authentication failed. Please try again.');
+      const errorMsg = errorDescription || 'Authentication failed. Please try again.';
+      setLoginError(errorMsg);
+      toast({
+        title: "Authentication Error",
+        description: errorMsg,
+        variant: "destructive",
+      });
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
     }
@@ -59,13 +66,30 @@ const Auth = () => {
     }
   }, []);
 
+  useEffect(() => {
+    // Display auth error from context if present
+    if (authError) {
+      setLoginError(authError);
+      if (googleAuthAttempted) {
+        toast({
+          title: "Google Sign-In Error",
+          description: "Could not connect to Google. Please try email sign-in or check your network connection.",
+          variant: "destructive",
+        });
+        setGoogleAuthAttempted(false);
+      }
+    }
+  }, [authError, googleAuthAttempted]);
+
   const handleGoogleSignIn = async () => {
     try {
+      setGoogleAuthAttempted(true);
+      setLoginError(null);
       await signInWithGoogle();
     } catch (error) {
       toast({
         title: "Authentication Error",
-        description: error.message || "Failed to sign in with Google",
+        description: error.message || "Failed to sign in with Google. Please try again or use email login.",
         variant: "destructive",
       });
     }
@@ -73,6 +97,7 @@ const Auth = () => {
 
   const handleEmailLogin = async (data: FormInputs) => {
     try {
+      setLoginError(null);
       await signInWithEmail(data.email, data.password);
     } catch (error) {
       toast({
@@ -85,6 +110,7 @@ const Auth = () => {
 
   const handleEmailSignUp = async (data: FormInputs) => {
     try {
+      setLoginError(null);
       await signUpWithEmail(data.email, data.password);
     } catch (error) {
       toast({
@@ -106,6 +132,7 @@ const Auth = () => {
     }
 
     try {
+      setLoginError(null);
       await resetPassword(resetEmail);
       setShowResetPassword(false);
     } catch (error) {
@@ -115,6 +142,11 @@ const Auth = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const getGoogleButtonText = () => {
+    if (isLoading && googleAuthAttempted) return "Connecting to Google...";
+    return activeTab === 'login' ? "Sign in with Google" : "Sign up with Google";
   };
 
   return (
@@ -135,8 +167,21 @@ const Auth = () => {
           <CardContent className="space-y-4">
             {(loginError || authError) && (
               <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Authentication Error</AlertTitle>
                 <AlertDescription>
                   {loginError || authError}
+                  {(loginError?.includes('google') || authError?.includes('google') || loginError?.includes('refused to connect')) && (
+                    <div className="mt-2">
+                      <p className="text-sm font-medium">Possible solutions:</p>
+                      <ul className="text-xs list-disc list-inside mt-1">
+                        <li>Check your internet connection</li>
+                        <li>Try using email login instead</li>
+                        <li>Clear your browser cookies and cache</li>
+                        <li>Try a different browser</li>
+                      </ul>
+                    </div>
+                  )}
                 </AlertDescription>
               </Alert>
             )}
@@ -201,7 +246,7 @@ const Auth = () => {
                       />
                     </div>
                     <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? "Signing in..." : "Sign in with Email"}
+                      {isLoading && !googleAuthAttempted ? "Signing in..." : "Sign in with Email"}
                     </Button>
                   </form>
 
@@ -230,7 +275,7 @@ const Auth = () => {
                         <path fill="#EA4335" d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 42.369 C -8.804 40.429 -11.514 39.239 -14.754 39.239 C -19.444 39.239 -23.494 41.939 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z"/>
                       </g>
                     </svg>
-                    <span>{isLoading ? "Signing in..." : "Sign in with Google"}</span>
+                    <span>{getGoogleButtonText()}</span>
                   </Button>
                 </TabsContent>
 
@@ -266,7 +311,7 @@ const Auth = () => {
                       )}
                     </div>
                     <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? "Creating account..." : "Create account"}
+                      {isLoading && !googleAuthAttempted ? "Creating account..." : "Create account"}
                     </Button>
                   </form>
 
@@ -295,7 +340,7 @@ const Auth = () => {
                         <path fill="#EA4335" d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 42.369 C -8.804 40.429 -11.514 39.239 -14.754 39.239 C -19.444 39.239 -23.494 41.939 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z"/>
                       </g>
                     </svg>
-                    <span>{isLoading ? "Signing in..." : "Sign up with Google"}</span>
+                    <span>{getGoogleButtonText()}</span>
                   </Button>
                 </TabsContent>
               </Tabs>

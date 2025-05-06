@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,7 +20,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -49,6 +48,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
+    // Set initial loading state
+    setIsLoading(true);
+    
+    // Get initial session
     supabase.auth.getSession().then(({ data: { session: currentSession }, error }) => {
       if (error) {
         console.error("Error getting session:", error);
@@ -57,6 +60,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
+      setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -68,6 +72,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     
     try {
       console.log("Starting Google sign in...");
+      
+      // Check if we can reach Google first
+      try {
+        const testConnection = await fetch('https://accounts.google.com/favicon.ico', { 
+          mode: 'no-cors',
+          cache: 'no-cache' 
+        });
+        console.log("Google connectivity test completed");
+      } catch (connError) {
+        console.error("Cannot connect to Google:", connError);
+        setAuthError("Could not connect to Google authentication service. Please check your internet connection.");
+        setIsLoading(false);
+        throw new Error("Could not connect to Google authentication service");
+      }
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -91,6 +110,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsLoading(false);
       throw error;
     }
+    // Note: don't set isLoading to false here as we're redirecting to Google
   };
 
   const signInWithEmail = async (email: string, password: string) => {
