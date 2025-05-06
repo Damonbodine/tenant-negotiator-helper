@@ -10,6 +10,18 @@ export const Footer = () => {
         </p>
         <div className="flex items-center gap-4">
           <Link 
+            to="/faq" 
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            FAQ
+          </Link>
+          <Link 
+            to="/contact" 
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Contact
+          </Link>
+          <Link 
             to="/privacy" 
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >

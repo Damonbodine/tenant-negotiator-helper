@@ -19,6 +19,7 @@ const NotFound = lazy(() => import("@/pages/NotFound"));
 const Resources = lazy(() => import("@/pages/Resources"));
 const Terms = lazy(() => import("@/pages/Terms"));
 const Privacy = lazy(() => import("@/pages/Privacy"));
+const FAQ = lazy(() => import("@/pages/FAQ"));
 const PromptManager = lazy(() => import("@/shared/components/PromptManager"));
 const LeaseAnalyzer = lazy(() => import("@/pages/LeaseAnalyzer"));
 const ScriptBuilder = lazy(() => import("@/pages/ScriptBuilder"));
@@ -37,6 +38,7 @@ function AppRoutes() {
         <Route path="/resources/:resourceId" element={<Resources />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
+        <Route path="/faq" element={<FAQ />} />
         <Route path="/lease-analyzer" element={<LeaseAnalyzer />} />
         <Route path="/script-builder" element={<ScriptBuilder />} />
         <Route path="*" element={<NotFound />} />
