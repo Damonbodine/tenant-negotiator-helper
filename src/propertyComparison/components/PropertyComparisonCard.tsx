@@ -8,6 +8,7 @@ export function PropertyComparisonCard() {
       <FileSearch className="h-10 w-10 text-cyan-400 mb-3" />
       <div className="text-cyan-400 text-xl font-bold mb-2">Compare Properties</div>
       <p className="text-cyan-100/70 text-center text-sm">Compare up to 4 properties side-by-side to find the best value</p>
+      <p className="text-cyan-100/70 text-center text-xs mt-2">Use any address or listing URL</p>
     </div>
   );
 }
