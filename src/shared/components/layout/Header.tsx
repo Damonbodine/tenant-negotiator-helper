@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -31,12 +32,6 @@ export const Header = () => {
         <nav className="ml-auto flex gap-2">
           <Link to="/resources">
             
-          </Link>
-          <Link to="/contact">
-            <Button variant="ghost" size="sm" className="gap-1">
-              <MessageSquare className="h-4 w-4" />
-              Contact
-            </Button>
           </Link>
 
           {isLoading ? <Button variant="ghost" size="sm" disabled className="gap-1">
