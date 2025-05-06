@@ -11,9 +11,10 @@ import { Link } from "react-router-dom";
 // Lazy-loaded components
 const MarketInsights = lazy(() => import("@/listingAnalyzer/components/MarketInsights"));
 const NegotiationChat = lazy(() => import("@/chat/components/NegotiationChat"));
+const PropertyComparison = lazy(() => import("@/propertyComparison/components/PropertyComparison"));
 
 // Types
-type JourneyType = "market" | "negotiation" | null;
+type JourneyType = "market" | "negotiation" | "comparison" | null;
 
 const Index = () => {
   const { user } = useAuth();
@@ -58,6 +59,18 @@ const Index = () => {
                   </button>
                 </div>
                 <NegotiationChat />
+              </div>
+            )}
+
+            {activeJourney === "comparison" && (
+              <div className="w-full max-w-4xl h-[calc(100vh-10rem)]">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-blue-600">Property Comparison</h2>
+                  <button onClick={() => setActiveJourney(null)} className="px-4 py-2 rounded-lg bg-blue-100 hover:bg-blue-200 transition-colors text-blue-600">
+                    Back to options
+                  </button>
+                </div>
+                <PropertyComparison />
               </div>
             )}
           </Suspense>
