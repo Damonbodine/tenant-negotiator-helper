@@ -1,11 +1,12 @@
-import { useState, lazy, Suspense } from "react";
+
+import { useState, lazy, Suspense, useEffect } from "react";
 import { FeatureCards } from "@/components/marketing/FeatureCards";
 import { TestimonialCarousel } from "@/components/marketing/TestimonialCarousel";
 import { Button } from "@/shared/ui/button";
 import { Loader2, Search, LogIn } from "lucide-react";
 import { Input } from "@/shared/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 // Lazy-loaded components
 const MarketInsights = lazy(() => import("@/listingAnalyzer/components/MarketInsights"));
@@ -20,14 +21,25 @@ const Index = () => {
   } = useAuth();
   const [activeJourney, setActiveJourney] = useState<JourneyType>(null);
   const [addressInput, setAddressInput] = useState("");
+  const [searchParams] = useSearchParams();
+  
+  useEffect(() => {
+    // Check URL parameters for journey type
+    const journeyParam = searchParams.get("journey");
+    if (journeyParam && ["market", "negotiation", "comparison"].includes(journeyParam)) {
+      setActiveJourney(journeyParam as JourneyType);
+    }
+  }, [searchParams]);
+  
   const handleAddressAnalyze = (e: React.FormEvent) => {
     e.preventDefault();
     if (addressInput.trim()) {
       setActiveJourney("market");
     }
   };
+  
   return <div className="min-h-screen flex flex-col bg-background">
-      <main className="flex-1 container flex flex-col items-center justify-center py-12">
+      <main className="flex-1 container flex flex-col items-center justify-center py-12 mb-16 md:mb-0">
         {activeJourney ? <Suspense fallback={<div className="w-full flex justify-center p-12">
               <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
             </div>}>
