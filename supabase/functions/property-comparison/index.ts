@@ -3,6 +3,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+const GOOGLE_API_KEY = Deno.env.get('GOOGLE_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -30,6 +31,22 @@ serve(async (req) => {
         throw new Error(`Property ${index + 1} is missing an address`);
       }
     });
+
+    // Add map images for each property if Google API key is available
+    if (GOOGLE_API_KEY) {
+      try {
+        console.log('Adding map images to properties');
+        
+        // Fetch map images for each property
+        for (let i = 0; i < properties.length; i++) {
+          const encodedAddress = encodeURIComponent(properties[i].address);
+          properties[i].mapImageUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${encodedAddress}&zoom=15&size=600x300&maptype=roadmap&markers=color:red%7C${encodedAddress}&key=${GOOGLE_API_KEY}`;
+        }
+      } catch (error) {
+        console.error('Error adding map images:', error);
+        // Continue without map images if there's an error
+      }
+    }
 
     // Create prompt for OpenAI
     const systemPrompt = `You are a rental market expert who specializes in comparing properties to find the best value for renters. 
