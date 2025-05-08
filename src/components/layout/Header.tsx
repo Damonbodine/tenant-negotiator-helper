@@ -68,7 +68,7 @@ export function Header() {
         <div className="flex-1 flex items-center gap-4" />
         <div className="flex items-center gap-4">
           <img 
-            src="/lovable-uploads/34dcbc44-8a1c-4f73-8f2d-c65b665a74b8.png" 
+            src="/lovable-uploads/cae8a638-944b-4b9a-bbed-1091a3fa8464.png" 
             alt="Renters Mentor Logo" 
             className="h-12 w-auto"
           />

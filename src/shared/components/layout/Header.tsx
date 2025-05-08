@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -112,7 +111,7 @@ export const Header = () => {
         <div className="flex items-center gap-4">
           <Link to="/" className="flex items-center gap-2">
             <img 
-              src="/lovable-uploads/34dcbc44-8a1c-4f73-8f2d-c65b665a74b8.png" 
+              src="/lovable-uploads/cae8a638-944b-4b9a-bbed-1091a3fa8464.png" 
               alt="Renters Mentor Logo" 
               className="h-12 w-auto"
             />
@@ -297,4 +296,3 @@ export const Header = () => {
       </div>
     </header>;
 };
-
