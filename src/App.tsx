@@ -1,12 +1,12 @@
 
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Suspense, lazy } from "react";
-import { Toaster } from "@/shared/ui/toaster";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
 import { Footer } from "@/shared/components/layout/Footer";
 import { ErrorBoundary } from "@/shared/ui/ErrorBoundary";
 import { Header } from "@/shared/components/layout/Header";
+import { Toaster } from "@/components/ui/toaster";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("@/pages/index"));
