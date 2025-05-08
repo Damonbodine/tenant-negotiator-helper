@@ -14,6 +14,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: localStorage,
     autoRefreshToken: true,
     persistSession: true,
+    detectSessionInUrl: true, // Critical for OAuth redirects
+    flowType: 'implicit', // Use implicit flow for OAuth
   },
   global: {
     fetch: (url, options) => {
@@ -44,3 +46,35 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     }
   }
 });
+
+// Debug function to check what auth keys are in storage
+export const debugAuthStorage = () => {
+  console.log("=== Auth Storage Debug ===");
+  console.log("Total localStorage items:", localStorage.length);
+  
+  // Check auth-related items
+  const authKeys = Object.keys(localStorage).filter(key => 
+    key.startsWith('supabase.auth.') || key.includes('sb-')
+  );
+  
+  console.log("Auth-related keys:", authKeys);
+  authKeys.forEach(key => {
+    try {
+      const value = localStorage.getItem(key);
+      console.log(`${key}: ${value?.substring(0, 50)}...`);
+    } catch (error) {
+      console.log(`Error reading ${key}:`, error);
+    }
+  });
+  
+  console.log("=== Auth Storage Debug End ===");
+  
+  // Return result for potential usage
+  return {
+    totalItems: localStorage.length,
+    authKeys,
+  };
+};
+
+// Run debug on initialization to help with troubleshooting
+debugAuthStorage();
