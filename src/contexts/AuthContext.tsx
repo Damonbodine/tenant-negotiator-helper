@@ -1,7 +1,9 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
+import { cleanupAuthState } from '@/utils/authCleanup';
 
 interface AuthContextType {
   session: Session | null;
@@ -24,10 +26,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log("Setting up auth state change listener...");
+    
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, newSession) => {
-        console.log("Auth state change event:", event);
+        console.log("Auth state change event:", event, "Session exists:", !!newSession);
         
+        // Important: Update both session and user state
         setSession(newSession);
         setUser(newSession?.user ?? null);
         
@@ -37,9 +42,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             title: "Welcome!",
             description: "You have successfully signed in.",
           });
+          
+          // Use setTimeout to prevent auth deadlocks when executing additional code
+          setTimeout(() => {
+            console.log("Signed in user:", newSession?.user?.email);
+          }, 0);
         }
         
         if (event === 'SIGNED_OUT') {
+          console.log("User signed out successfully");
           toast({
             title: "Signed out",
             description: "You have been signed out.",
@@ -56,6 +67,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (error) {
         console.error("Error getting session:", error);
         setAuthError(error.message);
+      } else {
+        console.log("Initial session check:", !!currentSession);
       }
       
       setSession(currentSession);
@@ -67,19 +80,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signInWithGoogle = async () => {
+    console.log("Starting Google sign in process...");
     setIsLoading(true);
     setAuthError(null);
     
     try {
-      console.log("Starting Google sign in...");
+      // Clean up existing auth state to prevent conflicts
+      cleanupAuthState();
       
-      // Check if we can reach Google first
+      // Try to sign out globally first to ensure clean state
       try {
+        await supabase.auth.signOut({ scope: 'global' });
+        console.log("Performed pre-signin global signout");
+      } catch (signOutError) {
+        console.log("Pre-signin signout not critical:", signOutError);
+        // Continue with sign-in even if this fails
+      }
+      
+      // Check if we can reach Google first for better error diagnostics
+      try {
+        console.log("Testing Google connectivity...");
         const testConnection = await fetch('https://accounts.google.com/favicon.ico', { 
           mode: 'no-cors',
           cache: 'no-cache' 
         });
-        console.log("Google connectivity test completed");
+        console.log("Google connectivity test passed");
       } catch (connError) {
         console.error("Cannot connect to Google:", connError);
         setAuthError("Could not connect to Google authentication service. Please check your internet connection.");
@@ -87,7 +112,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         throw new Error("Could not connect to Google authentication service");
       }
       
-      const { error } = await supabase.auth.signInWithOAuth({
+      console.log("Initiating Google OAuth sign in...");
+      
+      // Perform the actual sign-in with additional debugging info
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth`,
@@ -98,12 +126,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       });
       
+      console.log("Google sign in response:", { 
+        url: data?.url,
+        provider: data?.provider,
+        hasError: !!error 
+      });
+      
       if (error) {
         console.error("Error signing in with Google:", error);
         setAuthError(error.message);
         setIsLoading(false);
         throw error;
       }
+      
+      // Don't set isLoading to false as we're redirecting to Google
+      console.log("Redirecting to Google authentication...");
+      
     } catch (error) {
       console.error("Unexpected error during sign in:", error);
       setAuthError(error.message || "An unexpected error occurred");
@@ -198,23 +236,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
+    console.log("Starting sign out process...");
     setIsLoading(true);
     
     try {
-      const { error } = await supabase.auth.signOut();
+      // Clean up auth state first
+      cleanupAuthState();
+      
+      // Then attempt global sign out for complete cleanup
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
       
       if (error) {
         console.error("Error signing out:", error);
         setAuthError(error.message);
+        
+        // Even if there's an error, force a reload to reset state
+        window.location.href = '/auth';
         throw error;
       }
+      
+      // On successful signout, force page reload for a clean state
+      console.log("Sign out successful, redirecting to auth page...");
+      window.location.href = '/auth';
+      
     } catch (error) {
       console.error("Unexpected error during sign out:", error);
       setAuthError(error.message || "An unexpected error occurred");
+      
+      // Force reload even on error
+      window.location.href = '/auth';
       throw error;
-    } finally {
-      setIsLoading(false);
     }
+    // No need to set isLoading to false as we're reloading the page
   };
 
   return (

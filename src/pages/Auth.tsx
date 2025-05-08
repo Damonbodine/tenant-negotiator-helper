@@ -12,6 +12,7 @@ import { toast } from '@/components/ui/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { useForm } from 'react-hook-form';
+import { cleanupAuthState } from '@/utils/authCleanup';
 
 interface FormInputs {
   email: string;
@@ -26,25 +27,44 @@ const Auth = () => {
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
   const [googleAuthAttempted, setGoogleAuthAttempted] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
 
   const loginForm = useForm<FormInputs>();
   const registerForm = useForm<FormInputs>();
 
   useEffect(() => {
+    // If user is already logged in, redirect to home
     if (user && !isLoading) {
+      console.log("User already logged in, redirecting to home");
       navigate('/');
     }
   }, [user, isLoading, navigate]);
 
   useEffect(() => {
-    // Check for auth error in URL (Supabase redirects with error param)
+    // Enhanced error detection from URL parameters (Supabase redirects with error params)
     const urlParams = new URLSearchParams(window.location.search);
     const error = urlParams.get('error');
     const errorDescription = urlParams.get('error_description');
     const reset = urlParams.get('reset');
     
+    // Collect all URL parameters for debugging
+    const allParams: Record<string, string> = {};
+    urlParams.forEach((value, key) => {
+      allParams[key] = value;
+    });
+    
+    if (Object.keys(allParams).length > 0) {
+      console.log("Auth page URL parameters:", allParams);
+      setDebugInfo({
+        urlParams: allParams,
+        userAgent: navigator.userAgent,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
     if (error) {
       const errorMsg = errorDescription || 'Authentication failed. Please try again.';
+      console.error("Auth error from URL:", { error, errorDescription });
       setLoginError(errorMsg);
       toast({
         title: "Authentication Error",
@@ -69,6 +89,7 @@ const Auth = () => {
   useEffect(() => {
     // Display auth error from context if present
     if (authError) {
+      console.log("Auth error from context:", authError);
       setLoginError(authError);
       if (googleAuthAttempted) {
         toast({
@@ -83,10 +104,16 @@ const Auth = () => {
 
   const handleGoogleSignIn = async () => {
     try {
+      // Clean up existing auth state
+      cleanupAuthState();
+      
+      console.log("Initiating Google sign-in");
       setGoogleAuthAttempted(true);
       setLoginError(null);
+      
       await signInWithGoogle();
     } catch (error) {
+      console.error("Google sign-in error:", error);
       toast({
         title: "Authentication Error",
         description: error.message || "Failed to sign in with Google. Please try again or use email login.",
@@ -97,9 +124,13 @@ const Auth = () => {
 
   const handleEmailLogin = async (data: FormInputs) => {
     try {
+      // Clean up existing auth state
+      cleanupAuthState();
+      
       setLoginError(null);
       await signInWithEmail(data.email, data.password);
     } catch (error) {
+      console.error("Email login error:", error);
       toast({
         title: "Login Error",
         description: error.message || "Failed to log in with email and password",
@@ -113,6 +144,7 @@ const Auth = () => {
       setLoginError(null);
       await signUpWithEmail(data.email, data.password);
     } catch (error) {
+      console.error("Email signup error:", error);
       toast({
         title: "Registration Error",
         description: error.message || "Failed to register with email and password",
@@ -136,6 +168,7 @@ const Auth = () => {
       await resetPassword(resetEmail);
       setShowResetPassword(false);
     } catch (error) {
+      console.error("Password reset error:", error);
       toast({
         title: "Password Reset Error",
         description: error.message || "Failed to send password reset email",
@@ -147,6 +180,24 @@ const Auth = () => {
   const getGoogleButtonText = () => {
     if (isLoading && googleAuthAttempted) return "Connecting to Google...";
     return activeTab === 'login' ? "Sign in with Google" : "Sign up with Google";
+  };
+  
+  // Helper function to display debug information
+  const toggleDebugInfo = () => {
+    if (!debugInfo) {
+      const currentDebugInfo = {
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        cookiesEnabled: navigator.cookieEnabled,
+        localStorage: localStorage.length,
+        authKeys: Object.keys(localStorage).filter(key => 
+          key.startsWith('supabase.auth.') || key.includes('sb-')
+        )
+      };
+      setDebugInfo(currentDebugInfo);
+    } else {
+      setDebugInfo(null);
+    }
   };
 
   return (
@@ -344,6 +395,24 @@ const Auth = () => {
                   </Button>
                 </TabsContent>
               </Tabs>
+            )}
+            
+            {/* Debug information toggle button */}
+            <div className="text-center mt-4">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-xs opacity-50 hover:opacity-100" 
+                onClick={toggleDebugInfo}
+              >
+                {debugInfo ? "Hide Debug Info" : "Show Debug Info"}
+              </Button>
+            </div>
+            
+            {debugInfo && (
+              <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs overflow-auto max-h-40">
+                <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
+              </div>
             )}
           </CardContent>
           <CardFooter className="flex justify-center">
