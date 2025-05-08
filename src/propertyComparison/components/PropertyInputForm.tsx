@@ -1,11 +1,13 @@
+
 import { useState } from "react";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
-import { Loader2, Plus, Trash, Link as LinkIcon } from "lucide-react";
+import { Loader2, Plus, Trash, Building } from "lucide-react";
 import { PropertyDetails } from "@/shared/types/comparison";
 import { analyzeListingWithSupabase } from "@/api/listing-analyzer";
 import { analyzeAddressWithSupabase } from "@/api/address-analyzer";
 import { toast } from "@/shared/hooks/use-toast";
+import { Badge } from "@/shared/ui/badge";
 
 interface PropertyInputFormProps {
   onSubmit: (properties: PropertyDetails[]) => void;
@@ -13,43 +15,15 @@ interface PropertyInputFormProps {
 }
 
 export function PropertyInputForm({ onSubmit, isLoading }: PropertyInputFormProps) {
-  const [properties, setProperties] = useState<PropertyDetails[]>([
-    { address: "", zipCode: "", bedrooms: 0, bathrooms: 0, squareFootage: 0, price: 0 },
-    { address: "", zipCode: "", bedrooms: 0, bathrooms: 0, squareFootage: 0, price: 0 }
-  ]);
-  const [propertyInputs, setPropertyInputs] = useState<string[]>(["", "", "", ""]);
-  const [processingIndices, setProcessingIndices] = useState<number[]>([]);
+  const [properties, setProperties] = useState<PropertyDetails[]>([]);
+  const [propertyInput, setPropertyInput] = useState<string>("");
+  const [processingInput, setProcessingInput] = useState<boolean>(false);
 
   // URL regex pattern to detect if input is a URL
   const urlRegex = /(https?:\/\/(www\.)?(zillow|redfin|apartments|trulia|realtor|hotpads)\.com\/[^\s]+)/i;
 
-  const handleAddProperty = () => {
-    if (properties.length < 4) {
-      setProperties([...properties, { address: "", zipCode: "", bedrooms: 0, bathrooms: 0, squareFootage: 0, price: 0 }]);
-    }
-  };
-
-  const handleRemoveProperty = (index: number) => {
-    if (properties.length > 2) {
-      const newProperties = [...properties];
-      newProperties.splice(index, 1);
-      setProperties(newProperties);
-      
-      // Also clear the input field
-      const newPropertyInputs = [...propertyInputs];
-      newPropertyInputs[index] = "";
-      setPropertyInputs(newPropertyInputs);
-    }
-  };
-
-  const handlePropertyInputChange = (index: number, value: string) => {
-    const newPropertyInputs = [...propertyInputs];
-    newPropertyInputs[index] = value;
-    setPropertyInputs(newPropertyInputs);
-  };
-
-  const handlePropertyInput = async (index: number) => {
-    const input = propertyInputs[index].trim();
+  const handlePropertyInput = async () => {
+    const input = propertyInput.trim();
     
     if (!input) {
       toast({
@@ -60,8 +34,17 @@ export function PropertyInputForm({ onSubmit, isLoading }: PropertyInputFormProp
       return;
     }
 
-    // Add index to processing state
-    setProcessingIndices(prev => [...prev, index]);
+    // Check if we've reached the maximum properties limit
+    if (properties.length >= 4) {
+      toast({
+        title: "Maximum Properties Reached",
+        description: "You can compare up to 4 properties. Please remove one to add another.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setProcessingInput(true);
     
     try {
       // Determine if input is a URL or address
@@ -76,7 +59,6 @@ export function PropertyInputForm({ onSubmit, isLoading }: PropertyInputFormProp
         const addressResult = await analyzeAddressWithSupabase({ address: input });
         
         // Create a property from address analysis
-        // Note: Address analyzer returns less structured data, so we'll extract what we can
         propertyData = {
           address: input,
           zipCode: input.match(/\b\d{5}\b/)?.[0] || "", // Try to extract zip code from the address
@@ -104,32 +86,11 @@ export function PropertyInputForm({ onSubmit, isLoading }: PropertyInputFormProp
         url: isUrl ? input : undefined
       };
       
-      // Add this property to the list, replacing property at the same index
-      const newProperties = [...properties];
-      
-      // If we already have properties, replace the one at this index
-      if (index < newProperties.length) {
-        newProperties[index] = extractedProperty;
-      } 
-      // Otherwise, add it if we're under the 4 property limit
-      else if (newProperties.length < 4) {
-        newProperties.push(extractedProperty);
-      } else {
-        toast({
-          title: "Maximum Properties Reached",
-          description: "You can compare up to 4 properties. Please remove one to add another.",
-          variant: "destructive",
-        });
-        setProcessingIndices(prev => prev.filter(i => i !== index));
-        return;
-      }
-      
-      setProperties(newProperties);
+      // Add the property to the list
+      setProperties(prev => [...prev, extractedProperty]);
       
       // Clear the input field after successful addition
-      const newPropertyInputs = [...propertyInputs];
-      newPropertyInputs[index] = "";
-      setPropertyInputs(newPropertyInputs);
+      setPropertyInput("");
       
       toast({
         title: "Property Added",
@@ -145,32 +106,30 @@ export function PropertyInputForm({ onSubmit, isLoading }: PropertyInputFormProp
         variant: "destructive",
       });
     } finally {
-      // Remove index from processing state
-      setProcessingIndices(prev => prev.filter(i => i !== index));
+      setProcessingInput(false);
     }
+  };
+
+  const handleRemoveProperty = (index: number) => {
+    const newProperties = [...properties];
+    newProperties.splice(index, 1);
+    setProperties(newProperties);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate property data before submission
-    const invalidProperties = properties.filter(p => !p.address);
-    if (invalidProperties.length > 0) {
+    if (properties.length < 2) {
       toast({
-        title: "Invalid Properties",
-        description: "All properties must have at least an address",
+        title: "More Properties Needed",
+        description: "Please add at least 2 properties to compare",
         variant: "destructive",
       });
       return;
     }
     
     onSubmit(properties);
-  };
-
-  const clearPropertyInput = (index: number) => {
-    const newPropertyInputs = [...propertyInputs];
-    newPropertyInputs[index] = "";
-    setPropertyInputs(newPropertyInputs);
   };
 
   return (
@@ -180,70 +139,84 @@ export function PropertyInputForm({ onSubmit, isLoading }: PropertyInputFormProp
       </div>
       
       <div className="space-y-4">
-        {propertyInputs.map((propertyInput, index) => (
-          <div key={index} className="flex gap-2 items-center">
-            <div className="flex-shrink-0 text-xs font-medium text-muted-foreground w-8">
-              #{index + 1}
-            </div>
-            <div className="flex flex-1 gap-2">
-              <Input
-                value={propertyInput}
-                onChange={(e) => handlePropertyInputChange(index, e.target.value)}
-                placeholder="Enter address or paste listing URL..."
-                className="flex-1"
-                disabled={processingIndices.includes(index)}
-              />
-              <Button 
-                type="button" 
-                onClick={() => clearPropertyInput(index)} 
-                variant="outline" 
-                size="icon"
-                disabled={!propertyInput || processingIndices.includes(index)}
-                className="px-2"
-              >
-                <Trash className="h-4 w-4 text-muted-foreground" />
-              </Button>
-              <Button 
-                type="button"
-                onClick={() => handlePropertyInput(index)}
-                disabled={processingIndices.includes(index) || !propertyInput}
-              >
-                {processingIndices.includes(index) ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Adding
-                  </>
-                ) : (
-                  <>
-                    <Plus className="h-4 w-4 mr-2" /> Add
-                  </>
-                )}
-              </Button>
+        <form className="flex gap-2" onSubmit={(e) => {
+          e.preventDefault();
+          handlePropertyInput();
+        }}>
+          <Input
+            value={propertyInput}
+            onChange={(e) => setPropertyInput(e.target.value)}
+            placeholder="Enter address or paste listing URL..."
+            className="flex-1"
+            disabled={processingInput || isLoading}
+          />
+          <Button 
+            type="submit"
+            disabled={processingInput || isLoading || !propertyInput.trim()}
+          >
+            {processingInput ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Adding
+              </>
+            ) : (
+              <>
+                <Plus className="h-4 w-4 mr-2" /> Add
+              </>
+            )}
+          </Button>
+        </form>
+        
+        {/* Display added properties */}
+        {properties.length > 0 && (
+          <div className="mt-4">
+            <h3 className="text-sm font-medium mb-2">Added Properties</h3>
+            <div className="space-y-2">
+              {properties.map((property, index) => (
+                <div key={index} className="flex items-center gap-2 p-2 bg-background border rounded-md">
+                  <Building className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{property.address}</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {property.bedrooms > 0 && (
+                        <Badge variant="outline" className="text-xs">{property.bedrooms} bed</Badge>
+                      )}
+                      {property.bathrooms > 0 && (
+                        <Badge variant="outline" className="text-xs">{property.bathrooms} bath</Badge>
+                      )}
+                      {property.squareFootage > 0 && (
+                        <Badge variant="outline" className="text-xs">{property.squareFootage} sqft</Badge>
+                      )}
+                      {property.price > 0 && (
+                        <Badge variant="outline" className="text-xs">${property.price}/mo</Badge>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => handleRemoveProperty(index)}
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground"
+                  >
+                    <Trash className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
             </div>
           </div>
-        ))}
+        )}
       </div>
 
       <div className="flex justify-between mt-4">
         <div className="text-sm text-muted-foreground">
-          {properties.filter(p => p.address).length}/4 properties added
+          {properties.length}/4 properties added
         </div>
-        
-        {properties.some(p => p.address) && (
-          <div className="flex space-x-2">
-            {properties.filter(p => p.address).map((property, index) => (
-              <div key={index} className="px-2 py-1 bg-primary/10 text-primary rounded text-xs">
-                {property.address.split(',')[0]}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
 
       <Button 
         type="button" 
         className="w-full mt-4" 
         onClick={handleSubmit}
-        disabled={isLoading || properties.filter(p => p.address).length < 2}
+        disabled={isLoading || properties.length < 2}
       >
         {isLoading ? (
           <>
