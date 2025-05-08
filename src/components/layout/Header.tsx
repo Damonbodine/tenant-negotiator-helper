@@ -31,7 +31,7 @@ export function Header() {
     try {
       // This would typically go to a backend service
       // For now, we'll use a mailto link as a fallback
-      const subject = encodeURIComponent(`RentCoach.ai Contact from ${name}`);
+      const subject = encodeURIComponent(`Renters Mentor Contact from ${name}`);
       const body = encodeURIComponent(`Name: ${name}\nEmail: ${email}\n\n${message}`);
       
       // Create a hidden anchor element to trigger the email client
@@ -69,10 +69,10 @@ export function Header() {
         <div className="flex items-center gap-4">
           <img 
             src="/lovable-uploads/34dcbc44-8a1c-4f73-8f2d-c65b665a74b8.png" 
-            alt="RentCoach.ai Logo" 
+            alt="Renters Mentor Logo" 
             className="h-12 w-auto"
           />
-          <h1 className="text-2xl font-bold text-cyan-400 uppercase tracking-wider">RentCoach.ai</h1>
+          <h1 className="text-2xl font-bold text-cyan-400 uppercase tracking-wider">Renters Mentor</h1>
         </div>
         <div className="flex-1 flex justify-end">
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

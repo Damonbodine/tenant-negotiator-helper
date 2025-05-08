@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Building, DollarSign, MessagesSquare, PieChart, Headphones, Key, Settings } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,7 +21,7 @@ export const Header = ({ activeTab, setActiveTab }: HeaderProps) => {
       <div className="container flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Building className="h-6 w-6 text-blue-600" />
-          <h1 className="text-xl font-bold text-blue-600">RentCoach</h1>
+          <h1 className="text-xl font-bold text-blue-600">Renters Mentor</h1>
         </div>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="hidden md:block">
