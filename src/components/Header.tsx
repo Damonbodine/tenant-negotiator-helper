@@ -20,7 +20,11 @@ export const Header = ({ activeTab, setActiveTab }: HeaderProps) => {
     <header className="sticky top-0 z-10 w-full bg-background/80 backdrop-blur-md border-b border-border py-3">
       <div className="container flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Building className="h-6 w-6 text-blue-600" />
+          <img 
+            src="/lovable-uploads/cae8a638-944b-4b9a-bbed-1091a3fa8464.png"
+            alt="Renters Mentor Logo"
+            className="h-6 w-auto"
+          />
           <h1 className="text-xl font-bold text-blue-600">Renters Mentor</h1>
         </div>
         
