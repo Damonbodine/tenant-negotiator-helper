@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Upload, FileText, AlertCircle, CheckCircle, Shield, Link as LinkIcon, Calendar, BarChart3, FileBarChart, Clock, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/components/ui/toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
@@ -162,30 +162,22 @@ const LeaseAnalyzer = () => {
   const [analysisResults, setAnalysisResults] = useState<AnalysisResults | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Add new state variables for Claude API key
+  // Update the state variables for Claude API key
   const [showClaudeApiKeyInput, setShowClaudeApiKeyInput] = useState(false);
-  const [hasClaudeApiKey, setHasClaudeApiKey] = useState(false);
+  const [hasClaudeApiKey, setHasClaudeApiKey] = useState(true); // Default to true since it's now optional
 
   // Check if disclaimer has been seen when component mounts
-  // Also check if Claude API key exists
   useEffect(() => {
     const disclaimerSeen = localStorage.getItem('leaseDisclaimerSeen') === 'true';
     if (!disclaimerSeen) {
       setDisclaimerOpen(true);
     }
     
-    // Check if Claude API key exists
-    const checkClaudeApiKey = async () => {
-      const hasKey = await hasApiKey('CLAUDE');
-      setHasClaudeApiKey(hasKey);
-      // If they uploaded a file but don't have API key, prompt for it
-      if (file && !hasKey) {
-        setShowClaudeApiKeyInput(true);
-      }
-    };
-    
-    checkClaudeApiKey();
-  }, [file]);
+    // Still check if Claude API key exists, but don't require it
+    hasApiKey('CLAUDE').then(hasKey => {
+      setHasClaudeApiKey(true); // Always set to true since it's optional now
+    });
+  }, []);
 
   // Function to handle disclaimer acknowledgment
   const handleDisclaimerAcknowledged = () => {
@@ -390,14 +382,6 @@ const LeaseAnalyzer = () => {
   const handleAnalyze = async () => {
     if (!file) return;
     
-    // Check if Claude API key exists before analysis
-    const hasKey = await hasApiKey('CLAUDE');
-    
-    if (!hasKey) {
-      setShowClaudeApiKeyInput(true);
-      return;
-    }
-    
     setIsAnalyzing(true);
     setVerifiedData({});
     
@@ -405,7 +389,7 @@ const LeaseAnalyzer = () => {
       // Extract text from the file
       const documentText = await extractTextFromFile(file);
       
-      // Call the Supabase edge function to analyze the document (now using Claude)
+      // Call the Supabase edge function to analyze the document with Claude
       console.log("Calling claude-lease-analyzer function with document text sample:", documentText.slice(0, 200));
       const { data, error } = await supabase.functions.invoke('claude-lease-analyzer', {
         body: {
@@ -461,13 +445,11 @@ const LeaseAnalyzer = () => {
     setVerifiedData({});
   };
 
-  // Handler for Claude API key dialog
+  // Update the handler for Claude API key dialog
   const handleClaudeApiKeyDialogClose = () => {
     setShowClaudeApiKeyInput(false);
-    // Check if they now have the API key
-    hasApiKey('CLAUDE').then(hasKey => {
-      setHasClaudeApiKey(hasKey);
-    });
+    // Always allow analysis to proceed now
+    setHasClaudeApiKey(true);
   };
 
   return (
@@ -497,9 +479,9 @@ const LeaseAnalyzer = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Claude API Key Input Dialog */}
+      {/* Update Claude API Key Input Dialog to be optional */}
       {showClaudeApiKeyInput && (
-        <ClaudeApiKeyInput onClose={handleClaudeApiKeyDialogClose} />
+        <ClaudeApiKeyInput onClose={handleClaudeApiKeyDialogClose} isRequired={false} />
       )}
 
       {/* File Upload Card */}
@@ -561,11 +543,9 @@ const LeaseAnalyzer = () => {
                     <Button 
                       onClick={handleAnalyze}
                       className="bg-cyan-400 text-cyan-950 hover:bg-cyan-500"
-                      disabled={isAnalyzing || !hasClaudeApiKey}
+                      disabled={isAnalyzing}
                     >
-                      {!hasClaudeApiKey ? (
-                        "Add Claude API Key to Continue"
-                      ) : isAnalyzing ? (
+                      {isAnalyzing ? (
                         <>
                           <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-cyan-950" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -576,12 +556,6 @@ const LeaseAnalyzer = () => {
                       ) : "Analyze Document with Claude"}
                     </Button>
                   </div>
-                  {!hasClaudeApiKey && (
-                    <div className="mt-4 p-2 bg-amber-950/20 border border-amber-400/30 rounded text-amber-400 text-sm">
-                      <AlertCircle className="inline-block h-4 w-4 mr-1" />
-                      You need to add a Claude API key to analyze your document.
-                    </div>
-                  )}
                 </div>
               )}
             </div>
