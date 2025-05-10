@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -272,6 +273,7 @@ serve(async (req: Request) => {
     console.log("Sending document to Claude for analysis");
     
     // Call Claude API to analyze the document
+    // Fixed: Removed the response_format parameter from the API request
     const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -296,8 +298,7 @@ serve(async (req: Request) => {
               }
             ]
           }
-        ],
-        response_format: { type: "json_object" }
+        ]
       })
     });
 
@@ -320,7 +321,11 @@ serve(async (req: Request) => {
     } catch (error) {
       console.error("Error parsing Claude response:", error);
       return new Response(
-        JSON.stringify({ error: 'Failed to parse Claude response', details: claudeData.content[0].text.slice(0, 500) + "..." }),
+        JSON.stringify({ 
+          error: 'Failed to parse Claude response', 
+          details: claudeData.content[0].text.slice(0, 500) + "...",
+          rawResponse: claudeData.content[0].text
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
