@@ -1,7 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { extract as extractPdfText } from "https://deno.land/x/pdfjs@v0.1.1/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,8 +11,8 @@ const corsHeaders = {
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 // Enhanced regular expressions for critical financial data extraction
-// Updated to catch more variations of rent statements including "shall pay" forms
-const rentRegex = /(?:(?:monthly |annual )?(?:base )?rent:?\s*\$?([\d,]+(?:\.\d{2})?))|(?:\$([\d,]+(?:\.\d{2})?)\s*(?:per|\/)\s*(?:month|mo))|(?:(?:tenant |lessee )?(?:shall |will |agrees to )?pay\s*\$?([\d,]+(?:\.\d{2})?)\s*(?:per|\/|as|in|for)?\s*(?:month|mo|rent|monthly))|(?:rent(?:\s*is|\s*shall\s*be|\s*will\s*be)?\s*\$?([\d,]+(?:\.\d{2})?))/gi;
+// Updated to catch more variations of rent statements including "shall pay" forms and dollar amounts
+const rentRegex = /(?:(?:monthly |annual )?(?:base )?rent:?\s*\$?([\d,]+(?:\.\d{2})?))|(?:\$([\d,]+(?:\.\d{2})?)\s*(?:per|\/)\s*(?:month|mo))|(?:(?:tenant |lessee )?(?:shall |will |agrees to )?pay\s*\$?([\d,]+(?:\.\d{2})?)\s*(?:per|\/|as|in|for)?\s*(?:month|mo|rent|monthly))|(?:rent(?:\s*is|\s*shall\s*be|\s*will\s*be)?\s*\$?([\d,]+(?:\.\d{2})?))|(?:rent\s*amount.*?\$?([\d,]+(?:\.\d{2})?))|(?:rent.*?\$\s*([\d,]+(?:\.\d{2})?))/gi;
 
 const securityDepositRegex = /(?:security deposit:?\s*\$?([\d,]+(?:\.\d{2})?))|(?:deposit(?:\s*of|\s*in\s*the\s*amount\s*of|\s*amount)?\s*\$?([\d,]+(?:\.\d{2})?))|(?:deposit:?\s*\$?([\d,]+(?:\.\d{2})?))/gi;
 
@@ -29,15 +28,15 @@ function extractFinancialDataWithRegex(text: string) {
   
   console.log(`Found ${rentMatches.length} potential rent matches`);
   
-  // Process rent matches - now handling more capture groups
+  // Process rent matches - handling all capture groups
   const potentialRentValues = rentMatches.map(match => {
-    // Check all capture groups (we have more now)
-    const value = match[1] || match[2] || match[3] || match[4];
+    // Check all capture groups (we now have more)
+    const value = match[1] || match[2] || match[3] || match[4] || match[5] || match[6];
     if (!value) return null;
     return parseFloat(value.replace(/,/g, ''));
   }).filter(Boolean);
   
-  // Process deposit matches - now handling more capture groups
+  // Process deposit matches
   const potentialDepositValues = depositMatches.map(match => {
     const value = match[1] || match[2] || match[3];
     if (!value) return null;
@@ -239,7 +238,11 @@ serve(async (req: Request) => {
       * "rent will be $1,800 per month"
       * "RENT: $1,800"
       * "agrees to pay $1,800 monthly"
-    - Look specifically in sections labeled "RENT", "PAYMENT", or "FINANCIAL TERMS" 
+      * "Monthly Rent Amount: $1,800.00"
+      * "Monthly Rent $1,800.00"
+      * "Rent Amount. $1,800 per month"
+      * "Base Rent. The Tenant will pay $1,800 each month."
+    - Look specifically in sections labeled "RENT", "PAYMENT", "FINANCIAL TERMS" or "LEASE TERMS" 
     - If multiple rent values appear, look for context to determine the primary current rent amount
     - If you find multiple possible rent values, list them all in your confidence assessment
     - Report a confidence level (high, medium, low) for each extracted value
@@ -354,7 +357,7 @@ serve(async (req: Request) => {
         "Authorization": `Bearer ${openAIApiKey}`
       },
       body: JSON.stringify({
-        model: "gpt-4o", // Continuing with this model but with improved prompting
+        model: "gpt-4o", // Using gpt-4o model with improved prompting
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: processedText },
@@ -365,7 +368,7 @@ serve(async (req: Request) => {
             please consider these in your extraction and explain if you choose a different value.`
           }
         ],
-        temperature: 0.2,
+        temperature: 0.1, // Lower temperature for more deterministic results
         response_format: { type: "json_object" }
       })
     });
@@ -398,16 +401,10 @@ serve(async (req: Request) => {
       } 
       // If regex found values that differ from AI extraction, flag for verification
       else if (regexExtractedData.potentialRentValues.length > 0) {
-        // Find the closest value from regex matches
-        const closestRentValue = regexExtractedData.potentialRentValues.reduce((prev, curr) => 
-          Math.abs(curr - aiRent) < Math.abs(prev - aiRent) ? curr : prev
-        );
-        
-        // Lower threshold to trigger verification (was 50, now 10)
-        if (Math.abs(closestRentValue - aiRent) > 10) {
-          analysisContent.rentVerificationNeeded = true;
-          analysisContent.alternativeRentValues = regexExtractedData.potentialRentValues;
-        }
+        // Lower threshold to trigger verification (was 10, now 5)
+        // Always include regex values for verification when they differ from AI extraction
+        analysisContent.rentVerificationNeeded = true;
+        analysisContent.alternativeRentValues = regexExtractedData.potentialRentValues;
       }
     }
     

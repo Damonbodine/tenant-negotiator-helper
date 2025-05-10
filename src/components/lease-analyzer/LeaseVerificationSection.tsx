@@ -93,6 +93,28 @@ export function LeaseVerificationSection({
                            analysisResults.extractedData?.financial?.rent?.amount || 0
                          ));
 
+  // Count how many sources agree on each value
+  const getValueFrequency = (value: number) => {
+    let count = 0;
+    
+    // Check if AI extraction found this value
+    if (analysisResults.extractedData?.financial?.rent?.amount === value) {
+      count++;
+    }
+    
+    // Check how many times this value appears in regex findings
+    if (analysisResults.regexRentValues) {
+      count += analysisResults.regexRentValues.filter(v => v === value).length;
+    }
+    
+    // Check alternative values
+    if (analysisResults.alternativeRentValues) {
+      count += analysisResults.alternativeRentValues.filter(v => v === value).length;
+    }
+    
+    return count > 1 ? `(Found ${count} times)` : "";
+  };
+
   return (
     <div className="space-y-4 my-4">
       <Card className="border-amber-300/30 bg-amber-50/10">
@@ -147,9 +169,10 @@ export function LeaseVerificationSection({
                           parseFloat(rentAmount) === value 
                             ? 'bg-amber-300 text-amber-900' 
                             : 'bg-amber-100 hover:bg-amber-200 text-amber-800'
-                        } px-2 py-1 rounded-md`}
+                        } px-2 py-1 rounded-md flex items-center gap-1`}
                       >
-                        {formatCurrency(value)}
+                        <span>{formatCurrency(value)}</span>
+                        <span className="text-amber-600/80 text-xs">{getValueFrequency(value)}</span>
                       </button>
                     ))}
                   </div>
