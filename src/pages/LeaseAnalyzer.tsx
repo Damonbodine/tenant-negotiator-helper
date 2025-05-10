@@ -295,6 +295,7 @@ const LeaseAnalyzer = () => {
   const [verifiedData, setVerifiedData] = useState<any>({});
 
   const handleVerificationUpdate = (field: string, value: any) => {
+    console.log("Verification update for field:", field, "with value:", value);
     setVerifiedData(prev => ({
       ...prev,
       [field]: value
@@ -303,6 +304,8 @@ const LeaseAnalyzer = () => {
 
   const handleVerificationComplete = () => {
     if (verifiedData && analysisResults) {
+      console.log("Applying verified data:", verifiedData);
+      
       // Create a deep copy to avoid reference issues
       const updatedResults = JSON.parse(JSON.stringify(analysisResults));
       
@@ -312,6 +315,11 @@ const LeaseAnalyzer = () => {
           updatedResults.extractedData = {};
         }
         
+        if (!updatedResults.extractedData.financial) {
+          updatedResults.extractedData.financial = {};
+        }
+        
+        // Merge verified financial data 
         updatedResults.extractedData.financial = {
           ...updatedResults.extractedData.financial,
           ...verifiedData.financial
@@ -331,12 +339,9 @@ const LeaseAnalyzer = () => {
         }
       }
       
-      // Apply other verified data fields if added in the future
-      
       console.log("Updated analysis with verified data:", updatedResults);
       setAnalysisResults(updatedResults);
       setVerificationRequired(false);
-      setVerifiedData({});
       
       // Show confirmation toast
       toast({
@@ -351,12 +356,14 @@ const LeaseAnalyzer = () => {
     if (!file) return;
     
     setIsAnalyzing(true);
+    setVerifiedData({});
     
     try {
       // Extract text from the file
       const documentText = await extractTextFromFile(file);
       
       // Call the Supabase edge function to analyze the document
+      console.log("Calling lease-analyzer function with document text sample:", documentText.slice(0, 200));
       const { data, error } = await supabase.functions.invoke('lease-analyzer', {
         body: {
           documentText,
@@ -385,6 +392,12 @@ const LeaseAnalyzer = () => {
           (data.regexRentValues && 
            data.regexRentValues.length > 0 && 
            !data.regexRentValues.includes(data.extractedData?.financial?.rent?.amount))) {
+        console.log("Verification needed based on analysis", {
+          rentVerificationNeeded: data.rentVerificationNeeded,
+          rentConfidence: data.extractionConfidence?.rent,
+          regexValues: data.regexRentValues,
+          extractedRent: data.extractedData?.financial?.rent?.amount
+        });
         setVerificationRequired(true);
       }
       
