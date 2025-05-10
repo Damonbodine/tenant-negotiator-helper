@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Upload, FileText, AlertCircle, CheckCircle, Shield, Link as LinkIcon, Calendar, BarChart3, FileBarChart, Clock, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,8 +22,6 @@ import { LeasePropertySection } from "@/components/lease-analyzer/LeasePropertyS
 import { LeaseResponsibilitiesSection } from "@/components/lease-analyzer/LeaseResponsibilitiesSection";
 import { LeaseCriticalDatesSection } from "@/components/lease-analyzer/LeaseCriticalDatesSection";
 import { LeaseVerificationSection } from "@/components/lease-analyzer/LeaseVerificationSection";
-import { ClaudeApiKeyInput } from "@/components/ClaudeApiKeyInput";
-import { hasApiKey } from "@/utils/keyManager";
 
 // Define the types for the analysis results
 interface LateFee {
@@ -161,10 +159,11 @@ const LeaseAnalyzer = () => {
   const [disclaimerOpen, setDisclaimerOpen] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<AnalysisResults | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
   
-  // Update the state variables for Claude API key
+  // Remove API key related state variables
   const [showClaudeApiKeyInput, setShowClaudeApiKeyInput] = useState(false);
-  const [hasClaudeApiKey, setHasClaudeApiKey] = useState(true); // Default to true since it's now optional
+  const [hasClaudeApiKey, setHasClaudeApiKey] = useState(true);
 
   // Check if disclaimer has been seen when component mounts
   useEffect(() => {
@@ -173,10 +172,7 @@ const LeaseAnalyzer = () => {
       setDisclaimerOpen(true);
     }
     
-    // Still check if Claude API key exists, but don't require it
-    hasApiKey('CLAUDE').then(hasKey => {
-      setHasClaudeApiKey(true); // Always set to true since it's optional now
-    });
+    // Remove Claude API key check
   }, []);
 
   // Function to handle disclaimer acknowledgment
@@ -214,14 +210,7 @@ const LeaseAnalyzer = () => {
       }
       
       setFile(selectedFile);
-      
-      // Check if Claude API key exists after file selection
-      hasApiKey('CLAUDE').then(hasKey => {
-        if (!hasKey) {
-          setShowClaudeApiKeyInput(true);
-        }
-        setHasClaudeApiKey(hasKey);
-      });
+      // Remove Claude API key check
     }
   };
 
@@ -258,14 +247,7 @@ const LeaseAnalyzer = () => {
       }
       
       setFile(droppedFile);
-      
-      // Check if Claude API key exists after file drop
-      hasApiKey('CLAUDE').then(hasKey => {
-        if (!hasKey) {
-          setShowClaudeApiKeyInput(true);
-        }
-        setHasClaudeApiKey(hasKey);
-      });
+      // Remove Claude API key check
     }
   };
 
@@ -445,13 +427,6 @@ const LeaseAnalyzer = () => {
     setVerifiedData({});
   };
 
-  // Update the handler for Claude API key dialog
-  const handleClaudeApiKeyDialogClose = () => {
-    setShowClaudeApiKeyInput(false);
-    // Always allow analysis to proceed now
-    setHasClaudeApiKey(true);
-  };
-
   return (
     <div className="container py-8 max-w-4xl mx-auto">
       <h1 className="text-4xl font-bold mb-6 text-center gradient-heading">Lease Document Analyzer</h1>
@@ -479,10 +454,7 @@ const LeaseAnalyzer = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Update Claude API Key Input Dialog to be optional */}
-      {showClaudeApiKeyInput && (
-        <ClaudeApiKeyInput onClose={handleClaudeApiKeyDialogClose} isRequired={false} />
-      )}
+      {/* Remove Claude API Key Input Dialog */}
 
       {/* File Upload Card */}
       {!analysisResults ? (
@@ -551,9 +523,9 @@ const LeaseAnalyzer = () => {
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                           </svg>
-                          Analyzing with Claude AI...
+                          Analyzing with AI...
                         </>
-                      ) : "Analyze Document with Claude"}
+                      ) : "Analyze Document"}
                     </Button>
                   </div>
                 </div>
@@ -713,10 +685,10 @@ const LeaseAnalyzer = () => {
         </div>
       )}
       
-      {/* Add a "Powered by Claude" badge */}
+      {/* Update or remove the "Powered by Claude" badge */}
       <div className="text-center mt-8">
         <p className="text-sm text-cyan-400/60">
-          Powered by <span className="font-semibold">Claude 3 Sonnet</span> for enhanced lease analysis
+          Powered by advanced AI for enhanced lease analysis
         </p>
       </div>
     </div>

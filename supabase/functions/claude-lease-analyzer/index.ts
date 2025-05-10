@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -7,11 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Claude API key from environment variable or fallback to hardcoded key for development
-// For production, use a environment variable with the API key from Supabase secrets
-// NEVER include actual API keys in your code - this is just a placeholder
-// We will use the Supabase stored secret if available, or allow users to provide their own
-const claudeApiKey = Deno.env.get('CLAUDE_API_KEY') || "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";
+// Claude API key from environment variable 
+// We'll use the stored key from Supabase secrets
+const claudeApiKey = Deno.env.get('CLAUDE_API_KEY') || "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";
 
 // Reuse the existing regex patterns for financial data extraction
 const rentPatterns = [
@@ -206,97 +203,6 @@ serve(async (req: Request) => {
 
     // Look for sections that likely contain rent information
     const rentSections = extractRentSections(processedText);
-    
-    // If there's no Claude API key, return a simulated response for development
-    if (!claudeApiKey) {
-      console.warn("No Claude API key found in environment. Returning simulated analysis.");
-      
-      return new Response(
-        JSON.stringify({
-          summary: "This is a simulated lease analysis. To get actual AI analysis, add a Claude API key to your Supabase edge function secrets.",
-          complexTerms: [
-            { 
-              term: "Indemnification Clause (Section 14)", 
-              explanation: "This clause requires you to protect the landlord from legal responsibility for damages or injuries."
-            },
-            { 
-              term: "Joint and Several Liability (Section 8)", 
-              explanation: "If you have roommates, each person is responsible for the full rent."
-            }
-          ],
-          unusualClauses: [
-            {
-              clause: "Excessive Late Fee",
-              concern: "The late fee exceeds what's typical in most jurisdictions."
-            }
-          ],
-          questions: [
-            "Can the automatic renewal clause be modified?",
-            "Is the late fee negotiable?",
-            "What maintenance tasks am I responsible for?"
-          ],
-          extractedData: {
-            financial: {
-              rent: {amount: 1500, frequency: "monthly"},
-              securityDeposit: 1500,
-              lateFee: {amount: 50, gracePeriod: 5, type: "fixed"},
-              utilities: {
-                included: ["water", "trash"],
-                tenant: ["electricity", "gas", "internet"]
-              },
-              otherFees: [{type: "pet", amount: 25, frequency: "monthly"}]
-            },
-            term: {
-              start: "2023-06-01",
-              end: "2024-05-31",
-              durationMonths: 12,
-              renewalType: "automatic",
-              renewalNoticeDays: 60,
-              earlyTermination: {allowed: true, fee: "2 months rent"}
-            },
-            parties: {
-              landlord: "Acme Property Management",
-              tenants: ["John Doe", "Jane Smith"],
-              jointAndSeveralLiability: true
-            },
-            property: {
-              address: "123 Main St, Apt 4B, Anytown, CA 12345",
-              type: "apartment",
-              amenities: ["parking space", "pool access"],
-              furnishings: ["refrigerator", "stove"]
-            },
-            responsibilities: {
-              maintenance: {
-                landlord: ["structural repairs", "major appliances"],
-                tenant: ["minor repairs under $100", "lawn care"]
-              },
-              utilities: {
-                landlord: ["water", "trash"],
-                tenant: ["electricity", "gas", "internet"]
-              },
-              insurance: {
-                requiredForTenant: true,
-                minimumCoverage: "$100,000"
-              }
-            },
-            criticalDates: [
-              {label: "Rent due", date: "1st of each month"},
-              {label: "Lease renewal deadline", date: "60 days before lease end"},
-              {label: "Move-out inspection", date: "Last week of lease"}
-            ]
-          },
-          extractionConfidence: {
-            rent: "medium",
-            securityDeposit: "medium",
-            lateFee: "low",
-            term: "medium",
-            utilities: "medium"
-          },
-          regexFindings: regexExtractedData
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
 
     // Prepare the context data for Claude with our regex findings
     let contextData = {
