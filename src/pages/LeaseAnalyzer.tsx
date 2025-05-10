@@ -313,6 +313,13 @@ const LeaseAnalyzer = () => {
       };
       setAnalysisResults(updatedResults);
       setVerificationRequired(false);
+      
+      // Show confirmation toast
+      toast({
+        title: "Verification complete",
+        description: "Your verified information has been applied to the analysis.",
+        variant: "default",
+      });
     }
   };
 
@@ -347,11 +354,13 @@ const LeaseAnalyzer = () => {
       console.log("Lease analysis result:", data);
       setAnalysisResults(data);
       
-      // Check if verification is needed based on confidence levels or explicit flag
+      // Enhanced verification check - show verification more aggressively
+      // Check if verification is needed based on confidence levels, explicit flag, or regex discrepancies
       if (data.rentVerificationNeeded || 
-          (data.extractionConfidence && 
-          (data.extractionConfidence.rent === 'low' || 
-           data.extractionConfidence.securityDeposit === 'low'))) {
+          (data.extractionConfidence && data.extractionConfidence.rent === 'low') || 
+          (data.regexRentValues && 
+           data.regexRentValues.length > 0 && 
+           !data.regexRentValues.includes(data.extractedData?.financial?.rent?.amount))) {
         setVerificationRequired(true);
       }
       

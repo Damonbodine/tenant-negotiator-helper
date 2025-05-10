@@ -3,7 +3,8 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, AlertCircle, Info } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface AnalysisResults {
   extractedData?: {
@@ -18,6 +19,7 @@ interface AnalysisResults {
   };
   rentVerificationNeeded?: boolean;
   alternativeRentValues?: number[];
+  regexRentValues?: number[];
 }
 
 interface LeaseVerificationSectionProps {
@@ -81,17 +83,38 @@ export function LeaseVerificationSection({
       maximumFractionDigits: 0
     }).format(amount);
   };
+  
+  // Decide if we should show a more prominent alert about rent discrepancy
+  const showRentAlert = analysisResults.rentVerificationNeeded || 
+                        analysisResults?.extractionConfidence?.rent === 'low' ||
+                        (analysisResults.regexRentValues && 
+                         analysisResults.regexRentValues.length > 0 &&
+                         !analysisResults.regexRentValues.includes(
+                           analysisResults.extractedData?.financial?.rent?.amount || 0
+                         ));
 
   return (
     <div className="space-y-4 my-4">
       <Card className="border-amber-300/30 bg-amber-50/10">
         <CardContent className="pt-6">
+          {showRentAlert && (
+            <div className="mb-4 p-3 bg-amber-100/10 border border-amber-300/30 rounded-md flex items-start gap-2">
+              <AlertCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-amber-500 font-medium text-sm">Rent Amount Verification Needed</h4>
+                <p className="text-xs text-amber-400/90 mt-1">
+                  We detected possible different rent values in the lease. 
+                  Please select the correct monthly rent from the options below or enter it manually.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="rent-amount" className="text-sm font-medium flex items-center gap-2">
                 Monthly Rent
-                {(analysisResults.rentVerificationNeeded || 
-                  analysisResults?.extractionConfidence?.rent === 'low') && (
+                {showRentAlert && (
                   <AlertTriangle className="h-4 w-4 text-amber-500" />
                 )}
               </Label>
@@ -104,16 +127,27 @@ export function LeaseVerificationSection({
                 className="border-amber-300/50"
               />
               
-              {analysisResults.alternativeRentValues && 
-               analysisResults.alternativeRentValues.length > 0 && (
+              {/* Display ALL possible rent values for selection */}
+              {(analysisResults.alternativeRentValues?.length > 0 || 
+                analysisResults.regexRentValues?.length > 0) && (
                 <div className="mt-2">
-                  <p className="text-xs text-amber-700 mb-2">We found other possible rent values in your document:</p>
+                  <p className="text-xs text-amber-700 mb-2">We found these possible rent values in your document:</p>
                   <div className="flex flex-wrap gap-2">
-                    {analysisResults.alternativeRentValues.map((value, index) => (
+                    {/* Combine and deduplicate all potential rent values */}
+                    {Array.from(new Set([
+                      ...(analysisResults.alternativeRentValues || []),
+                      ...(analysisResults.regexRentValues || [])
+                    ]))
+                    .sort((a, b) => a - b)
+                    .map((value, index) => (
                       <button
                         key={index}
                         onClick={() => handleRentChange(value.toString())}
-                        className="text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 py-1 rounded-md"
+                        className={`text-xs ${
+                          parseFloat(rentAmount) === value 
+                            ? 'bg-amber-300 text-amber-900' 
+                            : 'bg-amber-100 hover:bg-amber-200 text-amber-800'
+                        } px-2 py-1 rounded-md`}
                       >
                         {formatCurrency(value)}
                       </button>
@@ -141,11 +175,13 @@ export function LeaseVerificationSection({
             </div>
           </div>
           
-          <div className="mt-4 p-3 bg-amber-50/20 border border-amber-300/30 rounded-md">
+          <div className="mt-4 p-3 bg-amber-50/20 border border-amber-300/30 rounded-md flex items-start gap-2">
+            <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
             <p className="text-xs text-amber-800">
               <strong>Why verify?</strong> Our AI found these values in your lease document, but 
               we want to make sure they're accurate. Confirming these details helps us provide more 
-              reliable analysis of your lease agreement.
+              reliable analysis of your lease agreement. Rent amounts that appear in multiple places 
+              are more likely to be correct.
             </p>
           </div>
         </CardContent>
