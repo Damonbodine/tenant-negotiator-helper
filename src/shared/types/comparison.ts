@@ -8,7 +8,6 @@ export interface PropertyDetails {
   price: number;
   propertyType?: string;
   url?: string;
-  mapImageUrl?: string; // New field for storing the map image URL
 }
 
 export interface PropertyComparisonResponse {

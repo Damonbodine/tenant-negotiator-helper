@@ -30,9 +30,9 @@ export default function PropertyComparison() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold mb-4">Property Comparison</h1>
+        <h1 className="text-3xl font-bold mb-4">Advanced Property Comparison</h1>
         <p className="text-muted-foreground">
-          Compare up to 4 rental properties side-by-side to find the best value. 
+          Compare up to 4 rental properties side-by-side with detailed analysis and cost breakdowns. 
           Enter the property details below to get started.
         </p>
       </div>
