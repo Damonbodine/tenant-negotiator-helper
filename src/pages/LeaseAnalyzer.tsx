@@ -1,6 +1,6 @@
 
 import { useState, useRef, useEffect } from "react";
-import { Upload, FileText, AlertCircle, CheckCircle, Shield, Link as LinkIcon } from "lucide-react";
+import { Upload, FileText, AlertCircle, CheckCircle, Shield, Link as LinkIcon, Calendar, BarChart3, FileBarChart, Clock, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,18 +15,132 @@ import {
   DialogTitle 
 } from "@/components/ui/dialog";
 import { Link } from "react-router-dom";
+import { LeaseFinancialSection } from "@/components/lease-analyzer/LeaseFinancialSection";
+import { LeaseTermSection } from "@/components/lease-analyzer/LeaseTermSection";
+import { LeaseSummarySection } from "@/components/lease-analyzer/LeaseSummarySection";
+import { LeasePartiesSection } from "@/components/lease-analyzer/LeasePartiesSection";
+import { LeasePropertySection } from "@/components/lease-analyzer/LeasePropertySection";
+import { LeaseResponsibilitiesSection } from "@/components/lease-analyzer/LeaseResponsibilitiesSection";
+import { LeaseCriticalDatesSection } from "@/components/lease-analyzer/LeaseCriticalDatesSection";
+
+// Define the types for the analysis results
+interface LateFee {
+  amount: number;
+  gracePeriod: number;
+  type: string;
+}
+
+interface OtherFee {
+  type: string;
+  amount: number;
+  frequency: string;
+}
+
+interface Rent {
+  amount: number;
+  frequency: string;
+}
+
+interface Utilities {
+  included: string[];
+  tenant: string[];
+}
+
+interface Financial {
+  rent: Rent;
+  securityDeposit: number;
+  lateFee: LateFee;
+  utilities: Utilities;
+  otherFees: OtherFee[];
+}
+
+interface EarlyTermination {
+  allowed: boolean;
+  fee: string;
+}
+
+interface Term {
+  start: string;
+  end: string;
+  durationMonths: number;
+  renewalType: string;
+  renewalNoticeDays: number;
+  earlyTermination: EarlyTermination;
+}
+
+interface Parties {
+  landlord: string;
+  tenants: string[];
+  jointAndSeveralLiability: boolean;
+}
+
+interface Property {
+  address: string;
+  type: string;
+  amenities: string[];
+  furnishings: string[];
+}
+
+interface Maintenance {
+  landlord: string[];
+  tenant: string[];
+}
+
+interface UtilityResponsibilities {
+  landlord: string[];
+  tenant: string[];
+}
+
+interface Insurance {
+  requiredForTenant: boolean;
+  minimumCoverage: string;
+}
+
+interface Responsibilities {
+  maintenance: Maintenance;
+  utilities: UtilityResponsibilities;
+  insurance: Insurance;
+}
+
+interface CriticalDate {
+  label: string;
+  date: string;
+}
+
+interface ExtractedData {
+  financial: Financial;
+  term: Term;
+  parties: Parties;
+  property: Property;
+  responsibilities: Responsibilities;
+  criticalDates: CriticalDate[];
+}
+
+interface ComplexTerm {
+  term: string;
+  explanation: string;
+}
+
+interface UnusualClause {
+  clause: string;
+  concern: string;
+  riskLevel?: "high" | "medium" | "low";
+}
+
+interface AnalysisResults {
+  summary: string;
+  complexTerms: ComplexTerm[];
+  unusualClauses: UnusualClause[];
+  questions: string[];
+  extractedData?: ExtractedData;
+}
 
 const LeaseAnalyzer = () => {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [disclaimerOpen, setDisclaimerOpen] = useState(false);
-  const [analysisResults, setAnalysisResults] = useState<null | {
-    summary: string;
-    complexTerms: Array<{ term: string; explanation: string }>;
-    unusualClauses: Array<{ clause: string; concern: string }>;
-    questions: string[];
-  }>(null);
+  const [analysisResults, setAnalysisResults] = useState<AnalysisResults | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Check if disclaimer has been seen when component mounts
@@ -87,11 +201,13 @@ const LeaseAnalyzer = () => {
       if (droppedFile.type !== 'application/pdf' && 
           droppedFile.type !== 'application/msword' && 
           droppedFile.type !== 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' &&
-          droppedFile.type !== 'text/plain') {
+          droppedFile.type !== 'text/plain' &&
+          droppedFile.type !== 'image/jpeg' &&
+          droppedFile.type !== 'image/png') {
         toast({
           variant: "destructive",
           title: "Unsupported file format",
-          description: "Please upload a PDF, DOC, DOCX, or TXT file.",
+          description: "Please upload a PDF, DOC, DOCX, TXT, JPG, or PNG file.",
         });
         return;
       }
@@ -300,14 +416,76 @@ const LeaseAnalyzer = () => {
             </Button>
           </div>
 
-          <Card className="border-cyan-400/30 bg-cyan-950/20">
-            <CardHeader>
-              <CardTitle className="text-cyan-400">Summary</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-cyan-100/90">{analysisResults.summary}</p>
-            </CardContent>
-          </Card>
+          <Tabs defaultValue="summary" className="w-full">
+            <TabsList className="w-full grid grid-cols-7 bg-cyan-950/40">
+              <TabsTrigger value="summary" className="flex items-center gap-1">
+                <Eye className="h-4 w-4" /> Summary
+              </TabsTrigger>
+              <TabsTrigger value="financial" className="flex items-center gap-1">
+                <BarChart3 className="h-4 w-4" /> Financial
+              </TabsTrigger>
+              <TabsTrigger value="term" className="flex items-center gap-1">
+                <FileBarChart className="h-4 w-4" /> Term
+              </TabsTrigger>
+              <TabsTrigger value="property" className="flex items-center gap-1">
+                <FileText className="h-4 w-4" /> Property
+              </TabsTrigger>
+              <TabsTrigger value="parties" className="flex items-center gap-1">
+                <Shield className="h-4 w-4" /> Parties
+              </TabsTrigger>
+              <TabsTrigger value="responsibilities" className="flex items-center gap-1">
+                <AlertCircle className="h-4 w-4" /> Responsibilities
+              </TabsTrigger>
+              <TabsTrigger value="dates" className="flex items-center gap-1">
+                <Calendar className="h-4 w-4" /> Dates
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="summary">
+              <LeaseSummarySection 
+                summary={analysisResults.summary}
+                complexTerms={analysisResults.complexTerms}
+                unusualClauses={analysisResults.unusualClauses}
+                questions={analysisResults.questions}
+              />
+            </TabsContent>
+
+            <TabsContent value="financial">
+              {analysisResults.extractedData && 
+                <LeaseFinancialSection financial={analysisResults.extractedData.financial} />
+              }
+            </TabsContent>
+
+            <TabsContent value="term">
+              {analysisResults.extractedData && 
+                <LeaseTermSection term={analysisResults.extractedData.term} />
+              }
+            </TabsContent>
+
+            <TabsContent value="property">
+              {analysisResults.extractedData && 
+                <LeasePropertySection property={analysisResults.extractedData.property} />
+              }
+            </TabsContent>
+
+            <TabsContent value="parties">
+              {analysisResults.extractedData && 
+                <LeasePartiesSection parties={analysisResults.extractedData.parties} />
+              }
+            </TabsContent>
+
+            <TabsContent value="responsibilities">
+              {analysisResults.extractedData && 
+                <LeaseResponsibilitiesSection responsibilities={analysisResults.extractedData.responsibilities} />
+              }
+            </TabsContent>
+
+            <TabsContent value="dates">
+              {analysisResults.extractedData && 
+                <LeaseCriticalDatesSection criticalDates={analysisResults.extractedData.criticalDates} />
+              }
+            </TabsContent>
+          </Tabs>
 
           {/* Link to Voice Practice */}
           <Card className="border-cyan-400/30 bg-cyan-950/20">
@@ -330,74 +508,6 @@ const LeaseAnalyzer = () => {
               </div>
             </CardContent>
           </Card>
-
-          <Tabs defaultValue="complex" className="w-full">
-            <TabsList className="w-full grid grid-cols-3 bg-cyan-950/40">
-              <TabsTrigger value="complex">Complex Terms</TabsTrigger>
-              <TabsTrigger value="unusual">Unusual Clauses</TabsTrigger>
-              <TabsTrigger value="questions">Questions to Ask</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="complex">
-              <Card className="border-cyan-400/30 bg-cyan-950/20">
-                <CardHeader>
-                  <CardTitle className="text-cyan-400">Complex Terms Explained</CardTitle>
-                  <CardDescription>Legal jargon translated into plain language</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-4">
-                    {analysisResults.complexTerms.map((term, index) => (
-                      <li key={index} className="pb-4 border-b border-cyan-400/20 last:border-b-0">
-                        <h4 className="font-semibold text-cyan-400 mb-2">{term.term}</h4>
-                        <p className="text-cyan-100/90">{term.explanation}</p>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="unusual">
-              <Card className="border-cyan-400/30 bg-cyan-950/20">
-                <CardHeader>
-                  <CardTitle className="text-cyan-400">Unusual Clauses</CardTitle>
-                  <CardDescription>Potentially problematic terms you should review</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-4">
-                    {analysisResults.unusualClauses.map((clause, index) => (
-                      <li key={index} className="pb-4 border-b border-cyan-400/20 last:border-b-0 flex gap-3">
-                        <AlertCircle className="h-6 w-6 text-amber-400 shrink-0 mt-0.5" />
-                        <div>
-                          <h4 className="font-semibold text-amber-400 mb-2">{clause.clause}</h4>
-                          <p className="text-cyan-100/90">{clause.concern}</p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="questions">
-              <Card className="border-cyan-400/30 bg-cyan-950/20">
-                <CardHeader>
-                  <CardTitle className="text-cyan-400">Questions to Ask</CardTitle>
-                  <CardDescription>Consider discussing these points before signing</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-3">
-                    {analysisResults.questions.map((question, index) => (
-                      <li key={index} className="flex items-start gap-3">
-                        <CheckCircle className="h-5 w-5 text-cyan-400 shrink-0 mt-0.5" />
-                        <p className="text-cyan-100/90">{question}</p>
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
 
           <div className="bg-amber-400/10 border border-amber-400/20 rounded-lg p-4">
             <p className="text-amber-400 text-sm">
