@@ -273,7 +273,7 @@ serve(async (req: Request) => {
     console.log("Sending document to Claude for analysis");
     
     // Call Claude API to analyze the document
-    // Fixed: Removed the response_format parameter from the API request
+    // Updated model name to 'claude-3-opus-20240229'
     const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -282,7 +282,7 @@ serve(async (req: Request) => {
         "anthropic-version": "2023-06-01"
       },
       body: JSON.stringify({
-        model: "claude-3-sonnet-20240229",
+        model: "claude-3-opus-20240229",
         max_tokens: 4000,
         system: systemPrompt,
         messages: [
