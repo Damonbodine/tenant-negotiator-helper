@@ -5,6 +5,10 @@ import { Skeleton } from "@/shared/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ExternalLink } from "lucide-react";
 import { Link } from "@/shared/ui/link";
+import { ComparisonCharts } from "./ComparisonCharts";
+import { EstimatedCostsCard } from "./EstimatedCostsCard";
+import { ScoringSystem } from "./ScoringSystem";
+import { useState } from "react";
 
 interface ComparisonResultsProps {
   comparison: PropertyComparisonResponse | null;
@@ -12,6 +16,21 @@ interface ComparisonResultsProps {
 }
 
 export function ComparisonResults({ comparison, isLoading }: ComparisonResultsProps) {
+  const [customBestValue, setCustomBestValue] = useState<number | undefined>(undefined);
+  
+  const formatPrice = (price: number | null) => {
+    if (price === null) return "N/A";
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      maximumFractionDigits: 0
+    }).format(price);
+  };
+  
+  const bestValueIndex = customBestValue !== undefined 
+    ? customBestValue 
+    : comparison?.bestValue;
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -33,6 +52,18 @@ export function ComparisonResults({ comparison, isLoading }: ComparisonResultsPr
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Property Comparison Results</h2>
       
+      {/* Charts Section */}
+      <ComparisonCharts 
+        properties={comparison.properties} 
+        formatPrice={formatPrice}
+      />
+      
+      {/* Scoring System */}
+      <ScoringSystem 
+        properties={comparison.properties} 
+        onScoreChange={setCustomBestValue} 
+      />
+      
       <div className="overflow-hidden rounded-lg border">
         <Table>
           <TableHeader className="bg-muted/50">
@@ -40,7 +71,7 @@ export function ComparisonResults({ comparison, isLoading }: ComparisonResultsPr
               <TableHead className="w-32">Feature</TableHead>
               {comparison.properties.map((property, index) => (
                 <TableHead key={index}>
-                  Property {index + 1} {comparison.bestValue === index && <span className="ml-2 text-green-600 font-semibold">(Best Value)</span>}
+                  Property {index + 1} {bestValueIndex === index && <span className="ml-2 text-green-600 font-semibold">(Best Value)</span>}
                 </TableHead>
               ))}
             </TableRow>
@@ -57,30 +88,6 @@ export function ComparisonResults({ comparison, isLoading }: ComparisonResultsPr
                     </Link>
                   ) : (
                     property.address
-                  )}
-                </TableCell>
-              ))}
-            </TableRow>
-            
-            {/* Map Image Row */}
-            <TableRow>
-              <TableCell className="font-medium">Map</TableCell>
-              {comparison.properties.map((property, index) => (
-                <TableCell key={index}>
-                  {property.mapImageUrl ? (
-                    <div className="relative w-full h-48 overflow-hidden rounded-md">
-                      <img 
-                        src={property.mapImageUrl} 
-                        alt={`Map of ${property.address}`}
-                        className="object-cover w-full h-full"
-                        onError={(e) => {
-                          // If image fails to load, hide it
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
-                      />
-                    </div>
-                  ) : (
-                    <div className="text-sm text-muted-foreground">Map not available</div>
                   )}
                 </TableCell>
               ))}
@@ -145,6 +152,13 @@ export function ComparisonResults({ comparison, isLoading }: ComparisonResultsPr
         </Table>
       </div>
 
+      {/* Estimated Costs */}
+      <EstimatedCostsCard 
+        properties={comparison.properties} 
+        formatPrice={formatPrice}
+      />
+
+      {/* Analysis Card */}
       <Card>
         <CardHeader>
           <CardTitle>Comparison Analysis</CardTitle>
