@@ -69,21 +69,84 @@ serve(async (req: Request) => {
             "Can the automatic renewal clause be modified?",
             "Is the late fee negotiable?",
             "What maintenance tasks am I responsible for?"
-          ]
+          ],
+          extractedData: {
+            financial: {
+              rent: {amount: 1500, frequency: "monthly"},
+              securityDeposit: 1500,
+              lateFee: {amount: 50, gracePeriod: 5, type: "fixed"},
+              utilities: {
+                included: ["water", "trash"],
+                tenant: ["electricity", "gas", "internet"]
+              },
+              otherFees: [{type: "pet", amount: 25, frequency: "monthly"}]
+            },
+            term: {
+              start: "2023-06-01",
+              end: "2024-05-31",
+              durationMonths: 12,
+              renewalType: "automatic",
+              renewalNoticeDays: 60,
+              earlyTermination: {allowed: true, fee: "2 months rent"}
+            },
+            parties: {
+              landlord: "Acme Property Management",
+              tenants: ["John Doe", "Jane Smith"],
+              jointAndSeveralLiability: true
+            },
+            property: {
+              address: "123 Main St, Apt 4B, Anytown, CA 12345",
+              type: "apartment",
+              amenities: ["parking space", "pool access"],
+              furnishings: ["refrigerator", "stove"]
+            },
+            responsibilities: {
+              maintenance: {
+                landlord: ["structural repairs", "major appliances"],
+                tenant: ["minor repairs under $100", "lawn care"]
+              },
+              utilities: {
+                landlord: ["water", "trash"],
+                tenant: ["electricity", "gas", "internet"]
+              },
+              insurance: {
+                requiredForTenant: true,
+                minimumCoverage: "$100,000"
+              }
+            },
+            criticalDates: [
+              {label: "Rent due", date: "1st of each month"},
+              {label: "Lease renewal deadline", date: "60 days before lease end"},
+              {label: "Move-out inspection", date: "Last week of lease"}
+            ]
+          }
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Prepare the prompt for OpenAI
+    // Prepare the prompt for OpenAI with enhanced data extraction
     const systemPrompt = `You are an expert legal assistant specializing in rental lease agreements. 
     Analyze the provided lease document and extract key information in a structured format.
     Focus on identifying:
     
     1. A clear summary of the lease terms (200-300 words)
+    
     2. Complex legal terms that might be difficult for tenants to understand, with plain-language explanations
+    
     3. Any unusual or potentially problematic clauses that differ from standard leases
+    
     4. Questions the tenant should ask before signing
+    
+    5. Extract structured data from the lease with the following schema:
+      - Financial information (rent amount and frequency, security deposit, late fees, utilities included/excluded, other fees)
+      - Term information (start/end dates, duration, renewal terms, early termination)
+      - Party information (landlord/property manager details, tenants, joint liability)
+      - Property details (address, unit type, amenities, furnishings included)
+      - Responsibility allocation (maintenance, utilities, insurance requirements)
+      - Critical dates (rent due dates, renewal deadlines, move-out notice)
+    
+    Also provide a risk assessment for key clauses (high, medium, low) with explanation.
     
     Format your response as JSON with the following structure:
     {
@@ -92,12 +155,62 @@ serve(async (req: Request) => {
         { "term": "Name of term", "explanation": "Plain language explanation" }
       ],
       "unusualClauses": [
-        { "clause": "Description of clause", "concern": "Why it's unusual or concerning" }
+        { "clause": "Description of clause", "concern": "Why it's unusual or concerning", "riskLevel": "high|medium|low" }
       ],
       "questions": [
         "Question 1",
         "Question 2"
-      ]
+      ],
+      "extractedData": {
+        "financial": {
+          "rent": {"amount": 1500, "frequency": "monthly"},
+          "securityDeposit": 1500,
+          "lateFee": {"amount": 50, "gracePeriod": 5, "type": "fixed|percentage"},
+          "utilities": {
+            "included": ["water", "trash"],
+            "tenant": ["electricity", "gas", "internet"]
+          },
+          "otherFees": [{"type": "pet", "amount": 25, "frequency": "monthly"}]
+        },
+        "term": {
+          "start": "YYYY-MM-DD",
+          "end": "YYYY-MM-DD",
+          "durationMonths": 12,
+          "renewalType": "automatic|manual",
+          "renewalNoticeDays": 60,
+          "earlyTermination": {"allowed": true, "fee": "description"}
+        },
+        "parties": {
+          "landlord": "Name/Company",
+          "tenants": ["Name 1", "Name 2"],
+          "jointAndSeveralLiability": true
+        },
+        "property": {
+          "address": "Full address",
+          "type": "apartment|house|condo",
+          "amenities": ["list", "of", "amenities"],
+          "furnishings": ["list", "of", "furnishings"]
+        },
+        "responsibilities": {
+          "maintenance": {
+            "landlord": ["list", "of", "responsibilities"],
+            "tenant": ["list", "of", "responsibilities"]
+          },
+          "utilities": {
+            "landlord": ["list", "of", "utilities"],
+            "tenant": ["list", "of", "utilities"]
+          },
+          "insurance": {
+            "requiredForTenant": true,
+            "minimumCoverage": "amount"
+          }
+        },
+        "criticalDates": [
+          {"label": "Rent due", "date": "1st of each month"},
+          {"label": "Lease renewal deadline", "date": "60 days before lease end"},
+          {"label": "Move-out inspection", "date": "within X days of moveout"}
+        ]
+      }
     }`;
 
     // Call OpenAI API to analyze the document
