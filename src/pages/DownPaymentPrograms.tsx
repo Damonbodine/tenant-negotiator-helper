@@ -6,19 +6,38 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { ChevronLeft, Home, Search, ExternalLink } from "lucide-react";
+import { ChevronLeft, Home, Search, ExternalLink, SlidersHorizontal } from "lucide-react";
 import { downPaymentPrograms, getAllStates, getFilteredPrograms, DownPaymentProgram } from "@/data/downPaymentPrograms";
+import { 
+  Pagination, 
+  PaginationContent, 
+  PaginationItem, 
+  PaginationLink, 
+  PaginationNext, 
+  PaginationPrevious 
+} from "@/components/ui/pagination";
 
 const DownPaymentPrograms = () => {
   const [selectedState, setSelectedState] = useState<string>("All States");
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredPrograms, setFilteredPrograms] = useState<DownPaymentProgram[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortOption, setSortOption] = useState<string>("name");
+  const [showFirstTimeOnly, setShowFirstTimeOnly] = useState<boolean>(false);
   
   const states = getAllStates();
+  const programsPerPage = 10;
   
   useEffect(() => {
+    // Reset to first page when filters change
+    setCurrentPage(1);
+    
     // Filter programs based on selected state and search query
     let filtered = getFilteredPrograms(selectedState);
+    
+    if (showFirstTimeOnly) {
+      filtered = filtered.filter(program => program.firstTimeOnly);
+    }
     
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -30,8 +49,30 @@ const DownPaymentPrograms = () => {
       );
     }
     
+    // Sort programs
+    filtered.sort((a, b) => {
+      switch (sortOption) {
+        case "name":
+          return a.name.localeCompare(b.name);
+        case "state":
+          return a.state.localeCompare(b.state);
+        case "agency":
+          return a.agencyName.localeCompare(b.agencyName);
+        default:
+          return 0;
+      }
+    });
+    
     setFilteredPrograms(filtered);
-  }, [selectedState, searchQuery]);
+  }, [selectedState, searchQuery, sortOption, showFirstTimeOnly]);
+
+  // Calculate pagination
+  const indexOfLastProgram = currentPage * programsPerPage;
+  const indexOfFirstProgram = indexOfLastProgram - programsPerPage;
+  const currentPrograms = filteredPrograms.slice(indexOfFirstProgram, indexOfLastProgram);
+  const totalPages = Math.ceil(filteredPrograms.length / programsPerPage);
+
+  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
 
   return (
     <div className="container py-8">
@@ -64,25 +105,110 @@ const DownPaymentPrograms = () => {
                 className="pl-10"
               />
             </div>
-            <Select value={selectedState} onValueChange={setSelectedState}>
-              <SelectTrigger className="w-full sm:w-[200px]">
-                <SelectValue placeholder="Filter by state" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All States">All States</SelectItem>
-                {states.map((state) => (
-                  <SelectItem key={state} value={state}>{state}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              <Select value={selectedState} onValueChange={setSelectedState}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Filter by state" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All States">All States</SelectItem>
+                  {states.map((state) => (
+                    <SelectItem key={state} value={state}>{state}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={sortOption} onValueChange={setSortOption}>
+                <SelectTrigger className="w-full sm:w-[150px]">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name">Name</SelectItem>
+                  <SelectItem value="state">State</SelectItem>
+                  <SelectItem value="agency">Agency</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2 mb-4">
+            <Button 
+              variant={showFirstTimeOnly ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowFirstTimeOnly(!showFirstTimeOnly)}
+              className="flex items-center gap-1"
+            >
+              {showFirstTimeOnly ? "All Programs" : "First-Time Buyers"}
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Showing {filteredPrograms.length} programs
+            </span>
           </div>
 
-          {filteredPrograms.length > 0 ? (
-            <div className="grid grid-cols-1 gap-6">
-              {filteredPrograms.map((program) => (
-                <ProgramCard key={program.id} program={program} />
-              ))}
-            </div>
+          {currentPrograms.length > 0 ? (
+            <>
+              <div className="grid grid-cols-1 gap-6">
+                {currentPrograms.map((program) => (
+                  <ProgramCard key={program.id} program={program} />
+                ))}
+              </div>
+              
+              {totalPages > 1 && (
+                <Pagination className="mt-8">
+                  <PaginationContent>
+                    {currentPage > 1 && (
+                      <PaginationItem>
+                        <PaginationPrevious onClick={() => paginate(currentPage - 1)} />
+                      </PaginationItem>
+                    )}
+                    
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(page => {
+                        // Show first page, last page, current page and pages around current
+                        return page === 1 || 
+                               page === totalPages || 
+                               (page >= currentPage - 1 && page <= currentPage + 1);
+                      })
+                      .map((page, index, array) => {
+                        // Add ellipsis where needed
+                        if (index > 0 && array[index - 1] !== page - 1) {
+                          return (
+                            <React.Fragment key={`ellipsis-${page}`}>
+                              <PaginationItem>
+                                <span className="flex h-9 w-9 items-center justify-center">...</span>
+                              </PaginationItem>
+                              <PaginationItem key={page}>
+                                <PaginationLink 
+                                  isActive={page === currentPage}
+                                  onClick={() => paginate(page)}
+                                >
+                                  {page}
+                                </PaginationLink>
+                              </PaginationItem>
+                            </React.Fragment>
+                          );
+                        }
+                        
+                        return (
+                          <PaginationItem key={page}>
+                            <PaginationLink 
+                              isActive={page === currentPage}
+                              onClick={() => paginate(page)}
+                            >
+                              {page}
+                            </PaginationLink>
+                          </PaginationItem>
+                        );
+                      })}
+                    
+                    {currentPage < totalPages && (
+                      <PaginationItem>
+                        <PaginationNext onClick={() => paginate(currentPage + 1)} />
+                      </PaginationItem>
+                    )}
+                  </PaginationContent>
+                </Pagination>
+              )}
+            </>
           ) : (
             <div className="text-center py-12">
               <h3 className="text-lg font-medium">No programs found</h3>

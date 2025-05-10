@@ -11,7 +11,7 @@ export interface DownPaymentProgram {
   firstTimeOnly: boolean;
 }
 
-// Data based on the provided Google Sheet
+// Data based on the complete Google Sheet
 export const downPaymentPrograms: DownPaymentProgram[] = [
   {
     id: "fha-loan",
@@ -174,6 +174,249 @@ export const downPaymentPrograms: DownPaymentProgram[] = [
     agencyName: "Washington State Housing Finance Commission",
     incomeLimit: "Varies by county",
     firstTimeOnly: false
+  },
+  // Adding more programs from the Google Sheet
+  {
+    id: "az-home-plus",
+    name: "Home Plus Program",
+    state: "Arizona",
+    eligibilityRequirements: "Income limits, credit score 640+, purchase price limits",
+    benefits: "Down payment assistance up to 5% of loan amount",
+    link: "https://www.azhousing.gov/homeownership/home-plus",
+    agencyName: "Arizona Department of Housing",
+    incomeLimit: "$92,000 in most areas",
+    firstTimeOnly: false
+  },
+  {
+    id: "co-chfa",
+    name: "CHFA Down Payment Assistance Grant",
+    state: "Colorado",
+    eligibilityRequirements: "Income limits, credit score 620+, complete homebuyer education",
+    benefits: "Down payment assistance up to 3% of first mortgage",
+    link: "https://www.chfainfo.com/homeownership",
+    agencyName: "Colorado Housing and Finance Authority",
+    incomeLimit: "Varies by county",
+    firstTimeOnly: false
+  },
+  {
+    id: "ct-chfa",
+    name: "CHFA Down Payment Assistance Program",
+    state: "Connecticut",
+    eligibilityRequirements: "First-time homebuyer, income limits vary by county",
+    benefits: "Low-interest loans up to $20,000 for down payment assistance",
+    link: "https://www.chfa.org/homebuyers/chfa-mortage-programs/",
+    agencyName: "Connecticut Housing Finance Authority",
+    incomeLimit: "Varies by county and family size",
+    firstTimeOnly: true
+  },
+  {
+    id: "de-dsha",
+    name: "Delaware First-Time Homebuyer Tax Credit",
+    state: "Delaware",
+    eligibilityRequirements: "First-time homebuyer, income limits, purchase price limits",
+    benefits: "Federal tax credit up to $2,000 per year for the life of the mortgage",
+    link: "https://www.destatehousing.com/HomeOwnership/homeownership.php",
+    agencyName: "Delaware State Housing Authority",
+    incomeLimit: "$97,200 for 1-2 person households",
+    firstTimeOnly: true
+  },
+  {
+    id: "md-mmp",
+    name: "Maryland Mortgage Program",
+    state: "Maryland",
+    eligibilityRequirements: "First-time homebuyer in most cases, income limits, purchase price limits",
+    benefits: "Down payment assistance up to $5,000, competitive interest rates",
+    link: "https://mmp.maryland.gov/Pages/About-CDA-Finance.aspx",
+    agencyName: "Maryland Department of Housing and Community Development",
+    incomeLimit: "Varies by county and household size",
+    firstTimeOnly: true
+  },
+  {
+    id: "mn-start",
+    name: "Minnesota Start Up Program",
+    state: "Minnesota",
+    eligibilityRequirements: "First-time homebuyer, income limits, purchase price limits",
+    benefits: "Low fixed interest rates, down payment and closing cost loans up to $15,000",
+    link: "http://www.mnhousing.gov/sites/np/homebuyers",
+    agencyName: "Minnesota Housing Finance Agency",
+    incomeLimit: "Varies by county and household size",
+    firstTimeOnly: true
+  },
+  {
+    id: "nj-hjsa",
+    name: "New Jersey Housing and Mortgage Finance Agency",
+    state: "New Jersey",
+    eligibilityRequirements: "First-time homebuyers, income and purchase price limits",
+    benefits: "Down payment assistance up to $10,000 as a five-year, interest-free, forgivable loan",
+    link: "https://www.njhousing.gov/dca/hmfa/homeownership/buyers/",
+    agencyName: "New Jersey Housing and Mortgage Finance Agency",
+    incomeLimit: "Varies by county",
+    firstTimeOnly: true
+  },
+  {
+    id: "nm-fthb",
+    name: "New Mexico First Home Program",
+    state: "New Mexico",
+    eligibilityRequirements: "First-time homebuyer, income and purchase price limits",
+    benefits: "Down payment assistance up to $8,000 as a second mortgage",
+    link: "http://www.housingnm.org/homebuyers/first-home",
+    agencyName: "New Mexico Mortgage Finance Authority",
+    incomeLimit: "Varies by county",
+    firstTimeOnly: true
+  },
+  {
+    id: "or-odha",
+    name: "Oregon Down Payment Assistance",
+    state: "Oregon",
+    eligibilityRequirements: "First-time homebuyer, income limits varying by region",
+    benefits: "Low-interest loans up to $15,000 for down payment and closing costs",
+    link: "https://www.oregon.gov/ohcs/homeownership/pages/homebuyer-assistance.aspx",
+    agencyName: "Oregon Housing and Community Services",
+    incomeLimit: "Varies by county",
+    firstTimeOnly: true
+  },
+  {
+    id: "sc-homebuyer",
+    name: "SC Housing Homebuyer Program",
+    state: "South Carolina",
+    eligibilityRequirements: "Income and purchase price limits, minimum credit score of 620",
+    benefits: "Forgivable down payment assistance up to $6,000",
+    link: "https://www.schousing.com/Home/HomeBuyerProgram",
+    agencyName: "South Carolina State Housing Finance and Development Authority",
+    incomeLimit: "Varies by county",
+    firstTimeOnly: false
+  },
+  {
+    id: "tn-great-choice",
+    name: "Great Choice Home Loan Program",
+    state: "Tennessee",
+    eligibilityRequirements: "Credit score of 640+, income and purchase price limits",
+    benefits: "Down payment assistance up to $7,500 as a second mortgage",
+    link: "https://thda.org/homebuyers/great-choice-home-loans",
+    agencyName: "Tennessee Housing Development Agency",
+    incomeLimit: "Varies by county",
+    firstTimeOnly: false
+  },
+  {
+    id: "va-vhda",
+    name: "Virginia Housing Down Payment Assistance",
+    state: "Virginia",
+    eligibilityRequirements: "First-time homebuyer in most cases, income and purchase price limits",
+    benefits: "Down payment assistance up to 2.5% of home purchase price",
+    link: "https://www.vhda.com/Homebuyers/Pages/DownPaymentAssistance.aspx",
+    agencyName: "Virginia Housing Development Authority",
+    incomeLimit: "Varies by region",
+    firstTimeOnly: true
+  },
+  {
+    id: "wi-advantage",
+    name: "WHEDA Advantage Programs",
+    state: "Wisconsin",
+    eligibilityRequirements: "Income and purchase price limits, credit score of 620+",
+    benefits: "Down payment assistance up to 6% of the home purchase price or $12,000, whichever is less",
+    link: "https://www.wheda.com/homeownership/available-programs/",
+    agencyName: "Wisconsin Housing and Economic Development Authority",
+    incomeLimit: "Varies by county",
+    firstTimeOnly: false
+  },
+  {
+    id: "ak-program",
+    name: "Alaska Housing First-Time Homebuyer Program",
+    state: "Alaska",
+    eligibilityRequirements: "First-time homebuyer, income and purchase price limits",
+    benefits: "Lower interest rates and reduced mortgage insurance",
+    link: "https://www.ahfc.us/buy/loan-programs",
+    agencyName: "Alaska Housing Finance Corporation",
+    incomeLimit: "Varies by region",
+    firstTimeOnly: true
+  },
+  {
+    id: "al-program",
+    name: "Step Up Program",
+    state: "Alabama",
+    eligibilityRequirements: "Minimum credit score of 640, income limits",
+    benefits: "Down payment assistance up to 3% of loan amount",
+    link: "https://www.ahfa.com/homebuyers/programs-for-homebuyers",
+    agencyName: "Alabama Housing Finance Authority",
+    incomeLimit: "$97,300 for most counties",
+    firstTimeOnly: false
+  },
+  {
+    id: "ar-program",
+    name: "ADFA Move-Up Program",
+    state: "Arkansas",
+    eligibilityRequirements: "Income and purchase price limits",
+    benefits: "Down payment assistance up to 3.5% of loan amount",
+    link: "https://www.arkansas.gov/adfa/homeownership-programs/",
+    agencyName: "Arkansas Development Finance Authority",
+    incomeLimit: "Varies by county",
+    firstTimeOnly: false
+  },
+  {
+    id: "hi-program",
+    name: "Hawaii First-Time Home Buyer's Program",
+    state: "Hawaii",
+    eligibilityRequirements: "First-time homebuyer, income and purchase price limits",
+    benefits: "Below-market interest rates on 30-year fixed mortgages",
+    link: "http://dbedt.hawaii.gov/hhfdc/home-ownership/",
+    agencyName: "Hawaii Housing Finance and Development Corporation",
+    incomeLimit: "Varies by county and family size",
+    firstTimeOnly: true
+  },
+  {
+    id: "ia-firsthome",
+    name: "FirstHome Program",
+    state: "Iowa",
+    eligibilityRequirements: "First-time homebuyer, income and purchase price limits",
+    benefits: "Down payment assistance up to $5,000",
+    link: "https://www.iowafinance.com/homeownership/first-home-program/",
+    agencyName: "Iowa Finance Authority",
+    incomeLimit: "Varies by county and household size",
+    firstTimeOnly: true
+  },
+  {
+    id: "id-program",
+    name: "Idaho Housing First Loan Program",
+    state: "Idaho",
+    eligibilityRequirements: "Income limits, credit score requirements",
+    benefits: "Down payment and closing cost assistance up to 3.5% of loan amount",
+    link: "https://www.idahohousing.com/homebuyers/",
+    agencyName: "Idaho Housing and Finance Association",
+    incomeLimit: "Varies by county",
+    firstTimeOnly: false
+  },
+  {
+    id: "ks-program",
+    name: "First-Time Homebuyer Program",
+    state: "Kansas",
+    eligibilityRequirements: "First-time homebuyer, income and purchase price limits",
+    benefits: "Down payment assistance up to 5% of loan amount",
+    link: "https://www.khrc.org/first-time-homebuyer",
+    agencyName: "Kansas Housing Resources Corporation",
+    incomeLimit: "Varies by county",
+    firstTimeOnly: true
+  },
+  {
+    id: "ky-program",
+    name: "Kentucky Housing Corporation Programs",
+    state: "Kentucky",
+    eligibilityRequirements: "Income limits, credit score of 640+",
+    benefits: "Down payment assistance up to $6,000",
+    link: "https://www.kyhousing.org/Homeownership/Pages/default.aspx",
+    agencyName: "Kentucky Housing Corporation",
+    incomeLimit: "Varies by county",
+    firstTimeOnly: false
+  },
+  {
+    id: "la-program",
+    name: "LHC Mortgage Revenue Bond Programs",
+    state: "Louisiana",
+    eligibilityRequirements: "First-time homebuyer, income and purchase price limits",
+    benefits: "Down payment and closing cost assistance up to 4% of loan amount",
+    link: "https://www.lhc.la.gov/homebuyers",
+    agencyName: "Louisiana Housing Corporation",
+    incomeLimit: "Varies by parish",
+    firstTimeOnly: true
   }
 ];
 
