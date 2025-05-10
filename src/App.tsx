@@ -23,6 +23,7 @@ const FAQ = lazy(() => import("@/pages/FAQ"));
 const PromptManager = lazy(() => import("@/shared/components/PromptManager"));
 const LeaseAnalyzer = lazy(() => import("@/pages/LeaseAnalyzer"));
 const ScriptBuilder = lazy(() => import("@/pages/ScriptBuilder"));
+const DownPaymentPrograms = lazy(() => import("@/pages/DownPaymentPrograms"));
 
 function AppRoutes() {
   return (
@@ -36,6 +37,7 @@ function AppRoutes() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/resources" element={<Resources />} />
         <Route path="/resources/:resourceId" element={<Resources />} />
+        <Route path="/resources/down-payment-programs" element={<DownPaymentPrograms />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/faq" element={<FAQ />} />

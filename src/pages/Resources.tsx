@@ -70,7 +70,7 @@ const Resources = () => {
     resources: [{
       title: "Down Payment Assistance Programs",
       description: "State and federal programs to help you buy your first home",
-      link: "/resources/down-payment-assistance",
+      link: "/resources/down-payment-programs",
       type: "page",
       badge: "New"
     }]
