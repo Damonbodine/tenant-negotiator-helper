@@ -292,7 +292,7 @@ const LeaseAnalyzer = () => {
   };
 
   const [verificationRequired, setVerificationRequired] = useState(false);
-  const [verifiedData, setVerifiedData] = useState<Partial<ExtractedData>>();
+  const [verifiedData, setVerifiedData] = useState<any>({});
 
   const handleVerificationUpdate = (field: string, value: any) => {
     setVerifiedData(prev => ({
@@ -303,16 +303,40 @@ const LeaseAnalyzer = () => {
 
   const handleVerificationComplete = () => {
     if (verifiedData && analysisResults) {
-      // Merge verified data with original analysis results
-      const updatedResults = {
-        ...analysisResults,
-        extractedData: {
-          ...analysisResults.extractedData,
-          ...verifiedData
+      // Create a deep copy to avoid reference issues
+      const updatedResults = JSON.parse(JSON.stringify(analysisResults));
+      
+      // Apply verified financial data
+      if (verifiedData.financial) {
+        if (!updatedResults.extractedData) {
+          updatedResults.extractedData = {};
         }
-      };
+        
+        updatedResults.extractedData.financial = {
+          ...updatedResults.extractedData.financial,
+          ...verifiedData.financial
+        };
+        
+        // Update confidence to high since user verified the data
+        if (!updatedResults.extractionConfidence) {
+          updatedResults.extractionConfidence = {};
+        }
+        
+        if (verifiedData.financial.rent) {
+          updatedResults.extractionConfidence.rent = "high";
+        }
+        
+        if (verifiedData.financial.securityDeposit) {
+          updatedResults.extractionConfidence.securityDeposit = "high";
+        }
+      }
+      
+      // Apply other verified data fields if added in the future
+      
+      console.log("Updated analysis with verified data:", updatedResults);
       setAnalysisResults(updatedResults);
       setVerificationRequired(false);
+      setVerifiedData({});
       
       // Show confirmation toast
       toast({
@@ -379,6 +403,7 @@ const LeaseAnalyzer = () => {
   const resetAnalysis = () => {
     setFile(null);
     setAnalysisResults(null);
+    setVerifiedData({});
   };
 
   return (
@@ -408,6 +433,7 @@ const LeaseAnalyzer = () => {
         </DialogContent>
       </Dialog>
 
+      {/* File Upload Card */}
       {!analysisResults ? (
         <Card className="border-cyan-400/30 bg-cyan-950/20">
           <CardHeader>

@@ -10,38 +10,82 @@ const corsHeaders = {
 // OpenAI API key from environment variable
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
-// Enhanced regular expressions for critical financial data extraction
-// Updated to catch more variations of rent statements including "shall pay" forms and dollar amounts
-const rentRegex = /(?:(?:monthly |annual )?(?:base )?rent:?\s*\$?([\d,]+(?:\.\d{2})?))|(?:\$([\d,]+(?:\.\d{2})?)\s*(?:per|\/)\s*(?:month|mo))|(?:(?:tenant |lessee )?(?:shall |will |agrees to )?pay\s*\$?([\d,]+(?:\.\d{2})?)\s*(?:per|\/|as|in|for)?\s*(?:month|mo|rent|monthly))|(?:rent(?:\s*is|\s*shall\s*be|\s*will\s*be)?\s*\$?([\d,]+(?:\.\d{2})?))|(?:rent\s*amount.*?\$?([\d,]+(?:\.\d{2})?))|(?:rent.*?\$\s*([\d,]+(?:\.\d{2})?))/gi;
+// Enhanced regex patterns for critical financial data extraction
+// Specific patterns for common lease formats
+const rentPatterns = [
+  // Common format with section headers like "3. RENT:" followed by amount
+  /(?:RENT|PAYMENT|BASE\s+RENT|MONTHLY\s+RENT)(?:\s*:|\.|\s+is|\s+shall\s+be|\s+will\s+be)\s*\$?([\d,]+(?:\.\d{1,2})?)/i,
+  
+  // Dollar amounts followed by "per month" or similar
+  /\$([\d,]+(?:\.\d{1,2})?)\s*(?:per|\/)\s*(?:month|mo)/i,
+  
+  // "Tenant shall pay" format
+  /(?:tenant|lessee)(?:\s*shall|\s*will|\s*agrees\s*to)?\s*pay\s*\$?([\d,]+(?:\.\d{1,2})?)/i,
+  
+  // "rent amount" format
+  /rent\s*(?:is|shall\s*be|will\s*be|amount)?\s*(?:is|\:)?\s*\$?([\d,]+(?:\.\d{1,2})?)/i,
+  
+  // Format where rent is mentioned with dollar sign
+  /rent.*?\$\s*([\d,]+(?:\.\d{1,2})?)/i,
+  
+  // Format common in standard lease templates: "Tenant's monthly Rent for the Apartment is $X,XXX"
+  /tenant(?:'s)?\s*monthly\s*rent\s*(?:for\s*the\s*(?:apartment|unit|property))?\s*is\s*\$?([\d,]+(?:\.\d{1,2})?)/i
+];
 
-const securityDepositRegex = /(?:security deposit:?\s*\$?([\d,]+(?:\.\d{2})?))|(?:deposit(?:\s*of|\s*in\s*the\s*amount\s*of|\s*amount)?\s*\$?([\d,]+(?:\.\d{2})?))|(?:deposit:?\s*\$?([\d,]+(?:\.\d{2})?))/gi;
+const securityDepositPatterns = [
+  // Common format for security deposit sections
+  /(?:security\s*deposit)(?:\s*:|\.|\s+is|\s+shall\s+be|\s+will\s+be|\s*of|\s*amount|\s*in\s*the\s*amount\s*of)?\s*\$?([\d,]+(?:\.\d{1,2})?)/i,
+  
+  // Standard lease template format
+  /(?:deposit|security\s*deposit)\s*(?:of|is|in\s*the\s*amount\s*of|amount|:)?\s*\$?([\d,]+(?:\.\d{1,2})?)/i
+];
 
 /**
- * Extract potential rent values using regex from document text
+ * Improved function to extract potential rent values using regex from document text
  */
 function extractFinancialDataWithRegex(text: string) {
   // Log the text being searched for diagnostic purposes
   console.log(`Searching for financial data in text sample: ${text.slice(0, 200)}...`);
   
-  const rentMatches = [...text.matchAll(rentRegex)];
-  const depositMatches = [...text.matchAll(securityDepositRegex)];
+  let potentialRentValues: number[] = [];
+  let potentialDepositValues: number[] = [];
   
-  console.log(`Found ${rentMatches.length} potential rent matches`);
+  // Search using all rent patterns
+  rentPatterns.forEach(pattern => {
+    const matches = [...text.matchAll(pattern)];
+    console.log(`Found ${matches.length} potential matches using pattern: ${pattern}`);
+    
+    matches.forEach(match => {
+      // Take the first capturing group that has a value
+      const capturedGroups = match.slice(1).filter(Boolean);
+      if (capturedGroups.length > 0) {
+        const valueStr = capturedGroups[0].replace(/,/g, '');
+        const value = parseFloat(valueStr);
+        
+        if (!isNaN(value) && value > 100) { // Filter out very low values that are likely not rent
+          potentialRentValues.push(value);
+        }
+      }
+    });
+  });
   
-  // Process rent matches - handling all capture groups
-  const potentialRentValues = rentMatches.map(match => {
-    // Check all capture groups (we now have more)
-    const value = match[1] || match[2] || match[3] || match[4] || match[5] || match[6];
-    if (!value) return null;
-    return parseFloat(value.replace(/,/g, ''));
-  }).filter(Boolean);
-  
-  // Process deposit matches
-  const potentialDepositValues = depositMatches.map(match => {
-    const value = match[1] || match[2] || match[3];
-    if (!value) return null;
-    return parseFloat(value.replace(/,/g, ''));
-  }).filter(Boolean);
+  // Search using all security deposit patterns
+  securityDepositPatterns.forEach(pattern => {
+    const matches = [...text.matchAll(pattern)];
+    
+    matches.forEach(match => {
+      // Take the first capturing group that has a value
+      const capturedGroups = match.slice(1).filter(Boolean);
+      if (capturedGroups.length > 0) {
+        const valueStr = capturedGroups[0].replace(/,/g, '');
+        const value = parseFloat(valueStr);
+        
+        if (!isNaN(value) && value > 100) {
+          potentialDepositValues.push(value);
+        }
+      }
+    });
+  });
   
   // Log the found values
   if (potentialRentValues.length > 0) {
@@ -69,9 +113,12 @@ function preprocessDocumentText(text: string): string {
   text = text.replace(/\$\s+/g, '$');
   text = text.replace(/(\d),(\d)/g, '$1$2'); // Sometimes commas in numbers get separated
   
-  // Add extra spacing after dollar signs to help regex
-  text = text.replace(/\$/g, '$ ');
-  text = text.replace(/\$ /g, '$');
+  // Add periods after section numbers to help with section identification
+  text = text.replace(/(\d+)[\s\r\n]+([A-Z]{2,})/g, '$1. $2');
+  
+  // Normalize section headers
+  text = text.replace(/(\d+\s*\.?\s*)(RENT|PAYMENT)(\s|\.|\:)/gi, '$1RENT: ');
+  text = text.replace(/(\d+\s*\.?\s*)(SECURITY\s*DEPOSIT)(\s|\.|\:)/gi, '$1SECURITY DEPOSIT: ');
   
   return text;
 }
@@ -80,16 +127,48 @@ function preprocessDocumentText(text: string): string {
  * Find sections that are likely to contain rent information
  */
 function extractRentSections(text: string): string[] {
-  const rentSectionRegex = /(?:RENT|PAYMENT|FINANCIAL TERMS|MONTHLY PAYMENT)(?:.+?)(?:\n\n|\r\n\r\n|SECTION|PARAGRAPH)/gis;
-  const matches = [...text.matchAll(rentSectionRegex)].map(match => match[0]);
+  // Look for sections with headers like "3. RENT" or "RENT:" 
+  const rentSectionPatterns = [
+    /(?:\d+\s*\.?\s*)?(?:RENT|PAYMENT|FINANCIAL TERMS|MONTHLY PAYMENT)(?:.+?)(?:\n\n|\r\n\r\n|SECTION|PARAGRAPH|^\s*\d+\s*\.)/gis,
+    /(?:RENT|PAYMENT)(?:\s*:|\.|\s+is|\s+shall\s+be|\s+will\s+be)(?:.+?)(?:\n\n|\r\n\r\n|SECTION|PARAGRAPH)/gis,
+  ];
   
-  if (matches.length > 0) {
-    console.log(`Found ${matches.length} sections that might contain rent information`);
-    return matches;
+  let sections: string[] = [];
+  
+  rentSectionPatterns.forEach(pattern => {
+    const matches = [...text.matchAll(pattern)].map(match => match[0]);
+    sections = [...sections, ...matches];
+  });
+  
+  if (sections.length > 0) {
+    console.log(`Found ${sections.length} sections that might contain rent information`);
+    return sections;
+  }
+  
+  // If no specific sections found, search for sentences containing rent references
+  const rentReferences = text.match(/[^.!?]+(?:rent|payment|pay|monthly)[^.!?]+\$/gi);
+  if (rentReferences && rentReferences.length > 0) {
+    console.log(`Found ${rentReferences.length} sentences with rent references`);
+    return rentReferences;
   }
   
   // If no specific sections found, return empty array
   return [];
+}
+
+/**
+ * Identify common lease templates based on text patterns
+ */
+function identifyLeaseTemplate(text: string): string | null {
+  // Look for common lease template identifiers
+  if (text.match(/STANDARD RESIDENTIAL LEASE AGREEMENT/i)) {
+    return "standard";
+  } else if (text.match(/APARTMENT LEASE CONTRACT/i)) {
+    return "apartment_association";
+  } else if (text.match(/RENTAL AGREEMENT AND DEPOSIT RECEIPT/i)) {
+    return "california_association";
+  }
+  return null;
 }
 
 serve(async (req: Request) => {
@@ -126,6 +205,12 @@ serve(async (req: Request) => {
 
     // Preprocess the document text to improve extraction quality
     const processedText = preprocessDocumentText(documentText);
+    
+    // Identify lease template for specialized handling
+    const leaseTemplate = identifyLeaseTemplate(processedText);
+    if (leaseTemplate) {
+      console.log(`Identified lease template: ${leaseTemplate}`);
+    }
     
     // Extract potential financial data with regex as a backup/validation method
     const regexExtractedData = extractFinancialDataWithRegex(processedText);
@@ -229,6 +314,8 @@ serve(async (req: Request) => {
     const systemPrompt = `You are an expert legal assistant specializing in rental lease agreements. 
     Analyze the provided lease document and extract key information in a structured format.
     
+    DO NOT FABRICATE ANY INFORMATION. If information is not present in the document, clearly indicate it is missing or unknown.
+    
     CRITICAL FINANCIAL INFORMATION EXTRACTION:
     - Pay special attention to RENT AMOUNT - look for monthly rent, base rent, or annual rent divided by 12
     - Common rent formats include:
@@ -242,10 +329,22 @@ serve(async (req: Request) => {
       * "Monthly Rent $1,800.00"
       * "Rent Amount. $1,800 per month"
       * "Base Rent. The Tenant will pay $1,800 each month."
+      * "3. RENT: $1,800"
+      * "RENT/LEASE PAYMENT. Tenant shall pay rent in the amount of $1,800"
     - Look specifically in sections labeled "RENT", "PAYMENT", "FINANCIAL TERMS" or "LEASE TERMS" 
     - If multiple rent values appear, look for context to determine the primary current rent amount
     - If you find multiple possible rent values, list them all in your confidence assessment
     - Report a confidence level (high, medium, low) for each extracted value
+    - DO NOT make up or estimate any financial values if they're not clearly stated in the document
+    
+    IMPORTANT GUIDELINES:
+    1. Only extract information that is EXPLICITLY stated in the document
+    2. Mark any fields where information isn't explicitly provided as "unknown" or "not specified"
+    3. Do NOT make assumptions about values not present in the text
+    4. For renewal type, ONLY set as "automatic" if explicitly stated - otherwise use "not specified" or extract what's stated
+    5. Only include amenities explicitly mentioned in the lease - do not assume amenities like "gym" unless specified
+    6. For tenant/landlord names, extract exactly as written in the document - don't make up names
+    7. Only include insurance requirements if explicitly mentioned
     
     Focus on identifying:
     
@@ -295,7 +394,7 @@ serve(async (req: Request) => {
           "start": "YYYY-MM-DD",
           "end": "YYYY-MM-DD",
           "durationMonths": 12,
-          "renewalType": "automatic|manual",
+          "renewalType": "automatic|manual|not specified",
           "renewalNoticeDays": 60,
           "earlyTermination": {"allowed": true, "fee": "description"}
         },
@@ -345,7 +444,8 @@ serve(async (req: Request) => {
       documentType,
       fileName,
       regexFindings: regexExtractedData,
-      rentSectionsFound: rentSections
+      rentSectionsFound: rentSections,
+      leaseTemplate: leaseTemplate
     };
 
     // Call OpenAI API to analyze the document using the improved model
@@ -357,7 +457,7 @@ serve(async (req: Request) => {
         "Authorization": `Bearer ${openAIApiKey}`
       },
       body: JSON.stringify({
-        model: "gpt-4o", // Using gpt-4o model with improved prompting
+        model: "gpt-4o", // Using gpt-4o for improved accuracy
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: processedText },
@@ -365,7 +465,8 @@ serve(async (req: Request) => {
             role: "user", 
             content: `Additional context: ${JSON.stringify(contextData)}. 
             If the regex found potential rent values ${JSON.stringify(regexExtractedData.potentialRentValues)}, 
-            please consider these in your extraction and explain if you choose a different value.`
+            please consider these in your extraction and explain if you choose a different value.
+            DO NOT make up information that isn't in the document. If you don't find something, mark it as "unknown" or "not specified".`
           }
         ],
         temperature: 0.1, // Lower temperature for more deterministic results
@@ -401,8 +502,6 @@ serve(async (req: Request) => {
       } 
       // If regex found values that differ from AI extraction, flag for verification
       else if (regexExtractedData.potentialRentValues.length > 0) {
-        // Lower threshold to trigger verification (was 10, now 5)
-        // Always include regex values for verification when they differ from AI extraction
         analysisContent.rentVerificationNeeded = true;
         analysisContent.alternativeRentValues = regexExtractedData.potentialRentValues;
       }
@@ -411,6 +510,24 @@ serve(async (req: Request) => {
     // Always include regex values in the response for validation
     if (regexExtractedData.potentialRentValues && regexExtractedData.potentialRentValues.length > 0) {
       analysisContent.regexRentValues = regexExtractedData.potentialRentValues;
+      
+      // If AI didn't find a rent value but regex did, prompt for verification
+      if (!analysisContent.extractedData?.financial?.rent?.amount && regexExtractedData.potentialRentValues.length > 0) {
+        // Set a default rent value from regex for verification
+        if (!analysisContent.extractedData) {
+          analysisContent.extractedData = {};
+        }
+        if (!analysisContent.extractedData.financial) {
+          analysisContent.extractedData.financial = {};
+        }
+        analysisContent.extractedData.financial.rent = {
+          amount: regexExtractedData.potentialRentValues[0],
+          frequency: "monthly"
+        };
+        analysisContent.rentVerificationNeeded = true;
+        analysisContent.extractionConfidence = analysisContent.extractionConfidence || {};
+        analysisContent.extractionConfidence.rent = "low";
+      }
     }
     
     // Return the analyzed data with validation information
