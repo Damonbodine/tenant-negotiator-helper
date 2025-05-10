@@ -34,6 +34,7 @@ export function LeaseVerificationSection({
   const [rentAmount, setRentAmount] = useState<string>('');
   const [securityDeposit, setSecurityDeposit] = useState<string>('');
   const [frequency, setFrequency] = useState<string>('monthly');
+  const [dataChanged, setDataChanged] = useState<boolean>(false);
 
   // Initialize form with values from analysis
   useEffect(() => {
@@ -45,11 +46,14 @@ export function LeaseVerificationSection({
     if (analysisResults?.extractedData?.financial?.securityDeposit) {
       setSecurityDeposit(analysisResults.extractedData.financial.securityDeposit.toString());
     }
+    
+    setDataChanged(false);
   }, [analysisResults]);
 
   // Update parent component when values change
   const handleRentChange = (value: string) => {
     setRentAmount(value);
+    setDataChanged(true);
     const numericValue = parseFloat(value);
     
     if (!isNaN(numericValue)) {
@@ -65,6 +69,7 @@ export function LeaseVerificationSection({
 
   const handleDepositChange = (value: string) => {
     setSecurityDeposit(value);
+    setDataChanged(true);
     const numericValue = parseFloat(value);
     
     if (!isNaN(numericValue)) {
@@ -197,6 +202,15 @@ export function LeaseVerificationSection({
               />
             </div>
           </div>
+          
+          {dataChanged && (
+            <div className="mt-4 p-2 bg-green-50/20 border border-green-300/30 rounded-md flex items-center gap-1">
+              <Info className="h-4 w-4 text-green-600 shrink-0" />
+              <p className="text-xs text-green-600">
+                Your changes will be applied when you click "Confirm & Continue"
+              </p>
+            </div>
+          )}
           
           <div className="mt-4 p-3 bg-amber-50/20 border border-amber-300/30 rounded-md flex items-start gap-2">
             <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
