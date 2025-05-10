@@ -1,6 +1,6 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { extract as extractPdfText } from "https://deno.land/x/pdfjs@v0.1.1/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,6 +9,49 @@ const corsHeaders = {
 
 // OpenAI API key from environment variable
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+
+// Regular expressions for critical financial data extraction
+const rentRegex = /(?:(?:monthly |annual )?(?:base )?rent:?\s*\$?([\d,]+(?:\.\d{2})?))|(?:\$([\d,]+(?:\.\d{2})?)\s*(?:per|\/)\s*(?:month|mo))/gi;
+const securityDepositRegex = /(?:security deposit:?\s*\$?([\d,]+(?:\.\d{2})?))/gi;
+
+/**
+ * Extract potential rent values using regex from document text
+ */
+function extractFinancialDataWithRegex(text: string) {
+  const rentMatches = [...text.matchAll(rentRegex)];
+  const depositMatches = [...text.matchAll(securityDepositRegex)];
+  
+  const potentialRentValues = rentMatches.map(match => {
+    const value = match[1] || match[2];
+    if (!value) return null;
+    return parseFloat(value.replace(/,/g, ''));
+  }).filter(Boolean);
+  
+  const potentialDepositValues = depositMatches.map(match => {
+    const value = match[1];
+    if (!value) return null;
+    return parseFloat(value.replace(/,/g, ''));
+  }).filter(Boolean);
+  
+  return {
+    potentialRentValues: potentialRentValues.length > 0 ? potentialRentValues : null,
+    potentialDepositValues: potentialDepositValues.length > 0 ? potentialDepositValues : null
+  };
+}
+
+/**
+ * Process extracted text to normalize and clean it
+ */
+function preprocessDocumentText(text: string): string {
+  // Normalize whitespace
+  text = text.replace(/\s+/g, ' ');
+  
+  // Fix common OCR/extraction issues
+  text = text.replace(/\$\s+/g, '$');
+  text = text.replace(/(\d),(\d)/g, '$1$2'); // Sometimes commas in numbers get separated
+  
+  return text;
+}
 
 serve(async (req: Request) => {
   // Handle CORS preflight requests
@@ -30,7 +73,7 @@ serve(async (req: Request) => {
       );
     }
 
-    const { documentText, documentType } = requestData;
+    const { documentText, documentType, fileName } = requestData;
 
     if (!documentText) {
       return new Response(
@@ -41,6 +84,13 @@ serve(async (req: Request) => {
 
     console.log(`Analyzing lease document of type: ${documentType}`);
     console.log(`Document length: ${documentText.length} characters`);
+
+    // Preprocess the document text to improve extraction quality
+    const processedText = preprocessDocumentText(documentText);
+    
+    // Extract potential financial data with regex as a backup/validation method
+    const regexExtractedData = extractFinancialDataWithRegex(processedText);
+    console.log("Regex extracted financial data:", regexExtractedData);
 
     // If there's no OpenAI API key, return a simulated response for development
     if (!openAIApiKey) {
@@ -119,7 +169,15 @@ serve(async (req: Request) => {
               {label: "Lease renewal deadline", date: "60 days before lease end"},
               {label: "Move-out inspection", date: "Last week of lease"}
             ]
-          }
+          },
+          extractionConfidence: {
+            rent: "medium",
+            securityDeposit: "medium",
+            lateFee: "low",
+            term: "medium",
+            utilities: "medium"
+          },
+          regexFindings: regexExtractedData
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -128,6 +186,14 @@ serve(async (req: Request) => {
     // Prepare the prompt for OpenAI with enhanced data extraction
     const systemPrompt = `You are an expert legal assistant specializing in rental lease agreements. 
     Analyze the provided lease document and extract key information in a structured format.
+    
+    CRITICAL FINANCIAL INFORMATION EXTRACTION:
+    - Pay special attention to RENT AMOUNT - look for monthly rent, base rent, or annual rent divided by 12
+    - Look for clear currency indicators like "$1,800 per month" or "monthly rent: $1,800"
+    - Report a confidence level (high, medium, low) for each extracted value
+    - If multiple rent values appear in the document (e.g. different unit types or incremental increases), 
+      extract the primary current monthly rent amount, not future increases
+    
     Focus on identifying:
     
     1. A clear summary of the lease terms (200-300 words)
@@ -210,10 +276,17 @@ serve(async (req: Request) => {
           {"label": "Lease renewal deadline", "date": "60 days before lease end"},
           {"label": "Move-out inspection", "date": "within X days of moveout"}
         ]
+      },
+      "extractionConfidence": {
+        "rent": "high|medium|low",
+        "securityDeposit": "high|medium|low",
+        "lateFee": "high|medium|low",
+        "term": "high|medium|low",
+        "utilities": "high|medium|low"
       }
     }`;
 
-    // Call OpenAI API to analyze the document
+    // Call OpenAI API to analyze the document using the improved model
     console.log("Sending document to OpenAI for analysis");
     const openAIResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -222,10 +295,10 @@ serve(async (req: Request) => {
         "Authorization": `Bearer ${openAIApiKey}`
       },
       body: JSON.stringify({
-        model: "gpt-4o",
+        model: "gpt-4o", // Using the latest model for better accuracy
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: documentText }
+          { role: "user", content: processedText }
         ],
         temperature: 0.2,
         response_format: { type: "json_object" }
@@ -245,9 +318,35 @@ serve(async (req: Request) => {
     console.log("Received OpenAI response");
     
     // Parse the content from the AI response
-    const analysisContent = JSON.parse(openAIData.choices[0].message.content);
+    let analysisContent = JSON.parse(openAIData.choices[0].message.content);
     
-    // Return the analyzed data
+    // Add the regex findings to help with verification
+    analysisContent.regexFindings = regexExtractedData;
+    
+    // Run validation checks between AI and regex extractions
+    if (analysisContent.extractedData?.financial?.rent && regexExtractedData.potentialRentValues) {
+      const aiRent = analysisContent.extractedData.financial.rent.amount;
+      
+      // If regex found values that match the AI extraction, increase confidence
+      if (regexExtractedData.potentialRentValues.includes(aiRent)) {
+        analysisContent.extractionConfidence.rent = "high";
+      } 
+      // If regex found values that differ significantly from AI extraction, flag for verification
+      else if (regexExtractedData.potentialRentValues.length > 0) {
+        // Find the closest value from regex matches
+        const closestRentValue = regexExtractedData.potentialRentValues.reduce((prev, curr) => 
+          Math.abs(curr - aiRent) < Math.abs(prev - aiRent) ? curr : prev
+        );
+        
+        // If there's a significant difference, flag it and include both values
+        if (Math.abs(closestRentValue - aiRent) > 50) {  // Threshold for significant difference
+          analysisContent.rentVerificationNeeded = true;
+          analysisContent.alternativeRentValues = regexExtractedData.potentialRentValues;
+        }
+      }
+    }
+    
+    // Return the analyzed data with validation information
     return new Response(
       JSON.stringify(analysisContent),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
