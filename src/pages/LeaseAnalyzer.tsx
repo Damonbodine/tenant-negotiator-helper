@@ -1,15 +1,26 @@
-import { useState, useRef } from "react";
-import { Upload, FileText, AlertCircle, CheckCircle } from "lucide-react";
+
+import { useState, useRef, useEffect } from "react";
+import { Upload, FileText, AlertCircle, CheckCircle, Shield, Link as LinkIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader,
+  DialogTitle 
+} from "@/components/ui/dialog";
+import { Link } from "react-router-dom";
 
 const LeaseAnalyzer = () => {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [disclaimerOpen, setDisclaimerOpen] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<null | {
     summary: string;
     complexTerms: Array<{ term: string; explanation: string }>;
@@ -18,18 +29,35 @@ const LeaseAnalyzer = () => {
   }>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Check if disclaimer has been seen when component mounts
+  useEffect(() => {
+    const disclaimerSeen = localStorage.getItem('leaseDisclaimerSeen') === 'true';
+    if (!disclaimerSeen) {
+      setDisclaimerOpen(true);
+    }
+  }, []);
+
+  // Function to handle disclaimer acknowledgment
+  const handleDisclaimerAcknowledged = () => {
+    localStorage.setItem('leaseDisclaimerSeen', 'true');
+    setDisclaimerOpen(false);
+  };
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0] || null;
     
     if (selectedFile) {
+      // Updated to accept PDF, DOC, DOCX, TXT, JPG, and PNG files
       if (selectedFile.type !== 'application/pdf' && 
           selectedFile.type !== 'application/msword' && 
           selectedFile.type !== 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' &&
-          selectedFile.type !== 'text/plain') {
+          selectedFile.type !== 'text/plain' &&
+          selectedFile.type !== 'image/jpeg' &&
+          selectedFile.type !== 'image/png') {
         toast({
           variant: "destructive",
           title: "Unsupported file format",
-          description: "Please upload a PDF, DOC, DOCX, or TXT file.",
+          description: "Please upload a PDF, DOC, DOCX, TXT, JPG, or PNG file.",
         });
         return;
       }
@@ -89,6 +117,13 @@ const LeaseAnalyzer = () => {
     // For plain text files, just read the text
     if (file.type === 'text/plain') {
       return await file.text();
+    }
+
+    // For image files, we would need OCR in a production app
+    if (file.type === 'image/jpeg' || file.type === 'image/png') {
+      // In a production app, we'd implement OCR here
+      // For now, we'll return a message about this limitation
+      return `[This is image content from ${file.name}. In a production app, we would use OCR to extract text from this image.]`;
     }
 
     // For other file types (PDF, DOC, DOCX) we would need to use a dedicated library
@@ -156,12 +191,32 @@ const LeaseAnalyzer = () => {
         Upload your lease to get plain-language explanations and spot potential issues
       </p>
 
+      {/* Disclaimer Modal */}
+      <Dialog open={disclaimerOpen} onOpenChange={setDisclaimerOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-amber-500" /> Quick heads-up!
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              Renters Mentor is an educational tool. We are <strong>not attorneys or a licensed real-estate broker</strong>. 
+              Nothing here is legal advice. Consult a qualified professional before acting.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-center">
+            <Button onClick={handleDisclaimerAcknowledged}>
+              I understand, continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {!analysisResults ? (
         <Card className="border-cyan-400/30 bg-cyan-950/20">
           <CardHeader>
             <CardTitle className="text-cyan-400">Upload Your Lease Document</CardTitle>
             <CardDescription>
-              We accept PDF, DOC, DOCX, and TXT files up to 10MB
+              We accept PDF, DOC, DOCX, TXT, JPG, and PNG files up to 10MB
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -174,7 +229,7 @@ const LeaseAnalyzer = () => {
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileChange}
-                accept=".pdf,.doc,.docx,.txt"
+                accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
                 className="hidden"
               />
               
@@ -251,6 +306,28 @@ const LeaseAnalyzer = () => {
             </CardHeader>
             <CardContent>
               <p className="text-cyan-100/90">{analysisResults.summary}</p>
+            </CardContent>
+          </Card>
+
+          {/* Link to Voice Practice */}
+          <Card className="border-cyan-400/30 bg-cyan-950/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-cyan-400">
+                <LinkIcon className="h-5 w-5" /> Practice Negotiating Your Lease
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-cyan-100/90 mb-4">
+                Want to practice discussing these terms with your landlord? Use our voice practice tool to 
+                rehearse important conversations about your lease.
+              </p>
+              <div className="flex justify-start">
+                <Button asChild className="bg-cyan-400 text-cyan-950 hover:bg-cyan-500">
+                  <Link to="/practice/voice">
+                    Go to Voice Practice
+                  </Link>
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
