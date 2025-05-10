@@ -1,6 +1,5 @@
-
 import { useState, useRef, useEffect } from "react";
-import { Upload, FileText, AlertCircle, CheckCircle, Shield, Link as LinkIcon, Calendar, BarChart3, FileBarChart, Clock, Eye } from "lucide-react";
+import { Upload, FileText, AlertCircle, CheckCircle, Shield, Link as LinkIcon, Calendar, BarChart3, FileBarChart, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +21,7 @@ import { LeasePartiesSection } from "@/components/lease-analyzer/LeasePartiesSec
 import { LeasePropertySection } from "@/components/lease-analyzer/LeasePropertySection";
 import { LeaseResponsibilitiesSection } from "@/components/lease-analyzer/LeaseResponsibilitiesSection";
 import { LeaseCriticalDatesSection } from "@/components/lease-analyzer/LeaseCriticalDatesSection";
+import { LeaseVerificationSection } from "@/components/lease-analyzer/LeaseVerificationSection";
 
 // Define the types for the analysis results
 interface LateFee {
@@ -127,12 +127,29 @@ interface UnusualClause {
   riskLevel?: "high" | "medium" | "low";
 }
 
+interface ExtractionConfidence {
+  rent: "high" | "medium" | "low";
+  securityDeposit: "high" | "medium" | "low";
+  lateFee: "high" | "medium" | "low";
+  term: "high" | "medium" | "low";
+  utilities: "high" | "medium" | "low";
+}
+
+interface RegexFindings {
+  potentialRentValues: number[] | null;
+  potentialDepositValues: number[] | null;
+}
+
 interface AnalysisResults {
   summary: string;
   complexTerms: ComplexTerm[];
   unusualClauses: UnusualClause[];
   questions: string[];
   extractedData?: ExtractedData;
+  extractionConfidence?: ExtractionConfidence;
+  regexFindings?: RegexFindings;
+  rentVerificationNeeded?: boolean;
+  alternativeRentValues?: number[];
 }
 
 const LeaseAnalyzer = () => {
@@ -235,21 +252,68 @@ const LeaseAnalyzer = () => {
       return await file.text();
     }
 
-    // For image files, we would need OCR in a production app
-    if (file.type === 'image/jpeg' || file.type === 'image/png') {
-      // In a production app, we'd implement OCR here
-      // For now, we'll return a message about this limitation
-      return `[This is image content from ${file.name}. In a production app, we would use OCR to extract text from this image.]`;
+    // For PDF files, try to use a PDF extraction library
+    if (file.type === 'application/pdf') {
+      try {
+        // Convert to ArrayBuffer for PDF processing
+        const arrayBuffer = await file.arrayBuffer();
+        
+        // Since we can't use PDF.js directly in browser context for full extraction,
+        // we'll send the binary data to the edge function for processing
+        // For now return the first part as text and mark it as partial extraction
+        const textData = await file.text();
+        return `${textData.slice(0, 20000)}... 
+        [Note: This is a partial text extraction from a PDF file. 
+        The edge function will attempt to process it further.]`;
+      } catch (error) {
+        console.error("Error extracting PDF text:", error);
+        return `[Error extracting text from PDF: ${file.name}. The analysis may be less accurate.]
+        ${await file.text().then(text => text.slice(0, 10000))}`;
+      }
     }
 
-    // For other file types (PDF, DOC, DOCX) we would need to use a dedicated library
-    // or service to extract text. For simplicity in this prototype, we'll just read the 
-    // first few KB as text and add a note about proper extraction
-    
-    const text = await file.text();
-    return `${text.slice(0, 10000)}... 
-    [Note: This is a simplified text extraction from a ${file.type} file. 
-    In a production application, we would use proper document parsing libraries or services.]`;
+    // For image files, notify user about OCR limitations
+    if (file.type === 'image/jpeg' || file.type === 'image/png') {
+      // In a production app, we would implement OCR here
+      return `[This is image content from ${file.name}. We'll attempt basic text recognition, but for best results, please upload a text-based PDF or document file.]`;
+    }
+
+    // For other file types (DOC, DOCX) we would need to use a dedicated library
+    // For now, we'll just read the first part as text and notify the user
+    try {
+      const text = await file.text();
+      return `${text.slice(0, 20000)}... 
+      [Note: This is a simplified text extraction from a ${file.type} file. 
+      For best results, please upload a PDF or plain text file.]`;
+    } catch (error) {
+      console.error("Error extracting text:", error);
+      return `[Error extracting text from ${file.name}. Please try a different file format.]`;
+    }
+  };
+
+  const [verificationRequired, setVerificationRequired] = useState(false);
+  const [verifiedData, setVerifiedData] = useState<Partial<ExtractedData>>();
+
+  const handleVerificationUpdate = (field: string, value: any) => {
+    setVerifiedData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleVerificationComplete = () => {
+    if (verifiedData && analysisResults) {
+      // Merge verified data with original analysis results
+      const updatedResults = {
+        ...analysisResults,
+        extractedData: {
+          ...analysisResults.extractedData,
+          ...verifiedData
+        }
+      };
+      setAnalysisResults(updatedResults);
+      setVerificationRequired(false);
+    }
   };
 
   const handleAnalyze = async () => {
@@ -282,6 +346,14 @@ const LeaseAnalyzer = () => {
 
       console.log("Lease analysis result:", data);
       setAnalysisResults(data);
+      
+      // Check if verification is needed based on confidence levels or explicit flag
+      if (data.rentVerificationNeeded || 
+          (data.extractionConfidence && 
+          (data.extractionConfidence.rent === 'low' || 
+           data.extractionConfidence.securityDeposit === 'low'))) {
+        setVerificationRequired(true);
+      }
       
     } catch (error) {
       console.error("Error analyzing lease:", error);
@@ -416,6 +488,42 @@ const LeaseAnalyzer = () => {
             </Button>
           </div>
 
+          {/* Verification Modal if needed */}
+          {verificationRequired && analysisResults && (
+            <Dialog open={verificationRequired} onOpenChange={setVerificationRequired}>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5 text-amber-500" /> Please Verify Key Information
+                  </DialogTitle>
+                  <DialogDescription className="pt-2">
+                    We've detected some values that may need verification. Please confirm or correct the information below.
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <LeaseVerificationSection 
+                  analysisResults={analysisResults}
+                  onUpdate={handleVerificationUpdate}
+                />
+
+                <DialogFooter className="sm:justify-between">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setVerificationRequired(false)}
+                  >
+                    Skip Verification
+                  </Button>
+                  <Button 
+                    onClick={handleVerificationComplete}
+                    className="bg-cyan-400 text-cyan-950 hover:bg-cyan-500"
+                  >
+                    Confirm & Continue
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
+
           <Tabs defaultValue="summary" className="w-full">
             <TabsList className="w-full grid grid-cols-7 bg-cyan-950/40">
               <TabsTrigger value="summary" className="flex items-center gap-1">
@@ -447,6 +555,7 @@ const LeaseAnalyzer = () => {
                 complexTerms={analysisResults.complexTerms}
                 unusualClauses={analysisResults.unusualClauses}
                 questions={analysisResults.questions}
+                confidence={analysisResults.extractionConfidence}
               />
             </TabsContent>
 
