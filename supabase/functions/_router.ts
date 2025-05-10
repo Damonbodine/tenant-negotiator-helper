@@ -106,7 +106,7 @@ serve(async (req: Request) => {
         );
       }
     } else if (path === '/api/lease-analyzer' || path.startsWith('/api/lease-analyzer')) {
-      console.log('Routing to lease-analyzer function');
+      console.log('Routing to claude-lease-analyzer function');
       
       // Parse request body safely
       let requestBody;
@@ -125,13 +125,13 @@ serve(async (req: Request) => {
       }
       
       try {
-        // Call the lease-analyzer function
-        const { data, error } = await supabase.functions.invoke('lease-analyzer', {
+        // Call the claude-lease-analyzer function (updated to use Claude)
+        const { data, error } = await supabase.functions.invoke('claude-lease-analyzer', {
           body: requestBody,
         });
 
         if (error) {
-          console.error('Error invoking lease-analyzer:', error);
+          console.error('Error invoking claude-lease-analyzer:', error);
           return new Response(
             JSON.stringify({ error: error.message || 'Invocation error' }),
             { 
@@ -143,7 +143,7 @@ serve(async (req: Request) => {
 
         // Make sure we never return empty data
         if (!data) {
-          console.error('No data returned from lease-analyzer');
+          console.error('No data returned from claude-lease-analyzer');
           return new Response(
             JSON.stringify({ error: 'No data returned from analyzer' }),
             { 
@@ -162,7 +162,7 @@ serve(async (req: Request) => {
             }
           );
       } catch (error) {
-        console.error('Error in lease-analyzer invocation:', error);
+        console.error('Error in claude-lease-analyzer invocation:', error);
         return new Response(
           JSON.stringify({ error: error.message || 'Function invocation error' }),
           { 
