@@ -2,11 +2,13 @@
 import { Link } from "react-router-dom";
 
 export const Footer = () => {
+  const currentYear = new Date().getFullYear();
+  
   return (
     <footer className="py-6 border-t">
       <div className="container flex flex-col items-center gap-2 md:flex-row md:justify-between">
         <p className="text-sm text-muted-foreground">
-          © {new Date().getFullYear()} Renters Mentor. All rights reserved.
+          © {currentYear} Renters Mentor. All rights reserved.
         </p>
         <div className="flex items-center gap-4">
           <Link 
@@ -33,6 +35,16 @@ export const Footer = () => {
           >
             Terms
           </Link>
+        </div>
+      </div>
+      
+      {/* Legal disclaimer footer */}
+      <div className="w-full py-2 mt-4 bg-white dark:bg-black border-t">
+        <div className="container">
+          <p className="text-xs text-center text-gray-500">
+            Renters Mentor is an educational tool. We are <strong>not attorneys or a licensed real-estate broker</strong>. 
+            Nothing here is legal advice. Consult a qualified professional before acting.
+          </p>
         </div>
       </div>
     </footer>
