@@ -457,7 +457,7 @@ serve(async (req: Request) => {
         "Authorization": `Bearer ${openAIApiKey}`
       },
       body: JSON.stringify({
-        model: "gpt-4o", // Using gpt-4o for improved accuracy
+        model: "gpt-4o", // Updated to use GPT-4o for improved accuracy
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: processedText },
