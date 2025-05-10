@@ -14,30 +14,30 @@ const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 // Specific patterns for common lease formats
 const rentPatterns = [
   // Common format with section headers like "3. RENT:" followed by amount
-  /(?:RENT|PAYMENT|BASE\s+RENT|MONTHLY\s+RENT)(?:\s*:|\.|\s+is|\s+shall\s+be|\s+will\s+be)\s*\$?([\d,]+(?:\.\d{1,2})?)/i,
+  /(?:RENT|PAYMENT|BASE\s+RENT|MONTHLY\s+RENT)(?:\s*:|\.|\s+is|\s+shall\s+be|\s+will\s+be)\s*\$?([\d,]+(?:\.\d{1,2})?)/ig,
   
   // Dollar amounts followed by "per month" or similar
-  /\$([\d,]+(?:\.\d{1,2})?)\s*(?:per|\/)\s*(?:month|mo)/i,
+  /\$([\d,]+(?:\.\d{1,2})?)\s*(?:per|\/)\s*(?:month|mo)/ig,
   
   // "Tenant shall pay" format
-  /(?:tenant|lessee)(?:\s*shall|\s*will|\s*agrees\s*to)?\s*pay\s*\$?([\d,]+(?:\.\d{1,2})?)/i,
+  /(?:tenant|lessee)(?:\s*shall|\s*will|\s*agrees\s*to)?\s*pay\s*\$?([\d,]+(?:\.\d{1,2})?)/ig,
   
   // "rent amount" format
-  /rent\s*(?:is|shall\s*be|will\s*be|amount)?\s*(?:is|\:)?\s*\$?([\d,]+(?:\.\d{1,2})?)/i,
+  /rent\s*(?:is|shall\s*be|will\s*be|amount)?\s*(?:is|\:)?\s*\$?([\d,]+(?:\.\d{1,2})?)/ig,
   
   // Format where rent is mentioned with dollar sign
-  /rent.*?\$\s*([\d,]+(?:\.\d{1,2})?)/i,
+  /rent.*?\$\s*([\d,]+(?:\.\d{1,2})?)/ig,
   
   // Format common in standard lease templates: "Tenant's monthly Rent for the Apartment is $X,XXX"
-  /tenant(?:'s)?\s*monthly\s*rent\s*(?:for\s*the\s*(?:apartment|unit|property))?\s*is\s*\$?([\d,]+(?:\.\d{1,2})?)/i
+  /tenant(?:'s)?\s*monthly\s*rent\s*(?:for\s*the\s*(?:apartment|unit|property))?\s*is\s*\$?([\d,]+(?:\.\d{1,2})?)/ig
 ];
 
 const securityDepositPatterns = [
   // Common format for security deposit sections
-  /(?:security\s*deposit)(?:\s*:|\.|\s+is|\s+shall\s+be|\s+will\s+be|\s*of|\s*amount|\s*in\s*the\s*amount\s*of)?\s*\$?([\d,]+(?:\.\d{1,2})?)/i,
+  /(?:security\s*deposit)(?:\s*:|\.|\s+is|\s+shall\s+be|\s+will\s+be|\s*of|\s*amount|\s*in\s*the\s*amount\s*of)?\s*\$?([\d,]+(?:\.\d{1,2})?)/ig,
   
   // Standard lease template format
-  /(?:deposit|security\s*deposit)\s*(?:of|is|in\s*the\s*amount\s*of|amount|:)?\s*\$?([\d,]+(?:\.\d{1,2})?)/i
+  /(?:deposit|security\s*deposit)\s*(?:of|is|in\s*the\s*amount\s*of|amount|:)?\s*\$?([\d,]+(?:\.\d{1,2})?)/ig
 ];
 
 /**
@@ -319,18 +319,18 @@ serve(async (req: Request) => {
     CRITICAL FINANCIAL INFORMATION EXTRACTION:
     - Pay special attention to RENT AMOUNT - look for monthly rent, base rent, or annual rent divided by 12
     - Common rent formats include:
-      * "$1,800 per month"
-      * "monthly rent: $1,800" 
-      * "Tenant shall pay $1,800"
-      * "rent will be $1,800 per month"
-      * "RENT: $1,800"
-      * "agrees to pay $1,800 monthly"
-      * "Monthly Rent Amount: $1,800.00"
-      * "Monthly Rent $1,800.00"
-      * "Rent Amount. $1,800 per month"
-      * "Base Rent. The Tenant will pay $1,800 each month."
-      * "3. RENT: $1,800"
-      * "RENT/LEASE PAYMENT. Tenant shall pay rent in the amount of $1,800"
+      * "$5,300 per month"
+      * "monthly rent: $5,300" 
+      * "Tenant shall pay $5,300"
+      * "rent will be $5,300 per month"
+      * "RENT: $5,300"
+      * "agrees to pay $5,300 monthly"
+      * "Monthly Rent Amount: $5,300.00"
+      * "Monthly Rent $5,300.00"
+      * "Rent Amount. $5,300 per month"
+      * "Base Rent. The Tenant will pay $5,300 each month."
+      * "3. RENT: $5,300"
+      * "RENT/LEASE PAYMENT. Tenant shall pay rent in the amount of $5,300"
     - Look specifically in sections labeled "RENT", "PAYMENT", "FINANCIAL TERMS" or "LEASE TERMS" 
     - If multiple rent values appear, look for context to determine the primary current rent amount
     - If you find multiple possible rent values, list them all in your confidence assessment
@@ -381,8 +381,8 @@ serve(async (req: Request) => {
       ],
       "extractedData": {
         "financial": {
-          "rent": {"amount": 1800, "frequency": "monthly"},
-          "securityDeposit": 1800,
+          "rent": {"amount": 5300, "frequency": "monthly"},
+          "securityDeposit": 5300,
           "lateFee": {"amount": 50, "gracePeriod": 5, "type": "fixed|percentage"},
           "utilities": {
             "included": ["water", "trash"],
@@ -436,7 +436,7 @@ serve(async (req: Request) => {
         "term": "high|medium|low",
         "utilities": "high|medium|low"
       },
-      "additionalRentValues": [1500, 1800, 2000] // Include if multiple values found
+      "additionalRentValues": [5300, 5400, 5500] // Include if multiple values found
     }`;
 
     // Prepare a data packet for OpenAI that includes our regex findings to help guide the AI
@@ -499,11 +499,13 @@ serve(async (req: Request) => {
       // If regex found values that match the AI extraction, increase confidence
       if (regexExtractedData.potentialRentValues.includes(aiRent)) {
         analysisContent.extractionConfidence.rent = "high";
+        console.log(`AI rent value (${aiRent}) matches regex findings - setting confidence to high`);
       } 
       // If regex found values that differ from AI extraction, flag for verification
       else if (regexExtractedData.potentialRentValues.length > 0) {
         analysisContent.rentVerificationNeeded = true;
         analysisContent.alternativeRentValues = regexExtractedData.potentialRentValues;
+        console.log(`AI rent value (${aiRent}) doesn't match regex findings - verification needed`);
       }
     }
     
@@ -513,6 +515,7 @@ serve(async (req: Request) => {
       
       // If AI didn't find a rent value but regex did, prompt for verification
       if (!analysisContent.extractedData?.financial?.rent?.amount && regexExtractedData.potentialRentValues.length > 0) {
+        console.log(`AI didn't extract rent but regex found values - setting default and requiring verification`);
         // Set a default rent value from regex for verification
         if (!analysisContent.extractedData) {
           analysisContent.extractedData = {};

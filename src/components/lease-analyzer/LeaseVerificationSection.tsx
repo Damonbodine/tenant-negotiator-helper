@@ -35,20 +35,24 @@ export function LeaseVerificationSection({
   const [securityDeposit, setSecurityDeposit] = useState<string>('');
   const [frequency, setFrequency] = useState<string>('monthly');
   const [dataChanged, setDataChanged] = useState<boolean>(false);
+  const [initialDataLoaded, setInitialDataLoaded] = useState<boolean>(false);
 
   // Initialize form with values from analysis
   useEffect(() => {
-    if (analysisResults?.extractedData?.financial?.rent?.amount) {
-      setRentAmount(analysisResults.extractedData.financial.rent.amount.toString());
-      setFrequency(analysisResults.extractedData.financial.rent.frequency || 'monthly');
+    if (!initialDataLoaded && analysisResults?.extractedData?.financial) {
+      if (analysisResults.extractedData.financial.rent?.amount) {
+        setRentAmount(analysisResults.extractedData.financial.rent.amount.toString());
+        setFrequency(analysisResults.extractedData.financial.rent.frequency || 'monthly');
+      }
+      
+      if (analysisResults.extractedData.financial.securityDeposit) {
+        setSecurityDeposit(analysisResults.extractedData.financial.securityDeposit.toString());
+      }
+      
+      setInitialDataLoaded(true);
+      setDataChanged(false);
     }
-    
-    if (analysisResults?.extractedData?.financial?.securityDeposit) {
-      setSecurityDeposit(analysisResults.extractedData.financial.securityDeposit.toString());
-    }
-    
-    setDataChanged(false);
-  }, [analysisResults]);
+  }, [analysisResults, initialDataLoaded]);
 
   // Update parent component when values change
   const handleRentChange = (value: string) => {
