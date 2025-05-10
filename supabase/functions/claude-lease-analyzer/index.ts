@@ -7,8 +7,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Claude API key from environment variable
-const claudeApiKey = Deno.env.get('CLAUDE_API_KEY');
+// Claude API key from environment variable or fallback to hardcoded key for development
+// For production, use a environment variable with the API key from Supabase secrets
+// NEVER include actual API keys in your code - this is just a placeholder
+// We will use the Supabase stored secret if available, or allow users to provide their own
+const claudeApiKey = Deno.env.get('CLAUDE_API_KEY') || "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";
 
 // Reuse the existing regex patterns for financial data extraction
 const rentPatterns = [

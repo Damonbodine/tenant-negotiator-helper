@@ -8,9 +8,10 @@ import { saveApiKey, getApiKey } from "@/utils/keyManager";
 
 interface ClaudeApiKeyInputProps {
   onClose: () => void;
+  isRequired?: boolean;
 }
 
-export const ClaudeApiKeyInput = ({ onClose }: ClaudeApiKeyInputProps) => {
+export const ClaudeApiKeyInput = ({ onClose, isRequired = false }: ClaudeApiKeyInputProps) => {
   const { toast } = useToast();
   const [apiKey, setApiKey] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -63,7 +64,10 @@ export const ClaudeApiKeyInput = ({ onClose }: ClaudeApiKeyInputProps) => {
         <DialogHeader>
           <DialogTitle>Claude API Key</DialogTitle>
           <DialogDescription>
-            Enter your Claude API key to enable advanced lease analysis.
+            {isRequired 
+              ? "Enter your Claude API key to enable advanced lease analysis."
+              : "Add your own Claude API key to use for lease analysis (optional)."
+            }
           </DialogDescription>
         </DialogHeader>
         
@@ -94,6 +98,9 @@ export const ClaudeApiKeyInput = ({ onClose }: ClaudeApiKeyInputProps) => {
         </div>
         
         <DialogFooter>
+          {!isRequired && (
+            <Button variant="ghost" onClick={onClose}>Skip</Button>
+          )}
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button onClick={handleSave} disabled={isLoading}>
             {isLoading ? "Saving..." : "Save API Key"}
