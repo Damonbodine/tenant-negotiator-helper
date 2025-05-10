@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Upload, FileText, AlertCircle, CheckCircle, Shield, Link as LinkIcon, Calendar, BarChart3, FileBarChart, Clock } from "lucide-react";
+import { Upload, FileText, AlertCircle, CheckCircle, Shield, Link as LinkIcon, Calendar, BarChart3, FileBarChart, Clock, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
