@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/shared/ui/card";
@@ -172,7 +171,7 @@ const DownPaymentPrograms = () => {
                         // Add ellipsis where needed
                         if (index > 0 && array[index - 1] !== page - 1) {
                           return (
-                            <React.Fragment key={`ellipsis-${page}`}>
+                            <Fragment key={`ellipsis-${page}`}>
                               <PaginationItem>
                                 <span className="flex h-9 w-9 items-center justify-center">...</span>
                               </PaginationItem>
@@ -184,7 +183,7 @@ const DownPaymentPrograms = () => {
                                   {page}
                                 </PaginationLink>
                               </PaginationItem>
-                            </React.Fragment>
+                            </Fragment>
                           );
                         }
                         
