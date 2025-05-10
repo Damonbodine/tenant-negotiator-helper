@@ -22,6 +22,8 @@ import { LeasePropertySection } from "@/components/lease-analyzer/LeasePropertyS
 import { LeaseResponsibilitiesSection } from "@/components/lease-analyzer/LeaseResponsibilitiesSection";
 import { LeaseCriticalDatesSection } from "@/components/lease-analyzer/LeaseCriticalDatesSection";
 import { LeaseVerificationSection } from "@/components/lease-analyzer/LeaseVerificationSection";
+import { ClaudeApiKeyInput } from "@/components/ClaudeApiKeyInput";
+import { hasApiKey } from "@/utils/keyManager";
 
 // Define the types for the analysis results
 interface LateFee {
@@ -159,14 +161,31 @@ const LeaseAnalyzer = () => {
   const [disclaimerOpen, setDisclaimerOpen] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<AnalysisResults | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Add new state variables for Claude API key
+  const [showClaudeApiKeyInput, setShowClaudeApiKeyInput] = useState(false);
+  const [hasClaudeApiKey, setHasClaudeApiKey] = useState(false);
 
   // Check if disclaimer has been seen when component mounts
+  // Also check if Claude API key exists
   useEffect(() => {
     const disclaimerSeen = localStorage.getItem('leaseDisclaimerSeen') === 'true';
     if (!disclaimerSeen) {
       setDisclaimerOpen(true);
     }
-  }, []);
+    
+    // Check if Claude API key exists
+    const checkClaudeApiKey = async () => {
+      const hasKey = await hasApiKey('CLAUDE');
+      setHasClaudeApiKey(hasKey);
+      // If they uploaded a file but don't have API key, prompt for it
+      if (file && !hasKey) {
+        setShowClaudeApiKeyInput(true);
+      }
+    };
+    
+    checkClaudeApiKey();
+  }, [file]);
 
   // Function to handle disclaimer acknowledgment
   const handleDisclaimerAcknowledged = () => {
@@ -203,6 +222,14 @@ const LeaseAnalyzer = () => {
       }
       
       setFile(selectedFile);
+      
+      // Check if Claude API key exists after file selection
+      hasApiKey('CLAUDE').then(hasKey => {
+        if (!hasKey) {
+          setShowClaudeApiKeyInput(true);
+        }
+        setHasClaudeApiKey(hasKey);
+      });
     }
   };
 
@@ -239,6 +266,14 @@ const LeaseAnalyzer = () => {
       }
       
       setFile(droppedFile);
+      
+      // Check if Claude API key exists after file drop
+      hasApiKey('CLAUDE').then(hasKey => {
+        if (!hasKey) {
+          setShowClaudeApiKeyInput(true);
+        }
+        setHasClaudeApiKey(hasKey);
+      });
     }
   };
 
@@ -355,6 +390,14 @@ const LeaseAnalyzer = () => {
   const handleAnalyze = async () => {
     if (!file) return;
     
+    // Check if Claude API key exists before analysis
+    const hasKey = await hasApiKey('CLAUDE');
+    
+    if (!hasKey) {
+      setShowClaudeApiKeyInput(true);
+      return;
+    }
+    
     setIsAnalyzing(true);
     setVerifiedData({});
     
@@ -362,9 +405,9 @@ const LeaseAnalyzer = () => {
       // Extract text from the file
       const documentText = await extractTextFromFile(file);
       
-      // Call the Supabase edge function to analyze the document
-      console.log("Calling lease-analyzer function with document text sample:", documentText.slice(0, 200));
-      const { data, error } = await supabase.functions.invoke('lease-analyzer', {
+      // Call the Supabase edge function to analyze the document (now using Claude)
+      console.log("Calling claude-lease-analyzer function with document text sample:", documentText.slice(0, 200));
+      const { data, error } = await supabase.functions.invoke('claude-lease-analyzer', {
         body: {
           documentText,
           documentType: file.type,
@@ -373,7 +416,7 @@ const LeaseAnalyzer = () => {
       });
 
       if (error) {
-        console.error("Error calling lease-analyzer function:", error);
+        console.error("Error calling claude-lease-analyzer function:", error);
         toast({
           variant: "destructive",
           title: "Analysis failed",
@@ -382,11 +425,10 @@ const LeaseAnalyzer = () => {
         return;
       }
 
-      console.log("Lease analysis result:", data);
+      console.log("Lease analysis result from Claude:", data);
       setAnalysisResults(data);
       
-      // Enhanced verification check - show verification more aggressively
-      // Check if verification is needed based on confidence levels, explicit flag, or regex discrepancies
+      // Enhanced verification check
       if (data.rentVerificationNeeded || 
           (data.extractionConfidence && data.extractionConfidence.rent === 'low') || 
           (data.regexRentValues && 
@@ -419,6 +461,15 @@ const LeaseAnalyzer = () => {
     setVerifiedData({});
   };
 
+  // Handler for Claude API key dialog
+  const handleClaudeApiKeyDialogClose = () => {
+    setShowClaudeApiKeyInput(false);
+    // Check if they now have the API key
+    hasApiKey('CLAUDE').then(hasKey => {
+      setHasClaudeApiKey(hasKey);
+    });
+  };
+
   return (
     <div className="container py-8 max-w-4xl mx-auto">
       <h1 className="text-4xl font-bold mb-6 text-center gradient-heading">Lease Document Analyzer</h1>
@@ -445,6 +496,11 @@ const LeaseAnalyzer = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Claude API Key Input Dialog */}
+      {showClaudeApiKeyInput && (
+        <ClaudeApiKeyInput onClose={handleClaudeApiKeyDialogClose} />
+      )}
 
       {/* File Upload Card */}
       {!analysisResults ? (
@@ -505,19 +561,27 @@ const LeaseAnalyzer = () => {
                     <Button 
                       onClick={handleAnalyze}
                       className="bg-cyan-400 text-cyan-950 hover:bg-cyan-500"
-                      disabled={isAnalyzing}
+                      disabled={isAnalyzing || !hasClaudeApiKey}
                     >
-                      {isAnalyzing ? (
+                      {!hasClaudeApiKey ? (
+                        "Add Claude API Key to Continue"
+                      ) : isAnalyzing ? (
                         <>
                           <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-cyan-950" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                           </svg>
-                          Analyzing...
+                          Analyzing with Claude AI...
                         </>
-                      ) : "Analyze Document"}
+                      ) : "Analyze Document with Claude"}
                     </Button>
                   </div>
+                  {!hasClaudeApiKey && (
+                    <div className="mt-4 p-2 bg-amber-950/20 border border-amber-400/30 rounded text-amber-400 text-sm">
+                      <AlertCircle className="inline-block h-4 w-4 mr-1" />
+                      You need to add a Claude API key to analyze your document.
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -674,6 +738,13 @@ const LeaseAnalyzer = () => {
           </div>
         </div>
       )}
+      
+      {/* Add a "Powered by Claude" badge */}
+      <div className="text-center mt-8">
+        <p className="text-sm text-cyan-400/60">
+          Powered by <span className="font-semibold">Claude 3 Sonnet</span> for enhanced lease analysis
+        </p>
+      </div>
     </div>
   );
 };

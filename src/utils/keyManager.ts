@@ -27,6 +27,12 @@ export const API_KEYS: Record<string, ApiKeyConfig> = {
     storageKey: "google_api_key",
     isRequired: false,
     url: "https://console.cloud.google.com/apis/credentials"
+  },
+  CLAUDE: {
+    name: "Claude API Key",
+    storageKey: "claude_api_key",
+    isRequired: true,
+    url: "https://console.anthropic.com/settings/keys"
   }
   // Add additional API keys here as needed
 };
@@ -152,7 +158,7 @@ export const removeApiKey = async (keyType: string): Promise<void> => {
 };
 
 /**
- * Get all missing required API keys
+ * Get all missing required keys
  */
 export const getMissingRequiredKeys = async (): Promise<ApiKeyConfig[]> => {
   const missingKeys = [];
