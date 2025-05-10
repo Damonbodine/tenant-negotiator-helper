@@ -1,6 +1,6 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tool, Droplets, Shield, AlertTriangle } from "lucide-react";
+import { Wrench, Droplets, Shield, AlertTriangle } from "lucide-react";
 
 interface Maintenance {
   landlord: string[];
@@ -33,7 +33,7 @@ export function LeaseResponsibilitiesSection({ responsibilities }: LeaseResponsi
       <Card className="border-cyan-400/30 bg-cyan-950/20">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-cyan-400">
-            <Tool className="h-5 w-5" /> Maintenance Responsibilities
+            <Wrench className="h-5 w-5" /> Maintenance Responsibilities
           </CardTitle>
           <CardDescription>Who is responsible for maintenance and repairs</CardDescription>
         </CardHeader>
