@@ -1,6 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, ExternalLink, ChevronLeft, Mail, ClipboardCheck, Home, Shield, AlertTriangle, FileText } from "lucide-react";
+import { 
+  Download, ExternalLink, ChevronLeft, Mail, ClipboardCheck, Home, 
+  Shield, AlertTriangle, FileText, DollarSign 
+} from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 
@@ -59,6 +62,17 @@ const Resources = () => {
       description: "Everything you need to know about protecting your belongings",
       link: "/resources/renters-insurance",
       type: "page"
+    }]
+  }, {
+    title: "Down Payment Assistance",
+    description: "Programs to help first-time homebuyers with down payment and closing costs",
+    icon: <DollarSign className="h-5 w-5 text-purple-500" />,
+    resources: [{
+      title: "Down Payment Assistance Programs",
+      description: "State and federal programs to help you buy your first home",
+      link: "/resources/down-payment-assistance",
+      type: "page",
+      badge: "New"
     }]
   }];
 
@@ -628,6 +642,68 @@ Best,
                 <span>Check cell reception in all rooms — especially if you work from home</span>
               </li>
             </ul>
+          </div>
+          
+          <div className="flex justify-end">
+            <Button variant="outline" asChild className="gap-1">
+              <Link to="/resources">
+                <ChevronLeft className="h-4 w-4" /> Back to Resources
+              </Link>
+            </Button>
+          </div>
+        </div>
+    },
+    "down-payment-assistance": {
+      title: "Down Payment Assistance Programs",
+      content: <div className="space-y-6">
+          <p>
+            Finding it hard to save for a down payment? You're not alone. Fortunately, there are numerous programs 
+            designed to help homebuyers—especially first-timers—get into a home with less money upfront.
+            Browse available programs by state or explore nationwide options below.
+          </p>
+          
+          <div className="flex flex-col space-y-4">
+            <Link to="/resources/down-payment-programs" className="w-full">
+              <Button className="w-full bg-purple-600 hover:bg-purple-700">
+                <DollarSign className="mr-2 h-4 w-4" />
+                View All Down Payment Programs
+              </Button>
+            </Link>
+          </div>
+          
+          <div className="space-y-4">
+            <h3 className="font-medium text-lg">What to Know About Down Payment Assistance</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Types of Programs</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>Grants (non-repayable gifts)</li>
+                    <li>Forgivable loans (forgiven over time)</li>
+                    <li>Deferred-payment loans (due when you sell)</li>
+                    <li>Low-interest loans (second mortgages)</li>
+                    <li>Matched savings programs</li>
+                  </ul>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Common Requirements</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="list-disc pl-5 space-y-1">
+                    <li>First-time homebuyer status</li>
+                    <li>Income limits</li>
+                    <li>Home price limits</li>
+                    <li>Credit score minimums</li>
+                    <li>Homebuyer education courses</li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </div>
           </div>
           
           <div className="flex justify-end">
