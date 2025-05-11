@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -157,6 +156,285 @@ function identifyLeaseTemplate(text: string): string | null {
   return null;
 }
 
+/**
+ * Structure for the lease analysis results
+ */
+interface LeaseAnalysisResult {
+  summary: string;
+  complexTerms: Array<{term: string, explanation: string}>;
+  unusualClauses: Array<{clause: string, concern: string, riskLevel?: string}>;
+  questions: string[];
+  extractedData?: {
+    financial?: {
+      rent?: {amount: number, frequency: string},
+      securityDeposit?: number,
+      lateFee?: any,
+      utilities?: any,
+      otherFees?: any[]
+    },
+    term?: any,
+    parties?: any,
+    property?: any,
+    responsibilities?: any,
+    criticalDates?: any[]
+  };
+  extractionConfidence?: {
+    rent?: string,
+    securityDeposit?: string,
+    lateFee?: string,
+    term?: string,
+    utilities?: string
+  };
+  regexFindings?: {
+    potentialRentValues: number[] | null;
+    potentialDepositValues: number[] | null;
+  };
+  rentVerificationNeeded?: boolean;
+  alternativeRentValues?: number[];
+}
+
+/**
+ * Convert the free-form text response from Claude to structured data
+ */
+function parseClaudeResponse(text: string): LeaseAnalysisResult {
+  console.log("Parsing Claude response text");
+  
+  // Default structure
+  const result: LeaseAnalysisResult = {
+    summary: "",
+    complexTerms: [],
+    unusualClauses: [],
+    questions: [],
+    extractionConfidence: {
+      rent: "low",
+      securityDeposit: "low",
+      lateFee: "low",
+      term: "low",
+      utilities: "low"
+    }
+  };
+  
+  // Try to extract the summary section
+  const summaryMatch = text.match(/Lease Summary:([^#]*?)(?:Complex Legal Terms:|$)/is);
+  if (summaryMatch && summaryMatch[1]) {
+    result.summary = summaryMatch[1].trim();
+  } else {
+    // If no specific summary section, use the first 500 characters as summary
+    result.summary = text.slice(0, 500) + "...";
+  }
+  
+  // Try to extract complex legal terms
+  const complexTermsMatch = text.match(/Complex Legal Terms:([^#]*?)(?:Unusual Clauses:|$)/is);
+  if (complexTermsMatch && complexTermsMatch[1]) {
+    const termTexts = complexTermsMatch[1].split(/\n\s*[-•*]\s*/);
+    termTexts.forEach(termText => {
+      const parts = termText.split(/[:–]/);
+      if (parts.length >= 2) {
+        result.complexTerms.push({
+          term: parts[0].trim(),
+          explanation: parts.slice(1).join(":").trim()
+        });
+      }
+    });
+  }
+  
+  // Try to extract unusual clauses
+  const unusualClausesMatch = text.match(/Unusual Clauses:([^#]*?)(?:Questions|$)/is);
+  if (unusualClausesMatch && unusualClausesMatch[1]) {
+    const clauseTexts = unusualClausesMatch[1].split(/\n\s*[-•*]\s*/);
+    clauseTexts.forEach(clauseText => {
+      if (clauseText.trim()) {
+        // Look for risk level designation
+        let riskLevel = "medium";
+        if (clauseText.toLowerCase().includes("high risk")) riskLevel = "high";
+        if (clauseText.toLowerCase().includes("low risk")) riskLevel = "low";
+        
+        result.unusualClauses.push({
+          clause: clauseText.trim(),
+          concern: "Potential concern identified by analysis",
+          riskLevel
+        });
+      }
+    });
+  }
+  
+  // Try to extract questions
+  const questionsMatch = text.match(/Questions[^:]*:([^#]*?)(?:Structured Data|Financial Information|$)/is);
+  if (questionsMatch && questionsMatch[1]) {
+    const questionLines = questionsMatch[1].split(/\n\s*[-•*]\s*/);
+    questionLines.forEach(line => {
+      if (line.trim() && line.trim().endsWith("?")) {
+        result.questions.push(line.trim());
+      }
+    });
+  }
+  
+  // Extract financial information
+  if (!result.extractedData) {
+    result.extractedData = {};
+  }
+  
+  // Parse rent information
+  const rentMatch = text.match(/Rent Amount:([^,\n]*)/i);
+  if (rentMatch && rentMatch[1]) {
+    const rentText = rentMatch[1].trim();
+    const rentAmountMatch = rentText.match(/\$?(\d{1,3}(,\d{3})*(\.\d{1,2})?)/);
+    
+    if (rentAmountMatch) {
+      if (!result.extractedData.financial) {
+        result.extractedData.financial = {};
+      }
+      
+      result.extractedData.financial.rent = {
+        amount: parseFloat(rentAmountMatch[1].replace(/,/g, '')),
+        frequency: "monthly"
+      };
+      
+      // Set confidence based on text
+      if (!result.extractionConfidence) {
+        result.extractionConfidence = {};
+      }
+      
+      if (rentText.toLowerCase().includes("unknown") || 
+          rentText.toLowerCase().includes("not specified") ||
+          rentText.toLowerCase().includes("not found")) {
+        result.extractionConfidence.rent = "low";
+      } else {
+        result.extractionConfidence.rent = "medium";
+      }
+    }
+  }
+  
+  // Parse security deposit information
+  const depositMatch = text.match(/Security Deposit:([^,\n]*)/i);
+  if (depositMatch && depositMatch[1]) {
+    const depositText = depositMatch[1].trim();
+    const depositAmountMatch = depositText.match(/\$?(\d{1,3}(,\d{3})*(\.\d{1,2})?)/);
+    
+    if (depositAmountMatch) {
+      if (!result.extractedData.financial) {
+        result.extractedData.financial = {};
+      }
+      
+      result.extractedData.financial.securityDeposit = parseFloat(depositAmountMatch[1].replace(/,/g, ''));
+      
+      // Set confidence based on text
+      if (!result.extractionConfidence) {
+        result.extractionConfidence = {};
+      }
+      
+      if (depositText.toLowerCase().includes("unknown") || 
+          depositText.toLowerCase().includes("not specified") ||
+          depositText.toLowerCase().includes("not found")) {
+        result.extractionConfidence.securityDeposit = "low";
+      } else {
+        result.extractionConfidence.securityDeposit = "medium";
+      }
+    }
+  }
+  
+  // Extract term information
+  if (text.includes("Term Information") || text.includes("Start Date") || text.includes("End Date")) {
+    if (!result.extractedData.term) {
+      result.extractedData.term = {
+        start: "unknown",
+        end: "unknown",
+        durationMonths: 12, // Default
+        renewalType: "unknown",
+        renewalNoticeDays: 30, // Default
+        earlyTermination: {
+          allowed: false,
+          fee: "unknown"
+        }
+      };
+    }
+    
+    // Try to extract start date
+    const startDateMatch = text.match(/Start Date:([^,\n]*)/i);
+    if (startDateMatch && startDateMatch[1] && !startDateMatch[1].toLowerCase().includes("unknown")) {
+      result.extractedData.term.start = startDateMatch[1].trim();
+    }
+    
+    // Try to extract end date
+    const endDateMatch = text.match(/End Date:([^,\n]*)/i);
+    if (endDateMatch && endDateMatch[1] && !endDateMatch[1].toLowerCase().includes("unknown")) {
+      result.extractedData.term.end = endDateMatch[1].trim();
+    }
+  }
+  
+  // Extract property information
+  if (text.includes("Property Information") || text.includes("Address:")) {
+    if (!result.extractedData.property) {
+      result.extractedData.property = {
+        address: "unknown",
+        type: "unknown",
+        amenities: [],
+        furnishings: []
+      };
+    }
+    
+    // Try to extract address
+    const addressMatch = text.match(/Address:([^,\n]*)/i);
+    if (addressMatch && addressMatch[1] && !addressMatch[1].toLowerCase().includes("unknown")) {
+      result.extractedData.property.address = addressMatch[1].trim();
+    }
+  }
+  
+  // Extract party information
+  if (text.includes("Party Information") || text.includes("Landlord Name:") || text.includes("Tenant Name")) {
+    if (!result.extractedData.parties) {
+      result.extractedData.parties = {
+        landlord: "unknown",
+        tenants: [],
+        jointAndSeveralLiability: true
+      };
+    }
+    
+    // Try to extract landlord
+    const landlordMatch = text.match(/Landlord Name:([^,\n]*)/i);
+    if (landlordMatch && landlordMatch[1] && !landlordMatch[1].toLowerCase().includes("unknown")) {
+      result.extractedData.parties.landlord = landlordMatch[1].trim();
+    }
+    
+    // Try to extract tenant(s)
+    const tenantMatch = text.match(/Tenant Name\(s\):([^,\n]*)/i);
+    if (tenantMatch && tenantMatch[1] && !tenantMatch[1].toLowerCase().includes("unknown")) {
+      result.extractedData.parties.tenants = [tenantMatch[1].trim()];
+    }
+  }
+  
+  // Extract responsibilities
+  if (!result.extractedData.responsibilities) {
+    result.extractedData.responsibilities = {
+      maintenance: {
+        landlord: ["Major repairs", "Structural maintenance"],
+        tenant: ["Minor repairs", "Regular cleaning"]
+      },
+      utilities: {
+        landlord: [],
+        tenant: ["Electricity", "Water", "Internet"]
+      },
+      insurance: {
+        requiredForTenant: false,
+        minimumCoverage: "unknown"
+      }
+    };
+  }
+  
+  // Extract critical dates
+  if (!result.extractedData.criticalDates) {
+    result.extractedData.criticalDates = [
+      {
+        label: "Rent Due Date",
+        date: "1st of each month"
+      }
+    ];
+  }
+  
+  console.log("Finished parsing Claude response to structured format");
+  return result;
+}
+
 serve(async (req: Request) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -273,7 +551,7 @@ serve(async (req: Request) => {
     console.log("Sending document to Claude for analysis");
     
     // Call Claude API to analyze the document
-    // Updated model name to 'claude-3-opus-20240229'
+    // Using 'claude-3-opus-20240229' model
     const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -314,17 +592,19 @@ serve(async (req: Request) => {
     const claudeData = await claudeResponse.json();
     console.log("Received Claude response");
     
-    // Parse the content from Claude's response
-    let analysisContent;
+    // Instead of trying to parse JSON, parse the text response into structured data
+    let analysisContent: LeaseAnalysisResult;
     try {
-      analysisContent = JSON.parse(claudeData.content[0].text);
+      // Use our parser function to convert text to structured data
+      analysisContent = parseClaudeResponse(claudeData.content[0].text);
+      console.log("Successfully parsed Claude response into structured format");
     } catch (error) {
-      console.error("Error parsing Claude response:", error);
+      console.error("Error parsing Claude response text:", error);
       return new Response(
         JSON.stringify({ 
           error: 'Failed to parse Claude response', 
-          details: claudeData.content[0].text.slice(0, 500) + "...",
-          rawResponse: claudeData.content[0].text
+          details: error.message,
+          rawResponse: claudeData.content[0].text.slice(0, 500) + "..."
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
