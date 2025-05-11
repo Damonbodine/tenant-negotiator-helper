@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { voiceClient } from "@/shared/services/voiceClient";
 
 interface ApiKeyInputProps {
+  keyType?: string; // Make keyType optional to match our main ApiKeyInput component
   onClose: () => void;
 }
 
