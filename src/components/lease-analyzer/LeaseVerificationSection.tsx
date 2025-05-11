@@ -22,14 +22,28 @@ interface AnalysisResults {
       };
       securityDeposit?: number | null;
     };
+    term?: {
+      start?: string;
+      end?: string;
+    };
+    parties?: {
+      landlord?: string;
+      tenants?: string[];
+    };
   };
   regexFindings?: {
     potentialRentValues: number[] | null;
     potentialDepositValues: number[] | null;
+    potentialTenants: string[] | null;
   };
   rentVerificationNeeded?: boolean;
   alternativeRentValues?: number[];
   regexRentValues?: number[];
+  extractionConfidence?: {
+    rent?: "high" | "medium" | "low";
+    securityDeposit?: "high" | "medium" | "low";
+    term?: "high" | "medium" | "low";
+  };
 }
 
 interface LeaseVerificationSectionProps {
@@ -44,15 +58,19 @@ export function LeaseVerificationSection({ analysisResults, onUpdate }: LeaseVer
   const [showVerification, setShowVerification] = useState(false);
 
   useEffect(() => {
-    // Check if verification is needed
+    // Enhanced verification check including regex findings and confidence scores
     const needsVerification = 
       analysisResults.rentVerificationNeeded || 
       (analysisResults.regexRentValues && analysisResults.regexRentValues.length > 0) ||
-      (analysisResults.extractedData?.financial?.rent?.amount === null);
+      (analysisResults.regexFindings?.potentialRentValues && 
+       analysisResults.regexFindings.potentialRentValues.length > 0) ||
+      (analysisResults.extractionConfidence?.rent === 'low') ||
+      (analysisResults.extractedData?.financial?.rent?.amount === null) ||
+      (!analysisResults.extractedData?.financial?.rent?.amount);
     
     setShowVerification(needsVerification);
 
-    // Set initial values from analysis
+    // Set initial values from analysis with improved null handling
     if (analysisResults.extractedData?.financial?.rent?.amount) {
       setRentAmount(analysisResults.extractedData.financial.rent.amount);
     }
@@ -104,23 +122,44 @@ export function LeaseVerificationSection({ analysisResults, onUpdate }: LeaseVer
       });
     }
   };
+  
+  // Helper to display regex findings in a user-friendly way
+  const formatPotentialValues = (values: number[] | null | undefined): string => {
+    if (!values || values.length === 0) return "None found";
+    return values.map(v => `$${v.toLocaleString()}`).join(', ');
+  };
 
   // If no verification is needed, don't show this component
   if (!showVerification) {
     return null;
   }
 
+  // Determine which alert message to show
+  const getAlertMessage = () => {
+    if (analysisResults.rentVerificationNeeded) {
+      return "We found multiple possible rent values in your lease. Please confirm the correct amount.";
+    }
+    
+    if (analysisResults.regexFindings?.potentialRentValues?.length) {
+      return "We've detected rent values that need confirmation. Please verify the amounts below.";
+    }
+    
+    if (analysisResults.extractionConfidence?.rent === 'low') {
+      return "We couldn't extract the rent value with high confidence. Please enter the correct amount.";
+    }
+    
+    return "Some financial details couldn't be extracted. Please fill in any missing information.";
+  };
+
   return (
     <div className="space-y-6 py-4">
-      {analysisResults.rentVerificationNeeded && (
-        <Alert className="bg-amber-950/30 border-amber-400/30">
-          <AlertCircle className="h-4 w-4 text-amber-400" />
-          <AlertTitle>Verification Needed</AlertTitle>
-          <AlertDescription>
-            We found multiple possible rent values in your lease. Please confirm the correct amount.
-          </AlertDescription>
-        </Alert>
-      )}
+      <Alert className="bg-amber-950/30 border-amber-400/30">
+        <AlertCircle className="h-4 w-4 text-amber-400" />
+        <AlertTitle>Verification Needed</AlertTitle>
+        <AlertDescription>
+          {getAlertMessage()}
+        </AlertDescription>
+      </Alert>
 
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
@@ -132,11 +171,20 @@ export function LeaseVerificationSection({ analysisResults, onUpdate }: LeaseVer
               placeholder="Enter rent amount"
               value={rentAmount}
               onChange={handleRentAmountChange}
+              className={
+                !rentAmount ? "border-amber-400/50 bg-amber-950/10" : ""
+              }
             />
             
-            {analysisResults.regexRentValues && analysisResults.regexRentValues.length > 0 && (
+            {(analysisResults.regexRentValues?.length > 0 || 
+              analysisResults.regexFindings?.potentialRentValues?.length > 0) && (
               <div className="text-xs text-muted-foreground mt-1">
-                Possible values found: {analysisResults.regexRentValues.map(v => `$${v}`).join(', ')}
+                <span className="font-medium text-amber-400/90">Possible values found:</span> {
+                  formatPotentialValues(
+                    analysisResults.regexRentValues || 
+                    analysisResults.regexFindings?.potentialRentValues
+                  )
+                }
               </div>
             )}
           </div>
@@ -166,11 +214,17 @@ export function LeaseVerificationSection({ analysisResults, onUpdate }: LeaseVer
             placeholder="Enter security deposit"
             value={securityDeposit}
             onChange={handleSecurityDepositChange}
+            className={
+              !securityDeposit ? "border-amber-400/50 bg-amber-950/10" : ""
+            }
           />
           
-          {analysisResults.regexFindings?.potentialDepositValues && (
+          {analysisResults.regexFindings?.potentialDepositValues && 
+           analysisResults.regexFindings?.potentialDepositValues.length > 0 && (
             <div className="text-xs text-muted-foreground mt-1">
-              Possible values found: {analysisResults.regexFindings.potentialDepositValues.map(v => `$${v}`).join(', ')}
+              <span className="font-medium text-amber-400/90">Possible values found:</span> {
+                formatPotentialValues(analysisResults.regexFindings.potentialDepositValues)
+              }
             </div>
           )}
         </div>
