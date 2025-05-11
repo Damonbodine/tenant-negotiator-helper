@@ -91,4 +91,3 @@ servePublic = false
 
 [functions.document-ai-lease-analyzer]
 verify_jwt = false
-
