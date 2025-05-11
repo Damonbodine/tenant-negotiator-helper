@@ -566,7 +566,7 @@ const LeaseAnalyzer = () => {
         additionalInfo={{
           ...debugError,
           file: file ? `${file.name} (${file.type}, ${(file.size / 1024).toFixed(2)} KB)` : 'None',
-          directSuccessUrl: directSucessUrl
+          directSuccessUrl: directSuccessUrl
         }}
       />
 
