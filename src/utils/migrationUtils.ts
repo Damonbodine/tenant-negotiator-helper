@@ -1,6 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { API_KEYS } from './keyManager';
+import { API_KEYS, ApiKeyConfig } from './keyManager';
 
 /**
  * Migrate API keys from localStorage to Supabase
@@ -28,8 +28,8 @@ export const migrateApiKeysToSupabase = async (): Promise<void> => {
   };
   
   // Migrate each API key
-  for (const config of Object.values(API_KEYS)) {
-    const encryptedKey = localStorage.getItem(config.storageKey);
+  for (const keyConfig of Object.values(API_KEYS) as ApiKeyConfig[]) {
+    const encryptedKey = localStorage.getItem(keyConfig.storageKey);
     if (encryptedKey) {
       const decryptedKey = decrypt(encryptedKey);
       
@@ -37,17 +37,17 @@ export const migrateApiKeysToSupabase = async (): Promise<void> => {
       try {
         const { error } = await supabase
           .from('api_keys')
-          .insert({ key_name: config.storageKey, key_value: decryptedKey });
+          .insert({ key_name: keyConfig.storageKey, key_value: decryptedKey });
         
         if (error) {
-          console.error(`Error migrating ${config.name} to Supabase:`, error);
+          console.error(`Error migrating ${keyConfig.name} to Supabase:`, error);
         } else {
-          console.log(`Successfully migrated ${config.name} to Supabase`);
+          console.log(`Successfully migrated ${keyConfig.name} to Supabase`);
           // Remove from localStorage after successful migration
-          localStorage.removeItem(config.storageKey);
+          localStorage.removeItem(keyConfig.storageKey);
         }
       } catch (error) {
-        console.error(`Error accessing Supabase for ${config.name}:`, error);
+        console.error(`Error accessing Supabase for ${keyConfig.name}:`, error);
       }
     }
   }

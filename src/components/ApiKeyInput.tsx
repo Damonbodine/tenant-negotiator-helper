@@ -8,11 +8,11 @@ import { saveApiKey, getApiKey } from "@/utils/keyManager";
 import { useToast } from "@/components/ui/use-toast";
 
 interface ApiKeyInputProps {
-  keyType: string;
+  keyType?: string;
   onClose: () => void;
 }
 
-export const ApiKeyInput: React.FC<ApiKeyInputProps> = ({ keyType, onClose }) => {
+export const ApiKeyInput: React.FC<ApiKeyInputProps> = ({ keyType = 'OPENAI', onClose }) => {
   const [apiKey, setApiKey] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { toast } = useToast();

@@ -1,4 +1,25 @@
 
+// Define the API keys configuration
+export interface ApiKeyConfig {
+  name: string;
+  storageKey: string;
+}
+
+export const API_KEYS: Record<string, ApiKeyConfig> = {
+  CLAUDE: {
+    name: 'Claude API Key',
+    storageKey: 'apiKey_ANTHROPIC_API_KEY'
+  },
+  GOOGLE: {
+    name: 'Google Document AI API Key',
+    storageKey: 'apiKey_GOOGLE_DOCUMENTAI_API_KEY'
+  },
+  OPENAI: {
+    name: 'OpenAI API Key',
+    storageKey: 'apiKey_OPENAI_RENTERS_MENTOR_KEY'
+  }
+};
+
 // Store in browser localStorage
 export const saveApiKey = async (keyName: string, value: string) => {
   try {
