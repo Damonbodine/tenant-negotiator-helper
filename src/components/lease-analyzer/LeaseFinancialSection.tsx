@@ -1,6 +1,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart3, DollarSign, AlertTriangle, Info } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface LateFee {
   amount: number;
@@ -25,11 +26,11 @@ interface Utilities {
 }
 
 interface Financial {
-  rent: Rent;
-  securityDeposit: number;
-  lateFee: LateFee;
-  utilities: Utilities;
-  otherFees: OtherFee[];
+  rent?: Rent;
+  securityDeposit?: number;
+  lateFee?: LateFee;
+  utilities?: Utilities;
+  otherFees?: OtherFee[];
 }
 
 interface LeaseFinancialSectionProps {
@@ -37,41 +38,61 @@ interface LeaseFinancialSectionProps {
 }
 
 export function LeaseFinancialSection({ financial }: LeaseFinancialSectionProps) {
-  const formatCurrency = (amount: number) => {
+  if (!financial) {
+    return (
+      <Alert>
+        <AlertTitle>Missing Financial Information</AlertTitle>
+        <AlertDescription>No financial details could be extracted from your lease. Consider uploading a clearer copy.</AlertDescription>
+      </Alert>
+    );
+  }
+
+  const formatCurrency = (amount: number | undefined) => {
+    if (amount === undefined || isNaN(amount)) return "Not specified";
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
   };
 
-  // Calculate estimated monthly costs
+  // Calculate estimated monthly costs with null checks
   const calculateMonthlyCost = () => {
+    if (!financial.rent?.amount) return "Unknown";
+    
     let total = financial.rent.frequency === 'monthly' ? financial.rent.amount : financial.rent.amount / 12;
     
     // Add any monthly fees
-    financial.otherFees.forEach(fee => {
-      if (fee.frequency === 'monthly') {
-        total += fee.amount;
-      }
-    });
+    if (financial.otherFees && financial.otherFees.length > 0) {
+      financial.otherFees.forEach(fee => {
+        if (fee.frequency === 'monthly' && fee.amount) {
+          total += fee.amount;
+        }
+      });
+    }
     
     return formatCurrency(total);
   };
 
-  // Calculate estimated yearly costs
+  // Calculate estimated yearly costs with null checks
   const calculateYearlyCost = () => {
+    if (!financial.rent?.amount) return "Unknown";
+    
     let total = financial.rent.frequency === 'yearly' ? financial.rent.amount : financial.rent.amount * 12;
     
     // Add security deposit (one-time cost)
-    total += financial.securityDeposit;
+    if (financial.securityDeposit) {
+      total += financial.securityDeposit;
+    }
     
     // Add all fees based on their frequency
-    financial.otherFees.forEach(fee => {
-      if (fee.frequency === 'yearly') {
-        total += fee.amount;
-      } else if (fee.frequency === 'monthly') {
-        total += fee.amount * 12;
-      } else if (fee.frequency === 'one-time') {
-        total += fee.amount;
-      }
-    });
+    if (financial.otherFees && financial.otherFees.length > 0) {
+      financial.otherFees.forEach(fee => {
+        if (fee.frequency === 'yearly') {
+          total += fee.amount;
+        } else if (fee.frequency === 'monthly') {
+          total += fee.amount * 12;
+        } else if (fee.frequency === 'one-time') {
+          total += fee.amount;
+        }
+      });
+    }
     
     return formatCurrency(total);
   };
@@ -86,69 +107,81 @@ export function LeaseFinancialSection({ financial }: LeaseFinancialSectionProps)
           <CardDescription>Key financial details from your lease</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-sm font-medium text-cyan-400/80">Monthly Rent</h4>
-                <p className="text-2xl font-bold text-cyan-400">{formatCurrency(financial.rent.amount)}</p>
-                <p className="text-sm text-cyan-400/60">Due {financial.rent.frequency}</p>
-              </div>
-              
-              <div>
-                <h4 className="text-sm font-medium text-cyan-400/80">Security Deposit</h4>
-                <p className="text-2xl font-bold text-cyan-400">{formatCurrency(financial.securityDeposit)}</p>
-                <p className="text-sm text-cyan-400/60">One-time payment</p>
-              </div>
-              
-              <div>
-                <h4 className="text-sm font-medium text-cyan-400/80 flex items-center gap-1">
-                  <AlertTriangle className="h-4 w-4" /> Late Fee
-                </h4>
-                <p className="text-xl font-bold text-cyan-400">
-                  {financial.lateFee.type === 'fixed' 
-                    ? formatCurrency(financial.lateFee.amount) 
-                    : `${financial.lateFee.amount}% of rent`}
-                </p>
-                <p className="text-sm text-cyan-400/60">
-                  {financial.lateFee.gracePeriod} day grace period
-                </p>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <h4 className="text-sm font-medium text-cyan-400/80">Utilities Included</h4>
-                {financial.utilities.included && financial.utilities.included.length > 0 ? (
-                  <ul className="mt-1 space-y-1">
-                    {financial.utilities.included.map((utility, index) => (
-                      <li key={index} className="text-cyan-100/90 flex items-center gap-2">
-                        <div className="h-2 w-2 rounded-full bg-green-400"></div>
-                        {utility}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-cyan-100/90">No utilities included</p>
+          {!financial.rent?.amount ? (
+            <Alert className="bg-amber-950/30 border-amber-400/30">
+              <AlertTriangle className="h-4 w-4 text-amber-400" />
+              <AlertTitle>Rent Amount Not Found</AlertTitle>
+              <AlertDescription>
+                We couldn't identify the rent amount in your lease. Please verify this information manually.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-medium text-cyan-400/80">Monthly Rent</h4>
+                  <p className="text-2xl font-bold text-cyan-400">{formatCurrency(financial.rent?.amount)}</p>
+                  <p className="text-sm text-cyan-400/60">Due {financial.rent?.frequency || 'monthly'}</p>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-cyan-400/80">Security Deposit</h4>
+                  <p className="text-2xl font-bold text-cyan-400">{formatCurrency(financial.securityDeposit)}</p>
+                  <p className="text-sm text-cyan-400/60">One-time payment</p>
+                </div>
+                
+                {financial.lateFee && (
+                  <div>
+                    <h4 className="text-sm font-medium text-cyan-400/80 flex items-center gap-1">
+                      <AlertTriangle className="h-4 w-4" /> Late Fee
+                    </h4>
+                    <p className="text-xl font-bold text-cyan-400">
+                      {financial.lateFee.type === 'fixed' 
+                        ? formatCurrency(financial.lateFee.amount) 
+                        : `${financial.lateFee.amount}% of rent`}
+                    </p>
+                    <p className="text-sm text-cyan-400/60">
+                      {financial.lateFee.gracePeriod} day grace period
+                    </p>
+                  </div>
                 )}
               </div>
               
-              <div>
-                <h4 className="text-sm font-medium text-cyan-400/80">Tenant Pays</h4>
-                {financial.utilities.tenant && financial.utilities.tenant.length > 0 ? (
-                  <ul className="mt-1 space-y-1">
-                    {financial.utilities.tenant.map((utility, index) => (
-                      <li key={index} className="text-cyan-100/90 flex items-center gap-2">
-                        <div className="h-2 w-2 rounded-full bg-amber-400"></div>
-                        {utility}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-cyan-100/90">No tenant-paid utilities specified</p>
-                )}
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-medium text-cyan-400/80">Utilities Included</h4>
+                  {financial.utilities?.included && financial.utilities.included.length > 0 ? (
+                    <ul className="mt-1 space-y-1">
+                      {financial.utilities.included.map((utility, index) => (
+                        <li key={index} className="text-cyan-100/90 flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-green-400"></div>
+                          {utility}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-cyan-100/90">No utilities included</p>
+                  )}
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-cyan-400/80">Tenant Pays</h4>
+                  {financial.utilities?.tenant && financial.utilities.tenant.length > 0 ? (
+                    <ul className="mt-1 space-y-1">
+                      {financial.utilities.tenant.map((utility, index) => (
+                        <li key={index} className="text-cyan-100/90 flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-amber-400"></div>
+                          {utility}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-cyan-100/90">No tenant-paid utilities specified</p>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
