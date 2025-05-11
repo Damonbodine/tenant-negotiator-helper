@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -8,7 +7,7 @@ const corsHeaders = {
 };
 
 // OpenAI API key from environment variable
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const openAIApiKey = Deno.env.get('OPENAI_RENTERS_MENTOR_KEY');
 
 // Enhanced regex patterns for critical financial data extraction
 // Specific patterns for common lease formats

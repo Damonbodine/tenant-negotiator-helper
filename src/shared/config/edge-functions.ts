@@ -6,10 +6,11 @@ export const corsHeaders = {
 
 // Required API keys for different edge functions
 export const requiredApiKeys = {
-  leaseAnalyzer: ['OPENAI_API_KEY', 'CLAUDE_API_KEY', 'GOOGLE_API_KEY'],
-  addressAnalyzer: ['OPENAI_API_KEY'],
+  leaseAnalyzer: ['OPENAI_RENTERS_MENTOR_KEY', 'ANTHROPIC_API_KEY', 'GOOGLE_DOCUMENTAI_API_KEY'],
+  addressAnalyzer: ['OPENAI_RENTERS_MENTOR_KEY'],
 };
 
+// Define system prompts for AI analysis
 export const systemPrompts = {
   addressAnalyzer: `You are a rental market expert focused on providing actionable negotiation advice and pricing insights.
             

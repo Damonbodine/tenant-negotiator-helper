@@ -1,4 +1,3 @@
-
 /**
  * Enhanced Lease Analyzer – Claude 3 Sonnet with OpenAI GPT-4o fallback
  * Supabase Edge Function (Deno runtime)
@@ -17,9 +16,9 @@ const cors = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// API clients
+// API clients with updated API key names
 const anthropicApiKey = Deno.env.get("ANTHROPIC_API_KEY");
-const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
+const openaiApiKey = Deno.env.get("OPENAI_RENTERS_MENTOR_KEY");
 
 const anthropic = anthropicApiKey 
   ? new Anthropic({ apiKey: anthropicApiKey })
