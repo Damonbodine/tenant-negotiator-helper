@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -111,7 +112,7 @@ serve(async (req: Request) => {
       let requestBody;
       try {
         requestBody = await req.json();
-        console.log('Request body:', requestBody);
+        console.log('Request body:', JSON.stringify(requestBody).substring(0, 200) + '...');
       } catch (e) {
         console.error('Error parsing request body:', e);
         return new Response(
@@ -124,7 +125,8 @@ serve(async (req: Request) => {
       }
       
       try {
-        // Call the claude-lease-analyzer function (updated to use Claude)
+        // Call the claude-lease-analyzer function
+        console.log('Invoking claude-lease-analyzer with request body');
         const { data, error } = await supabase.functions.invoke('claude-lease-analyzer', {
           body: requestBody,
         });
@@ -152,14 +154,17 @@ serve(async (req: Request) => {
           );
         }
 
-        console.log('Lease analyzer response:', data);
+        console.log('Lease analyzer response received');
+        
+        // Return the data even if there might be some missing fields
+        // The front-end will handle partial data with null checks
         return new Response(
           JSON.stringify(data),
           { 
             status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            }
-          );
+          }
+        );
       } catch (error) {
         console.error('Error in claude-lease-analyzer invocation:', error);
         return new Response(

@@ -1,21 +1,31 @@
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
-import { AlertTriangle, AlertCircle, Info } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface AnalysisResults {
+  summary: string;
   extractedData?: {
     financial?: {
-      rent?: { amount: number; frequency: string };
-      securityDeposit?: number;
+      rent?: {
+        amount?: number | null;
+        frequency?: string;
+      };
+      securityDeposit?: number | null;
     };
   };
-  extractionConfidence?: {
-    rent?: "high" | "medium" | "low";
-    securityDeposit?: "high" | "medium" | "low";
+  regexFindings?: {
+    potentialRentValues: number[] | null;
+    potentialDepositValues: number[] | null;
   };
   rentVerificationNeeded?: boolean;
   alternativeRentValues?: number[];
@@ -27,206 +37,144 @@ interface LeaseVerificationSectionProps {
   onUpdate: (field: string, value: any) => void;
 }
 
-export function LeaseVerificationSection({ 
-  analysisResults, 
-  onUpdate 
-}: LeaseVerificationSectionProps) {
-  const [rentAmount, setRentAmount] = useState<string>('');
-  const [securityDeposit, setSecurityDeposit] = useState<string>('');
-  const [frequency, setFrequency] = useState<string>('monthly');
-  const [dataChanged, setDataChanged] = useState<boolean>(false);
-  const [initialDataLoaded, setInitialDataLoaded] = useState<boolean>(false);
+export function LeaseVerificationSection({ analysisResults, onUpdate }: LeaseVerificationSectionProps) {
+  const [rentAmount, setRentAmount] = useState<number | string>("");
+  const [rentFrequency, setRentFrequency] = useState("monthly");
+  const [securityDeposit, setSecurityDeposit] = useState<number | string>("");
+  const [showVerification, setShowVerification] = useState(false);
 
-  // Initialize form with values from analysis
   useEffect(() => {
-    if (!initialDataLoaded && analysisResults?.extractedData?.financial) {
-      if (analysisResults.extractedData.financial.rent?.amount) {
-        setRentAmount(analysisResults.extractedData.financial.rent.amount.toString());
-        setFrequency(analysisResults.extractedData.financial.rent.frequency || 'monthly');
-      }
-      
-      if (analysisResults.extractedData.financial.securityDeposit) {
-        setSecurityDeposit(analysisResults.extractedData.financial.securityDeposit.toString());
-      }
-      
-      setInitialDataLoaded(true);
-      setDataChanged(false);
-    }
-  }, [analysisResults, initialDataLoaded]);
-
-  // Update parent component when values change
-  const handleRentChange = (value: string) => {
-    setRentAmount(value);
-    setDataChanged(true);
-    const numericValue = parseFloat(value);
+    // Check if verification is needed
+    const needsVerification = 
+      analysisResults.rentVerificationNeeded || 
+      (analysisResults.regexRentValues && analysisResults.regexRentValues.length > 0) ||
+      (analysisResults.extractedData?.financial?.rent?.amount === null);
     
+    setShowVerification(needsVerification);
+
+    // Set initial values from analysis
+    if (analysisResults.extractedData?.financial?.rent?.amount) {
+      setRentAmount(analysisResults.extractedData.financial.rent.amount);
+    }
+    
+    if (analysisResults.extractedData?.financial?.rent?.frequency) {
+      setRentFrequency(analysisResults.extractedData.financial.rent.frequency);
+    }
+    
+    if (analysisResults.extractedData?.financial?.securityDeposit) {
+      setSecurityDeposit(analysisResults.extractedData.financial.securityDeposit);
+    }
+  }, [analysisResults]);
+
+  const handleRentAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setRentAmount(value);
+    const numericValue = parseFloat(value);
     if (!isNaN(numericValue)) {
-      onUpdate('financial', {
-        ...analysisResults.extractedData?.financial,
+      onUpdate("financial", {
         rent: {
           amount: numericValue,
-          frequency: frequency
+          frequency: rentFrequency
         }
       });
     }
   };
 
-  const handleDepositChange = (value: string) => {
-    setSecurityDeposit(value);
-    setDataChanged(true);
-    const numericValue = parseFloat(value);
+  const handleRentFrequencyChange = (value: string) => {
+    setRentFrequency(value);
+    const numericRentAmount = typeof rentAmount === 'string' ? parseFloat(rentAmount) : rentAmount;
     
+    if (!isNaN(numericRentAmount)) {
+      onUpdate("financial", {
+        rent: {
+          amount: numericRentAmount,
+          frequency: value
+        }
+      });
+    }
+  };
+
+  const handleSecurityDepositChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSecurityDeposit(value);
+    const numericValue = parseFloat(value);
     if (!isNaN(numericValue)) {
-      onUpdate('financial', {
-        ...analysisResults.extractedData?.financial,
+      onUpdate("financial", {
         securityDeposit: numericValue
       });
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', { 
-      style: 'currency', 
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
-  
-  // Decide if we should show a more prominent alert about rent discrepancy
-  const showRentAlert = analysisResults.rentVerificationNeeded || 
-                        analysisResults?.extractionConfidence?.rent === 'low' ||
-                        (analysisResults.regexRentValues && 
-                         analysisResults.regexRentValues.length > 0 &&
-                         !analysisResults.regexRentValues.includes(
-                           analysisResults.extractedData?.financial?.rent?.amount || 0
-                         ));
-
-  // Count how many sources agree on each value
-  const getValueFrequency = (value: number) => {
-    let count = 0;
-    
-    // Check if AI extraction found this value
-    if (analysisResults.extractedData?.financial?.rent?.amount === value) {
-      count++;
-    }
-    
-    // Check how many times this value appears in regex findings
-    if (analysisResults.regexRentValues) {
-      count += analysisResults.regexRentValues.filter(v => v === value).length;
-    }
-    
-    // Check alternative values
-    if (analysisResults.alternativeRentValues) {
-      count += analysisResults.alternativeRentValues.filter(v => v === value).length;
-    }
-    
-    return count > 1 ? `(Found ${count} times)` : "";
-  };
+  // If no verification is needed, don't show this component
+  if (!showVerification) {
+    return null;
+  }
 
   return (
-    <div className="space-y-4 my-4">
-      <Card className="border-amber-300/30 bg-amber-50/10">
-        <CardContent className="pt-6">
-          {showRentAlert && (
-            <div className="mb-4 p-3 bg-amber-100/10 border border-amber-300/30 rounded-md flex items-start gap-2">
-              <AlertCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
-              <div>
-                <h4 className="text-amber-500 font-medium text-sm">Rent Amount Verification Needed</h4>
-                <p className="text-xs text-amber-400/90 mt-1">
-                  We detected possible different rent values in the lease. 
-                  Please select the correct monthly rent from the options below or enter it manually.
-                </p>
-              </div>
-            </div>
-          )}
+    <div className="space-y-6 py-4">
+      {analysisResults.rentVerificationNeeded && (
+        <Alert className="bg-amber-950/30 border-amber-400/30">
+          <AlertCircle className="h-4 w-4 text-amber-400" />
+          <AlertTitle>Verification Needed</AlertTitle>
+          <AlertDescription>
+            We found multiple possible rent values in your lease. Please confirm the correct amount.
+          </AlertDescription>
+        </Alert>
+      )}
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="rent-amount" className="text-sm font-medium flex items-center gap-2">
-                Monthly Rent
-                {showRentAlert && (
-                  <AlertTriangle className="h-4 w-4 text-amber-500" />
-                )}
-              </Label>
-              <Input 
-                id="rent-amount"
-                type="number" 
-                placeholder="Enter monthly rent amount"
-                value={rentAmount}
-                onChange={(e) => handleRentChange(e.target.value)}
-                className="border-amber-300/50"
-              />
-              
-              {/* Display ALL possible rent values for selection */}
-              {(analysisResults.alternativeRentValues?.length > 0 || 
-                analysisResults.regexRentValues?.length > 0) && (
-                <div className="mt-2">
-                  <p className="text-xs text-amber-700 mb-2">We found these possible rent values in your document:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {/* Combine and deduplicate all potential rent values */}
-                    {Array.from(new Set([
-                      ...(analysisResults.alternativeRentValues || []),
-                      ...(analysisResults.regexRentValues || [])
-                    ]))
-                    .sort((a, b) => a - b)
-                    .map((value, index) => (
-                      <button
-                        key={index}
-                        onClick={() => handleRentChange(value.toString())}
-                        className={`text-xs ${
-                          parseFloat(rentAmount) === value 
-                            ? 'bg-amber-300 text-amber-900' 
-                            : 'bg-amber-100 hover:bg-amber-200 text-amber-800'
-                        } px-2 py-1 rounded-md flex items-center gap-1`}
-                      >
-                        <span>{formatCurrency(value)}</span>
-                        <span className="text-amber-600/80 text-xs">{getValueFrequency(value)}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="rent-amount">Monthly Rent Amount</Label>
+            <Input
+              id="rent-amount"
+              type="number"
+              placeholder="Enter rent amount"
+              value={rentAmount}
+              onChange={handleRentAmountChange}
+            />
             
-            <div className="space-y-2">
-              <Label htmlFor="security-deposit" className="text-sm font-medium flex items-center gap-2">
-                Security Deposit
-                {analysisResults?.extractionConfidence?.securityDeposit === 'low' && (
-                  <AlertTriangle className="h-4 w-4 text-amber-500" />
-                )}
-              </Label>
-              <Input 
-                id="security-deposit"
-                type="number" 
-                placeholder="Enter security deposit amount"
-                value={securityDeposit}
-                onChange={(e) => handleDepositChange(e.target.value)}
-                className="border-amber-300/50"
-              />
-            </div>
+            {analysisResults.regexRentValues && analysisResults.regexRentValues.length > 0 && (
+              <div className="text-xs text-muted-foreground mt-1">
+                Possible values found: {analysisResults.regexRentValues.map(v => `$${v}`).join(', ')}
+              </div>
+            )}
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="rent-frequency">Frequency</Label>
+            <Select value={rentFrequency} onValueChange={handleRentFrequencyChange}>
+              <SelectTrigger id="rent-frequency">
+                <SelectValue placeholder="Select frequency" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="monthly">Monthly</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="yearly">Yearly</SelectItem>
+                <SelectItem value="quarterly">Quarterly</SelectItem>
+                <SelectItem value="biweekly">Bi-weekly</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="security-deposit">Security Deposit</Label>
+          <Input
+            id="security-deposit"
+            type="number"
+            placeholder="Enter security deposit"
+            value={securityDeposit}
+            onChange={handleSecurityDepositChange}
+          />
           
-          {dataChanged && (
-            <div className="mt-4 p-2 bg-green-50/20 border border-green-300/30 rounded-md flex items-center gap-1">
-              <Info className="h-4 w-4 text-green-600 shrink-0" />
-              <p className="text-xs text-green-600">
-                Your changes will be applied when you click "Confirm & Continue"
-              </p>
+          {analysisResults.regexFindings?.potentialDepositValues && (
+            <div className="text-xs text-muted-foreground mt-1">
+              Possible values found: {analysisResults.regexFindings.potentialDepositValues.map(v => `$${v}`).join(', ')}
             </div>
           )}
-          
-          <div className="mt-4 p-3 bg-amber-50/20 border border-amber-300/30 rounded-md flex items-start gap-2">
-            <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-            <p className="text-xs text-amber-800">
-              <strong>Why verify?</strong> Our AI found these values in your lease document, but 
-              we want to make sure they're accurate. Confirming these details helps us provide more 
-              reliable analysis of your lease agreement. Rent amounts that appear in multiple places 
-              are more likely to be correct.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }
