@@ -175,6 +175,61 @@ serve(async (req: Request) => {
           }
         );
       }
+    } else if (path === '/api/document-ai-lease-analyzer' || path === '/document-ai-lease-analyzer' || path.includes('document-ai-lease-analyzer')) {
+      console.log('Routing to document-ai-lease-analyzer function');
+      
+      // Parse request body safely
+      let requestBody;
+      try {
+        requestBody = await req.json();
+        console.log('Document-AI request received with file:', requestBody.fileName || 'unknown file');
+      } catch (e) {
+        console.error('Error parsing request body:', e);
+        return new Response(
+          JSON.stringify({ error: 'Invalid request body' }),
+          { 
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+      
+      try {
+        // Direct invocation of document-ai-lease-analyzer
+        const { data, error } = await supabase.functions.invoke('document-ai-lease-analyzer', {
+          body: requestBody,
+        });
+
+        if (error) {
+          console.error('Error invoking document-ai-lease-analyzer:', error);
+          return new Response(
+            JSON.stringify({ error: error.message || 'Invocation error' }),
+            { 
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
+        }
+
+        console.log('Document AI analysis completed successfully');
+        
+        return new Response(
+          JSON.stringify(data || { error: 'No data returned' }),
+          { 
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      } catch (error) {
+        console.error('Error in document-ai-lease-analyzer invocation:', error);
+        return new Response(
+          JSON.stringify({ error: error.message || 'Function invocation error' }),
+          { 
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
     }
 
     // If no matching route is found

@@ -1,6 +1,7 @@
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Bug, AlertTriangle } from "lucide-react";
+
 interface DebugInfoProps {
   showDebugInfo: boolean;
   httpStatus: number | null;
@@ -9,6 +10,7 @@ interface DebugInfoProps {
   rawErrorResponse: string | null;
   additionalInfo?: Record<string, any>;
 }
+
 export function DebugInfo({
   showDebugInfo,
   httpStatus,
@@ -18,6 +20,7 @@ export function DebugInfo({
   additionalInfo = {}
 }: DebugInfoProps) {
   if (!showDebugInfo) return null;
+
   return <>
       {httpStatus && <Alert className="bg-blue-50 border-blue-200 text-blue-800 mb-4">
         <Bug className="h-4 w-4" />
