@@ -176,7 +176,7 @@ const LeaseAnalyzer = () => {
   const [httpStatus, setHttpStatus] = useState<number | null>(null);
   const [rawErrorResponse, setRawErrorResponse] = useState<string | null>(null);
   const [processingProgress, setProcessingProgress] = useState<string | null>(null);
-  const [directSucessUrl, setDirectSuccessUrl] = useState<string | null>(null);
+  const [directSuccessUrl, setDirectSuccessUrl] = useState<string | null>(null);
 
   // Check if disclaimer has been seen when component mounts
   useEffect(() => {
@@ -343,7 +343,7 @@ const LeaseAnalyzer = () => {
     setHttpStatus(null);
     setRequestStartTime(new Date().toISOString());
     setRequestEndTime(null);
-    setDirectSucessUrl(null);
+    setDirectSuccessUrl(null);
     
     try {
       // Convert file to base64
@@ -394,7 +394,7 @@ const LeaseAnalyzer = () => {
         }
         
         const data = await directResponse.json();
-        setDirectSucessUrl(functionUrl);
+        setDirectSuccessUrl(functionUrl);
         console.log("Direct function call successful:", data);
         setAnalysisResults(data);
         
@@ -502,7 +502,7 @@ const LeaseAnalyzer = () => {
     setHttpStatus(null);
     setRequestStartTime(null);
     setRequestEndTime(null);
-    setDirectSucessUrl(null);
+    setDirectSuccessUrl(null);
   };
 
   const toggleDebugInfo = () => {
