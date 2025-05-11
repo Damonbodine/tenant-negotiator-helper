@@ -138,6 +138,7 @@ interface ExtractionConfidence {
 interface RegexFindings {
   potentialRentValues: number[] | null;
   potentialDepositValues: number[] | null;
+  potentialTenants: string[] | null;
 }
 
 interface AnalysisResults {
@@ -150,6 +151,7 @@ interface AnalysisResults {
   regexFindings?: RegexFindings;
   rentVerificationNeeded?: boolean;
   alternativeRentValues?: number[];
+  regexRentValues?: number[];
 }
 
 const LeaseAnalyzer = () => {

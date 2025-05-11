@@ -8,7 +8,7 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import * as pdfjs from "npm:pdfjs-dist@4/legacy/build/pdf.js";
-import Anthropic from "@anthropic-ai/sdk";
+import { Anthropic } from "npm:@anthropic-ai/sdk@0.18.0";
 import { OpenAI } from "https://esm.sh/openai@4.28.0";
 
 const cors = {
