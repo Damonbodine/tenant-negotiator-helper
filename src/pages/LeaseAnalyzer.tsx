@@ -23,6 +23,7 @@ import { LeaseResponsibilitiesSection } from "@/components/lease-analyzer/LeaseR
 import { LeaseCriticalDatesSection } from "@/components/lease-analyzer/LeaseCriticalDatesSection";
 import { LeaseVerificationSection } from "@/components/lease-analyzer/LeaseVerificationSection";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { DebugInfo } from "@/components/negotiation/DebugInfo";
 
 // Define the types for the analysis results
 interface LateFee {
@@ -165,6 +166,12 @@ const LeaseAnalyzer = () => {
   const { toast } = useToast();
   const [showDebugInfo, setShowDebugInfo] = useState(false);
   const [debugError, setDebugError] = useState<any>(null);
+  
+  // Debug state for network requests
+  const [requestStartTime, setRequestStartTime] = useState<string | null>(null);
+  const [requestEndTime, setRequestEndTime] = useState<string | null>(null);
+  const [httpStatus, setHttpStatus] = useState<number | null>(null);
+  const [rawErrorResponse, setRawErrorResponse] = useState<string | null>(null);
   
   // Remove API key related state variables - now managed in Supabase edge function secrets
   const [processingProgress, setProcessingProgress] = useState<string | null>(null);
@@ -325,6 +332,10 @@ const LeaseAnalyzer = () => {
     setProcessingProgress("Preparing document");
     setVerifiedData({});
     setDebugError(null);
+    setRawErrorResponse(null);
+    setHttpStatus(null);
+    setRequestStartTime(new Date().toISOString());
+    setRequestEndTime(null);
     
     try {
       // Convert file to base64
@@ -344,47 +355,80 @@ const LeaseAnalyzer = () => {
       
       // Call the Document AI edge function to process the document
       console.log("Calling document-ai-lease-analyzer function");
-      
-      const { data, error } = await supabase.functions.invoke('document-ai-lease-analyzer', {
-        body: {
-          fileBase64,
-          fileName: file.name,
-          fileType: file.type
-        }
-      });
 
-      if (error) {
-        console.error("Error calling document-ai-lease-analyzer function:", error);
-        setDebugError(error);
+      // Enhanced error handling with full request details
+      try {
+        const { data, error } = await supabase.functions.invoke('document-ai-lease-analyzer', {
+          body: {
+            fileBase64,
+            fileName: file.name,
+            fileType: file.type
+          }
+        });
+
+        setRequestEndTime(new Date().toISOString());
+        
+        if (error) {
+          console.error("Error calling document-ai-lease-analyzer function:", error);
+          setHttpStatus(500);
+          setRawErrorResponse(JSON.stringify(error, null, 2));
+          setDebugError({
+            message: error.message || "Failed to process document",
+            name: error.name,
+            details: error
+          });
+          
+          toast({
+            variant: "destructive",
+            title: "Analysis failed",
+            description: error.message || "We couldn't analyze your lease document. Please try again later.",
+          });
+          return;
+        }
+
+        console.log("Document analysis result:", data);
+        setHttpStatus(200);
+        setAnalysisResults(data);
+        
+        // Enhanced verification check
+        if (data.rentVerificationNeeded || 
+            (data.extractionConfidence && data.extractionConfidence.rent === 'low') || 
+            (data.regexRentValues && 
+             data.regexRentValues.length > 0 && 
+             !data.regexRentValues.includes(data.extractedData?.financial?.rent?.amount))) {
+          console.log("Verification needed based on analysis", {
+            rentVerificationNeeded: data.rentVerificationNeeded,
+            rentConfidence: data.extractionConfidence?.rent,
+            regexValues: data.regexRentValues,
+            extractedRent: data.extractedData?.financial?.rent?.amount
+          });
+          setVerificationRequired(true);
+        }
+        
+      } catch (error: any) {
+        setRequestEndTime(new Date().toISOString());
+        console.error("Network or parsing error:", error);
+        setHttpStatus(0); // 0 indicates network error
+        setRawErrorResponse(error.toString());
+        setDebugError({
+          message: "Network or parsing error",
+          details: error.toString(),
+          stack: error.stack
+        });
+        
         toast({
           variant: "destructive",
-          title: "Analysis failed",
-          description: error.message || "We couldn't analyze your lease document. Please try again later.",
+          title: "Connection error",
+          description: "Failed to connect to the analysis service. Please check your internet connection and try again.",
         });
-        return;
-      }
-
-      console.log("Document analysis result:", data);
-      setAnalysisResults(data);
-      
-      // Enhanced verification check
-      if (data.rentVerificationNeeded || 
-          (data.extractionConfidence && data.extractionConfidence.rent === 'low') || 
-          (data.regexRentValues && 
-           data.regexRentValues.length > 0 && 
-           !data.regexRentValues.includes(data.extractedData?.financial?.rent?.amount))) {
-        console.log("Verification needed based on analysis", {
-          rentVerificationNeeded: data.rentVerificationNeeded,
-          rentConfidence: data.extractionConfidence?.rent,
-          regexValues: data.regexRentValues,
-          extractedRent: data.extractedData?.financial?.rent?.amount
-        });
-        setVerificationRequired(true);
       }
       
-    } catch (error) {
+    } catch (error: any) {
+      setRequestEndTime(new Date().toISOString());
       console.error("Error analyzing lease:", error);
       setDebugError(error);
+      setRawErrorResponse(error.toString());
+      
       toast({
         variant: "destructive",
         title: "Analysis failed",
@@ -401,6 +445,10 @@ const LeaseAnalyzer = () => {
     setAnalysisResults(null);
     setVerifiedData({});
     setDebugError(null);
+    setRawErrorResponse(null);
+    setHttpStatus(null);
+    setRequestStartTime(null);
+    setRequestEndTime(null);
   };
 
   const toggleDebugInfo = () => {
@@ -428,17 +476,14 @@ const LeaseAnalyzer = () => {
       </div>
 
       {/* Debug Information */}
-      {showDebugInfo && debugError && (
-        <Alert className="mb-4 bg-red-950/20 border-red-800 text-red-300">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error Details</AlertTitle>
-          <AlertDescription>
-            <pre className="mt-2 whitespace-pre-wrap text-xs overflow-auto max-h-40 p-2 bg-red-950/30 rounded">
-              {JSON.stringify(debugError, null, 2)}
-            </pre>
-          </AlertDescription>
-        </Alert>
-      )}
+      <DebugInfo 
+        showDebugInfo={showDebugInfo}
+        httpStatus={httpStatus}
+        requestStartTime={requestStartTime}
+        requestEndTime={requestEndTime}
+        rawErrorResponse={rawErrorResponse}
+        additionalInfo={debugError}
+      />
 
       {/* Disclaimer Modal */}
       <Dialog open={disclaimerOpen} onOpenChange={setDisclaimerOpen}>
