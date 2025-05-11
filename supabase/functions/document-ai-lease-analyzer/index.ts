@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { OpenAI } from "https://esm.sh/openai@4.28.0";
 
@@ -11,6 +10,7 @@ import { OpenAI } from "https://esm.sh/openai@4.28.0";
 // Access keys from environment variables
 const googleApiKey = Deno.env.get('GOOGLE_API_KEY');
 const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+const claudeApiKey = Deno.env.get('CLAUDE_API_KEY');
 
 // Set up the OpenAI client
 const openai = openaiApiKey
@@ -158,6 +158,165 @@ function extractFinancialDataWithRegex(text: string): {
 
   console.log("Regex extracted financial data:", results);
   return results;
+}
+
+/**
+ * Analyze the document using Claude API
+ */
+async function analyzeLeaseWithClaude(documentText: string, regexData: any): Promise<any> {
+  if (!claudeApiKey) {
+    console.warn("Claude API key not configured. Using fallback analysis.");
+    return analyzeLeaseWithGPT(documentText, null, regexData);
+  }
+
+  console.log("Analyzing lease with Claude");
+  
+  try {
+    const systemPrompt = `You are an expert legal assistant specializing in rental lease agreements. 
+    Analyze the provided lease document and extract key information in a structured format.
+    
+    DO NOT FABRICATE ANY INFORMATION. If information is not present in the document, clearly indicate it is missing or unknown.
+    
+    CRITICAL FINANCIAL INFORMATION EXTRACTION:
+    - Pay special attention to RENT AMOUNT - look for monthly rent, base rent, or annual rent divided by 12
+    - Common rent formats include:
+      * "$5,300 per month"
+      * "monthly rent: $5,300" 
+      * "Tenant shall pay $5,300"
+      * "rent will be $5,300 per month"
+      * "RENT: $5,300"
+      * "agrees to pay $5,300 monthly"
+    
+    Format your response as JSON with the following structure:
+    {
+      "summary": "Clear overview of the lease",
+      "complexTerms": [
+        { "term": "Name of term", "explanation": "Plain language explanation" }
+      ],
+      "unusualClauses": [
+        { "clause": "Description of clause", "concern": "Why it's unusual or concerning", "riskLevel": "high|medium|low" }
+      ],
+      "questions": [
+        "Question 1",
+        "Question 2"
+      ],
+      "extractedData": {
+        // Detailed structured data about financial terms, dates, parties, etc.
+      },
+      "extractionConfidence": {
+        "rent": "high|medium|low",
+        "securityDeposit": "high|medium|low",
+        "lateFee": "high|medium|low",
+        "term": "high|medium|low",
+        "utilities": "high|medium|low"
+      }
+    }`;
+
+    // Context data packet with regex findings
+    const contextData = {
+      regexFindings: regexData
+    };
+
+    // Call Claude API for analysis
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": claudeApiKey,
+        "anthropic-version": "2023-06-01"
+      },
+      body: JSON.stringify({
+        model: "claude-3-sonnet-20240229",
+        max_tokens: 4000,
+        system: systemPrompt,
+        messages: [
+          { 
+            role: "user", 
+            content: [
+              { type: "text", text: documentText },
+              { 
+                type: "text", 
+                text: `Additional context: ${JSON.stringify(contextData)}. 
+                If the regex found potential rent values ${JSON.stringify(regexData?.potentialRentValues)}, 
+                please consider these in your extraction and explain if you choose a different value.
+                DO NOT make up information that isn't in the document. If you don't find something, mark it as "unknown" or "not specified".`
+              }
+            ]
+          }
+        ],
+        temperature: 0.1,
+        response_format: { type: "json_object" }
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error("Claude API error:", errorData);
+      throw new Error(`Claude API error: ${response.status} - ${errorData}`);
+    }
+
+    const claudeData = await response.json();
+    
+    // Parse the JSON content from Claude's response
+    if (claudeData.content && claudeData.content.length > 0) {
+      try {
+        const analysisContent = JSON.parse(claudeData.content[0].text);
+        
+        // Add the regex findings to help with verification
+        analysisContent.regexFindings = regexData;
+        
+        // Run validation checks between AI and regex extractions
+        if (analysisContent.extractedData?.financial?.rent && regexData?.potentialRentValues) {
+          const aiRent = analysisContent.extractedData.financial.rent.amount;
+          
+          // If regex found values that match the AI extraction, increase confidence
+          if (regexData.potentialRentValues.includes(aiRent)) {
+            analysisContent.extractionConfidence.rent = "high";
+            console.log(`AI rent value (${aiRent}) matches regex findings - setting confidence to high`);
+          } 
+          // If regex found values that differ from AI extraction, flag for verification
+          else if (regexData.potentialRentValues.length > 0) {
+            analysisContent.rentVerificationNeeded = true;
+            analysisContent.alternativeRentValues = regexData.potentialRentValues;
+            analysisContent.regexRentValues = regexData.potentialRentValues;
+            console.log(`AI rent value (${aiRent}) doesn't match regex findings - verification needed`);
+          }
+        }
+        
+        // If AI didn't find rent but regex did, prompt for verification
+        if (!analysisContent.extractedData?.financial?.rent?.amount && regexData?.potentialRentValues?.length > 0) {
+          console.log(`AI didn't extract rent but regex found values - setting default and requiring verification`);
+          // Set a default rent value from regex for verification
+          if (!analysisContent.extractedData) {
+            analysisContent.extractedData = {};
+          }
+          if (!analysisContent.extractedData.financial) {
+            analysisContent.extractedData.financial = {};
+          }
+          analysisContent.extractedData.financial.rent = {
+            amount: regexData.potentialRentValues[0],
+            frequency: "monthly"
+          };
+          analysisContent.rentVerificationNeeded = true;
+          analysisContent.extractionConfidence = analysisContent.extractionConfidence || {};
+          analysisContent.extractionConfidence.rent = "low";
+          analysisContent.regexRentValues = regexData.potentialRentValues;
+        }
+        
+        return analysisContent;
+      } catch (parseError) {
+        console.error("Error parsing Claude response:", parseError);
+        throw new Error("Failed to parse Claude response");
+      }
+    }
+
+    throw new Error("Claude response did not contain valid content");
+    
+  } catch (error) {
+    console.error("Error analyzing lease with Claude:", error);
+    // Fall back to GPT if Claude fails
+    return analyzeLeaseWithGPT(documentText, null, regexData);
+  }
 }
 
 /**
@@ -439,8 +598,19 @@ serve(async (req: Request) => {
     // Extract financial data with regex as a backup method
     const regexData = extractFinancialDataWithRegex(extractedText);
     
-    // Use GPT-4o to analyze the lease document
-    const analysisResults = await analyzeLeaseWithGPT(extractedText, documentStructure, regexData);
+    // Use Claude as our primary model if available, falling back to GPT-4o
+    let analysisResults;
+    
+    if (claudeApiKey) {
+      console.log("Attempting analysis with Claude");
+      analysisResults = await analyzeLeaseWithClaude(extractedText, regexData);
+    } else if (openaiApiKey) {
+      console.log("Claude not available, using GPT-4o");
+      analysisResults = await analyzeLeaseWithGPT(extractedText, documentStructure, regexData);
+    } else {
+      console.log("No AI models available, using fallback analysis");
+      analysisResults = generateFallbackAnalysis(extractedText, regexData);
+    }
     
     // Return the final analysis results
     return new Response(

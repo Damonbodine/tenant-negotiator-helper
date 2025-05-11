@@ -22,6 +22,7 @@ const Index = () => {
   const [activeJourney, setActiveJourney] = useState<JourneyType>(null);
   const [addressInput, setAddressInput] = useState("");
   const [searchParams] = useSearchParams();
+  
   useEffect(() => {
     // Check URL parameters for journey type
     const journeyParam = searchParams.get("journey");
@@ -29,12 +30,14 @@ const Index = () => {
       setActiveJourney(journeyParam as JourneyType);
     }
   }, [searchParams]);
+  
   const handleAddressAnalyze = (e: React.FormEvent) => {
     e.preventDefault();
     if (addressInput.trim()) {
       setActiveJourney("market");
     }
   };
+  
   return <div className="min-h-screen flex flex-col bg-background">
       <main className="flex-1 container flex flex-col items-center justify-center py-12 mb-16 md:mb-0">
         {activeJourney ? <Suspense fallback={<div className="w-full flex justify-center p-12">
@@ -73,7 +76,7 @@ const Index = () => {
           </Suspense> : <div className="space-y-16 w-full max-w-4xl">
             <div className="text-center">
               <h2 className="text-5xl font-bold mb-6 gradient-heading">Stop Overpaying For Rent</h2>
-              <p className="text-xl text-cyan-400/90 font-medium mb-8">Our AI helps you understand if you're paying too much, how to negotiate, spot red flags, and practice your negotiation skills.   Never overpay for rent again</p>
+              <p className="text-xl text-cyan-400/90 font-medium mb-8">Our AI helps you understand if you're paying too much, how to negotiate, spot red flags, and practice your negotiation skills. Never overpay for rent again</p>
               
               {!user && <div className="mb-8">
                   <Link to="/auth">
