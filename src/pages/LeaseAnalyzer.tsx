@@ -163,9 +163,8 @@ const LeaseAnalyzer = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   
-  // Remove API key related state variables
-  const [showClaudeApiKeyInput, setShowClaudeApiKeyInput] = useState(false);
-  const [hasClaudeApiKey, setHasClaudeApiKey] = useState(true);
+  // Remove API key related state variables - now managed in Supabase edge function secrets
+  const [processingProgress, setProcessingProgress] = useState<string | null>(null);
 
   // Check if disclaimer has been seen when component mounts
   useEffect(() => {
@@ -173,8 +172,6 @@ const LeaseAnalyzer = () => {
     if (!disclaimerSeen) {
       setDisclaimerOpen(true);
     }
-    
-    // Remove Claude API key check
   }, []);
 
   // Function to handle disclaimer acknowledgment
@@ -187,7 +184,7 @@ const LeaseAnalyzer = () => {
     const selectedFile = event.target.files?.[0] || null;
     
     if (selectedFile) {
-      // Updated to accept PDF, DOC, DOCX, TXT, JPG, and PNG files
+      // Accept PDF, DOC, DOCX, TXT, JPG, and PNG files
       if (selectedFile.type !== 'application/pdf' && 
           selectedFile.type !== 'application/msword' && 
           selectedFile.type !== 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' &&
@@ -212,7 +209,6 @@ const LeaseAnalyzer = () => {
       }
       
       setFile(selectedFile);
-      // Remove Claude API key check
     }
   };
 
@@ -249,57 +245,11 @@ const LeaseAnalyzer = () => {
       }
       
       setFile(droppedFile);
-      // Remove Claude API key check
     }
   };
 
   const triggerFileInput = () => {
     fileInputRef.current?.click();
-  };
-
-  const extractTextFromFile = async (file: File): Promise<string> => {
-    // For plain text files, just read the text
-    if (file.type === 'text/plain') {
-      return await file.text();
-    }
-
-    // For PDF files, try to use a PDF extraction library
-    if (file.type === 'application/pdf') {
-      try {
-        // Convert to ArrayBuffer for PDF processing
-        const arrayBuffer = await file.arrayBuffer();
-        
-        // Since we can't use PDF.js directly in browser context for full extraction,
-        // we'll send the binary data to the edge function for processing
-        // For now return the first part as text and mark it as partial extraction
-        const textData = await file.text();
-        return `${textData.slice(0, 20000)}... 
-        [Note: This is a partial text extraction from a PDF file. 
-        The edge function will attempt to process it further.]`;
-      } catch (error) {
-        console.error("Error extracting PDF text:", error);
-        return `[Error extracting text from PDF: ${file.name}. The analysis may be less accurate.]
-        ${await file.text().then(text => text.slice(0, 10000))}`;
-      }
-    }
-
-    // For image files, notify user about OCR limitations
-    if (file.type === 'image/jpeg' || file.type === 'image/png') {
-      // In a production app, we would implement OCR here
-      return `[This is image content from ${file.name}. We'll attempt basic text recognition, but for best results, please upload a text-based PDF or document file.]`;
-    }
-
-    // For other file types (DOC, DOCX) we would need to use a dedicated library
-    // For now, we'll just read the first part as text and notify the user
-    try {
-      const text = await file.text();
-      return `${text.slice(0, 20000)}... 
-      [Note: This is a simplified text extraction from a ${file.type} file. 
-      For best results, please upload a PDF or plain text file.]`;
-    } catch (error) {
-      console.error("Error extracting text:", error);
-      return `[Error extracting text from ${file.name}. Please try a different file format.]`;
-    }
   };
 
   const [verificationRequired, setVerificationRequired] = useState(false);
@@ -367,24 +317,37 @@ const LeaseAnalyzer = () => {
     if (!file) return;
     
     setIsAnalyzing(true);
+    setProcessingProgress("Preparing document");
     setVerifiedData({});
     
     try {
-      // Extract text from the file
-      const documentText = await extractTextFromFile(file);
+      // Convert file to base64
+      const fileBase64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+          // Remove the data URL prefix (e.g., "data:application/pdf;base64,")
+          const base64String = reader.result as string;
+          const base64Content = base64String.split(',')[1];
+          resolve(base64Content);
+        };
+        reader.onerror = error => reject(error);
+      });
       
-      // Call the Supabase edge function to analyze the document with Claude
-      console.log("Calling claude-lease-analyzer function with document text sample:", documentText.slice(0, 200));
-      const { data, error } = await supabase.functions.invoke('claude-lease-analyzer', {
+      setProcessingProgress("Processing with Document AI");
+      
+      // Call the Document AI edge function to process the document
+      console.log("Calling document-ai-lease-analyzer function");
+      const { data, error } = await supabase.functions.invoke('document-ai-lease-analyzer', {
         body: {
-          documentText,
-          documentType: file.type,
-          fileName: file.name
+          fileBase64,
+          fileName: file.name,
+          fileType: file.type
         }
       });
 
       if (error) {
-        console.error("Error calling claude-lease-analyzer function:", error);
+        console.error("Error calling document-ai-lease-analyzer function:", error);
         toast({
           variant: "destructive",
           title: "Analysis failed",
@@ -393,7 +356,7 @@ const LeaseAnalyzer = () => {
         return;
       }
 
-      console.log("Lease analysis result from Claude:", data);
+      console.log("Document analysis result:", data);
       setAnalysisResults(data);
       
       // Enhanced verification check
@@ -420,6 +383,7 @@ const LeaseAnalyzer = () => {
       });
     } finally {
       setIsAnalyzing(false);
+      setProcessingProgress(null);
     }
   };
 
@@ -455,8 +419,6 @@ const LeaseAnalyzer = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Remove Claude API Key Input Dialog */}
 
       {/* File Upload Card */}
       {!analysisResults ? (
@@ -525,7 +487,7 @@ const LeaseAnalyzer = () => {
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                           </svg>
-                          Analyzing with AI...
+                          {processingProgress || "Analyzing with AI..."}
                         </>
                       ) : "Analyze Document"}
                     </Button>
@@ -687,10 +649,9 @@ const LeaseAnalyzer = () => {
         </div>
       )}
       
-      {/* Update or remove the "Powered by Claude" badge */}
       <div className="text-center mt-8">
         <p className="text-sm text-cyan-400/60">
-          Powered by advanced AI for enhanced lease analysis
+          Powered by Google Document AI for enhanced document recognition
         </p>
       </div>
     </div>
