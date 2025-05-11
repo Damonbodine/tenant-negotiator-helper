@@ -9,10 +9,10 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-// Access API keys from environment variables
-const googleApiKey = Deno.env.get('GOOGLE_API_KEY');
-const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-const claudeApiKey = Deno.env.get('CLAUDE_API_KEY');
+// Access API keys from environment variables with the new names
+const googleApiKey = Deno.env.get('GOOGLE_DOCUMENTAI_API_KEY');
+const openaiApiKey = Deno.env.get('OPENAI_RENTERS_MENTOR_KEY');
+const claudeApiKey = Deno.env.get('ANTHROPIC_API_KEY');
 
 console.log(`API Keys available: ${!claudeApiKey ? 'CLAUDE: NO, ' : 'CLAUDE: YES, '}${!googleApiKey ? 'GOOGLE: NO, ' : 'GOOGLE: YES, '}${!openaiApiKey ? 'OPENAI: NO' : 'OPENAI: YES'}`);
 
