@@ -242,36 +242,50 @@ serve(async (req: Request) => {
     console.log(`Processing ${fileName} with ${fileBase64.length} chars of base64 data`);
 
     // For very simple PDF text extraction
-    const documentText = atob(fileBase64);
-    console.log(`Extracted ${documentText.length} chars of simple document text`);
-    
-    // Try Claude first (best results)
-    let analysis = null;
-    if (claudeApiKey) {
-      analysis = await analyzeWithClaude(documentText);
-    }
-    
-    // Fall back to OpenAI if Claude fails
-    if (!analysis && openaiApiKey) {
-      analysis = await analyzeWithOpenAI(documentText);
-    }
-    
-    // Final fallback to regex extraction
-    if (!analysis) {
-      console.log("All AI analysis methods failed, falling back to regex extraction");
-      analysis = extractBasicData(documentText);
-    }
-
-    console.log("Returning analysis result");
-    return new Response(
-      JSON.stringify(analysis || {
-        summary: "We couldn't analyze your document. Please try a different file or check API configurations.",
-        error: "Analysis failed"
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    try {
+      const documentText = atob(fileBase64);
+      console.log(`Extracted ${documentText.length} chars of simple document text`);
+      
+      // Try Claude first (best results)
+      let analysis = null;
+      if (claudeApiKey) {
+        analysis = await analyzeWithClaude(documentText);
       }
-    );
+      
+      // Fall back to OpenAI if Claude fails
+      if (!analysis && openaiApiKey) {
+        analysis = await analyzeWithOpenAI(documentText);
+      }
+      
+      // Final fallback to regex extraction
+      if (!analysis) {
+        console.log("All AI analysis methods failed, falling back to regex extraction");
+        analysis = extractBasicData(documentText);
+      }
+
+      console.log("Returning analysis result");
+      return new Response(
+        JSON.stringify(analysis || {
+          summary: "We couldn't analyze your document. Please try a different file or check API configurations.",
+          error: "Analysis failed"
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    } catch (decodeError) {
+      console.error("Error decoding base64 data:", decodeError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to decode document data',
+          summary: "We couldn't decode the uploaded document. Please try a different format or file." 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
     
   } catch (error) {
     console.error("Error in document-ai-lease-analyzer function:", error);

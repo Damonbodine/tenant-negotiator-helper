@@ -363,65 +363,22 @@ const LeaseAnalyzer = () => {
       
       // Log detailed request information
       console.log("Calling document-ai-lease-analyzer function");
-      const functionUrl = `https://izzdyfrcxunfzlfgdjuv.supabase.co/functions/v1/document-ai-lease-analyzer`;
+      
       const requestBody = {
         fileBase64,
         fileName: file.name,
         fileType: file.type
       };
-      
-      console.log(`Direct invoking edge function at URL: ${functionUrl}`);
-      console.log(`Request payload size: ${JSON.stringify(requestBody).length} characters`);
-      
-      // Try direct fetch first with detailed error logging
-      try {
-        const directResponse = await fetch(functionUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabase.auth.getSession()}`
-          },
-          body: JSON.stringify(requestBody)
-        });
-        
-        setHttpStatus(directResponse.status);
-        setRequestEndTime(new Date().toISOString());
-        
-        if (!directResponse.ok) {
-          const errorText = await directResponse.text();
-          setRawErrorResponse(errorText);
-          throw new Error(`Direct API call failed: ${directResponse.status} - ${errorText}`);
-        }
-        
-        const data = await directResponse.json();
-        setDirectSuccessUrl(functionUrl);
-        console.log("Direct function call successful:", data);
-        setAnalysisResults(data);
-        
-        if (data.rentVerificationNeeded || 
-            (data.extractionConfidence && data.extractionConfidence.rent === 'low') || 
-            (data.regexRentValues && 
-             data.regexRentValues.length > 0 && 
-             !data.regexRentValues.includes(data.extractedData?.financial?.rent?.amount))) {
-          setVerificationRequired(true);
-        }
-        return;
-      } catch (directError) {
-        console.error("Direct function call failed:", directError);
-        setRawErrorResponse((directError as Error).toString());
-        // We'll continue with the standard Supabase approach
-      }
 
-      // Enhanced error handling with full request details
+      // Clean any function cache to avoid issues
+      localStorage.removeItem("supabase.functions.document-ai-lease-analyzer");
+      
+      // Try using the Supabase client's functions.invoke method
       try {
-        console.log("Falling back to standard Supabase function call");
+        console.log("Invoking document-ai-lease-analyzer via Supabase client");
         
         const { data, error } = await supabase.functions.invoke('document-ai-lease-analyzer', {
-          body: {
-            fileBase64,
-            fileName: file.name,
-            fileType: file.type
-          }
+          body: requestBody
         });
 
         setRequestEndTime(new Date().toISOString());
@@ -472,7 +429,7 @@ const LeaseAnalyzer = () => {
         toast({
           variant: "destructive",
           title: "Connection error",
-          description: "Failed to connect to the analysis service. Please check your API keys are set correctly.",
+          description: "Failed to connect to the analysis service. Please ensure your API keys are configured properly in your Supabase dashboard.",
         });
       }
       
