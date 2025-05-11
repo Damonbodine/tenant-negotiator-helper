@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Upload, FileText, AlertCircle, CheckCircle, Shield, Link as LinkIcon, Calendar, BarChart3, FileBarChart, Clock, Eye } from "lucide-react";
+import { Upload, FileText, AlertCircle, CheckCircle, Shield, Link as LinkIcon, Calendar, BarChart3, FileBarChart, Clock, Eye, Bug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +22,7 @@ import { LeasePropertySection } from "@/components/lease-analyzer/LeasePropertyS
 import { LeaseResponsibilitiesSection } from "@/components/lease-analyzer/LeaseResponsibilitiesSection";
 import { LeaseCriticalDatesSection } from "@/components/lease-analyzer/LeaseCriticalDatesSection";
 import { LeaseVerificationSection } from "@/components/lease-analyzer/LeaseVerificationSection";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Define the types for the analysis results
 interface LateFee {
@@ -162,6 +163,8 @@ const LeaseAnalyzer = () => {
   const [analysisResults, setAnalysisResults] = useState<AnalysisResults | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const [showDebugInfo, setShowDebugInfo] = useState(false);
+  const [debugError, setDebugError] = useState<any>(null);
   
   // Remove API key related state variables - now managed in Supabase edge function secrets
   const [processingProgress, setProcessingProgress] = useState<string | null>(null);
@@ -209,6 +212,7 @@ const LeaseAnalyzer = () => {
       }
       
       setFile(selectedFile);
+      setDebugError(null);
     }
   };
 
@@ -245,6 +249,7 @@ const LeaseAnalyzer = () => {
       }
       
       setFile(droppedFile);
+      setDebugError(null);
     }
   };
 
@@ -319,6 +324,7 @@ const LeaseAnalyzer = () => {
     setIsAnalyzing(true);
     setProcessingProgress("Preparing document");
     setVerifiedData({});
+    setDebugError(null);
     
     try {
       // Convert file to base64
@@ -338,6 +344,7 @@ const LeaseAnalyzer = () => {
       
       // Call the Document AI edge function to process the document
       console.log("Calling document-ai-lease-analyzer function");
+      
       const { data, error } = await supabase.functions.invoke('document-ai-lease-analyzer', {
         body: {
           fileBase64,
@@ -348,6 +355,7 @@ const LeaseAnalyzer = () => {
 
       if (error) {
         console.error("Error calling document-ai-lease-analyzer function:", error);
+        setDebugError(error);
         toast({
           variant: "destructive",
           title: "Analysis failed",
@@ -376,6 +384,7 @@ const LeaseAnalyzer = () => {
       
     } catch (error) {
       console.error("Error analyzing lease:", error);
+      setDebugError(error);
       toast({
         variant: "destructive",
         title: "Analysis failed",
@@ -391,6 +400,11 @@ const LeaseAnalyzer = () => {
     setFile(null);
     setAnalysisResults(null);
     setVerifiedData({});
+    setDebugError(null);
+  };
+
+  const toggleDebugInfo = () => {
+    setShowDebugInfo(!showDebugInfo);
   };
 
   return (
@@ -399,6 +413,32 @@ const LeaseAnalyzer = () => {
       <p className="text-xl text-cyan-400/90 text-center mb-8">
         Upload your lease to get plain-language explanations and spot potential issues
       </p>
+
+      {/* Debug Button */}
+      <div className="flex justify-end mb-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={toggleDebugInfo}
+          className="flex items-center gap-1 text-xs"
+        >
+          <Bug className="h-3 w-3" />
+          {showDebugInfo ? "Hide Debug" : "Show Debug"}
+        </Button>
+      </div>
+
+      {/* Debug Information */}
+      {showDebugInfo && debugError && (
+        <Alert className="mb-4 bg-red-950/20 border-red-800 text-red-300">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error Details</AlertTitle>
+          <AlertDescription>
+            <pre className="mt-2 whitespace-pre-wrap text-xs overflow-auto max-h-40 p-2 bg-red-950/30 rounded">
+              {JSON.stringify(debugError, null, 2)}
+            </pre>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Disclaimer Modal */}
       <Dialog open={disclaimerOpen} onOpenChange={setDisclaimerOpen}>
