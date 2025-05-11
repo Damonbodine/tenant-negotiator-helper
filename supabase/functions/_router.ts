@@ -196,6 +196,9 @@ serve(async (req: Request) => {
       
       try {
         // Direct invocation of document-ai-lease-analyzer
+        console.log('About to invoke document-ai-lease-analyzer function with fileBase64 length:', 
+                    requestBody.fileBase64 ? requestBody.fileBase64.length : 'missing');
+                    
         const { data, error } = await supabase.functions.invoke('document-ai-lease-analyzer', {
           body: requestBody,
         });

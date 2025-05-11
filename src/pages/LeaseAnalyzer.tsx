@@ -24,6 +24,7 @@ import { LeaseCriticalDatesSection } from "@/components/lease-analyzer/LeaseCrit
 import { LeaseVerificationSection } from "@/components/lease-analyzer/LeaseVerificationSection";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { DebugInfo } from "@/components/negotiation/DebugInfo";
+import { ApiKeyInput } from "@/components/ApiKeyInput";
 
 // Define the types for the analysis results
 interface LateFee {
@@ -166,15 +167,16 @@ const LeaseAnalyzer = () => {
   const { toast } = useToast();
   const [showDebugInfo, setShowDebugInfo] = useState(false);
   const [debugError, setDebugError] = useState<any>(null);
+  const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState(false);
+  const [selectedApiKey, setSelectedApiKey] = useState<string | null>(null);
   
   // Debug state for network requests
   const [requestStartTime, setRequestStartTime] = useState<string | null>(null);
   const [requestEndTime, setRequestEndTime] = useState<string | null>(null);
   const [httpStatus, setHttpStatus] = useState<number | null>(null);
   const [rawErrorResponse, setRawErrorResponse] = useState<string | null>(null);
-  
-  // Remove API key related state variables - now managed in Supabase edge function secrets
   const [processingProgress, setProcessingProgress] = useState<string | null>(null);
+  const [directSucessUrl, setDirectSuccessUrl] = useState<string | null>(null);
 
   // Check if disclaimer has been seen when component mounts
   useEffect(() => {
@@ -325,6 +327,11 @@ const LeaseAnalyzer = () => {
     }
   };
 
+  const openApiKeyDialog = (keyType: string) => {
+    setSelectedApiKey(keyType);
+    setApiKeyDialogOpen(true);
+  };
+
   const handleAnalyze = async () => {
     if (!file) return;
     
@@ -336,6 +343,7 @@ const LeaseAnalyzer = () => {
     setHttpStatus(null);
     setRequestStartTime(new Date().toISOString());
     setRequestEndTime(null);
+    setDirectSucessUrl(null);
     
     try {
       // Convert file to base64
@@ -351,13 +359,63 @@ const LeaseAnalyzer = () => {
         reader.onerror = error => reject(error);
       });
       
-      setProcessingProgress("Processing with Document AI");
+      setProcessingProgress("Processing document");
       
-      // Call the Document AI edge function to process the document
+      // Log detailed request information
       console.log("Calling document-ai-lease-analyzer function");
+      const functionUrl = `https://izzdyfrcxunfzlfgdjuv.supabase.co/functions/v1/document-ai-lease-analyzer`;
+      const requestBody = {
+        fileBase64,
+        fileName: file.name,
+        fileType: file.type
+      };
+      
+      console.log(`Direct invoking edge function at URL: ${functionUrl}`);
+      console.log(`Request payload size: ${JSON.stringify(requestBody).length} characters`);
+      
+      // Try direct fetch first with detailed error logging
+      try {
+        const directResponse = await fetch(functionUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabase.auth.getSession()}`
+          },
+          body: JSON.stringify(requestBody)
+        });
+        
+        setHttpStatus(directResponse.status);
+        setRequestEndTime(new Date().toISOString());
+        
+        if (!directResponse.ok) {
+          const errorText = await directResponse.text();
+          setRawErrorResponse(errorText);
+          throw new Error(`Direct API call failed: ${directResponse.status} - ${errorText}`);
+        }
+        
+        const data = await directResponse.json();
+        setDirectSucessUrl(functionUrl);
+        console.log("Direct function call successful:", data);
+        setAnalysisResults(data);
+        
+        if (data.rentVerificationNeeded || 
+            (data.extractionConfidence && data.extractionConfidence.rent === 'low') || 
+            (data.regexRentValues && 
+             data.regexRentValues.length > 0 && 
+             !data.regexRentValues.includes(data.extractedData?.financial?.rent?.amount))) {
+          setVerificationRequired(true);
+        }
+        return;
+      } catch (directError) {
+        console.error("Direct function call failed:", directError);
+        setRawErrorResponse((directError as Error).toString());
+        // We'll continue with the standard Supabase approach
+      }
 
       // Enhanced error handling with full request details
       try {
+        console.log("Falling back to standard Supabase function call");
+        
         const { data, error } = await supabase.functions.invoke('document-ai-lease-analyzer', {
           body: {
             fileBase64,
@@ -381,7 +439,7 @@ const LeaseAnalyzer = () => {
           toast({
             variant: "destructive",
             title: "Analysis failed",
-            description: error.message || "We couldn't analyze your lease document. Please try again later.",
+            description: "We couldn't analyze your lease document. Please check your API keys are set correctly in the Supabase dashboard.",
           });
           return;
         }
@@ -396,12 +454,7 @@ const LeaseAnalyzer = () => {
             (data.regexRentValues && 
              data.regexRentValues.length > 0 && 
              !data.regexRentValues.includes(data.extractedData?.financial?.rent?.amount))) {
-          console.log("Verification needed based on analysis", {
-            rentVerificationNeeded: data.rentVerificationNeeded,
-            rentConfidence: data.extractionConfidence?.rent,
-            regexValues: data.regexRentValues,
-            extractedRent: data.extractedData?.financial?.rent?.amount
-          });
+          console.log("Verification needed based on analysis");
           setVerificationRequired(true);
         }
         
@@ -419,7 +472,7 @@ const LeaseAnalyzer = () => {
         toast({
           variant: "destructive",
           title: "Connection error",
-          description: "Failed to connect to the analysis service. Please check your internet connection and try again.",
+          description: "Failed to connect to the analysis service. Please check your API keys are set correctly.",
         });
       }
       
@@ -432,7 +485,7 @@ const LeaseAnalyzer = () => {
       toast({
         variant: "destructive",
         title: "Analysis failed",
-        description: "We couldn't analyze your lease document. Please try again later.",
+        description: "We couldn't analyze your lease document. Please check your API keys are set correctly.",
       });
     } finally {
       setIsAnalyzing(false);
@@ -449,6 +502,7 @@ const LeaseAnalyzer = () => {
     setHttpStatus(null);
     setRequestStartTime(null);
     setRequestEndTime(null);
+    setDirectSucessUrl(null);
   };
 
   const toggleDebugInfo = () => {
@@ -462,8 +516,27 @@ const LeaseAnalyzer = () => {
         Upload your lease to get plain-language explanations and spot potential issues
       </p>
 
-      {/* Debug Button */}
-      <div className="flex justify-end mb-4">
+      {/* Debug And Settings Controls */}
+      <div className="flex justify-between mb-4">
+        <div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => openApiKeyDialog('CLAUDE')}
+            className="mr-2 flex items-center gap-1 text-xs"
+          >
+            Claude API Key
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => openApiKeyDialog('GOOGLE')}
+            className="flex items-center gap-1 text-xs"
+          >
+            Google API Key
+          </Button>
+        </div>
+        
         <Button
           variant="outline"
           size="sm"
@@ -475,6 +548,14 @@ const LeaseAnalyzer = () => {
         </Button>
       </div>
 
+      {/* Display API key dialog when needed */}
+      {apiKeyDialogOpen && selectedApiKey && (
+        <ApiKeyInput 
+          keyType={selectedApiKey} 
+          onClose={() => setApiKeyDialogOpen(false)} 
+        />
+      )}
+
       {/* Debug Information */}
       <DebugInfo 
         showDebugInfo={showDebugInfo}
@@ -482,8 +563,30 @@ const LeaseAnalyzer = () => {
         requestStartTime={requestStartTime}
         requestEndTime={requestEndTime}
         rawErrorResponse={rawErrorResponse}
-        additionalInfo={debugError}
+        additionalInfo={{
+          ...debugError,
+          file: file ? `${file.name} (${file.type}, ${(file.size / 1024).toFixed(2)} KB)` : 'None',
+          directSuccessUrl: directSucessUrl
+        }}
       />
+
+      {/* Connection Status Alert */}
+      {showDebugInfo && (
+        <Alert className="mb-4 border-amber-500 bg-amber-500/20">
+          <AlertCircle className="h-4 w-4 text-amber-500" />
+          <AlertTitle className="text-amber-500">Connection Information</AlertTitle>
+          <AlertDescription>
+            <p>Required API Keys:</p>
+            <ul className="list-disc list-inside ml-4 mt-2 text-sm">
+              <li className="text-amber-500">Claude API Key (for document analysis)</li>
+              <li className="text-amber-500">Google API Key (for document processing)</li>
+            </ul>
+            <p className="mt-2 text-amber-500">
+              To change API keys, click the buttons above.
+            </p>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Disclaimer Modal */}
       <Dialog open={disclaimerOpen} onOpenChange={setDisclaimerOpen}>
@@ -736,7 +839,7 @@ const LeaseAnalyzer = () => {
       
       <div className="text-center mt-8">
         <p className="text-sm text-cyan-400/60">
-          Powered by Google Document AI for enhanced document recognition
+          Powered by Claude AI and Google Document AI for enhanced document recognition
         </p>
       </div>
     </div>
