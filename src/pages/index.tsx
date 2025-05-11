@@ -1,3 +1,4 @@
+
 import { useState, lazy, Suspense, useEffect } from "react";
 import { FeatureCards } from "@/components/marketing/FeatureCards";
 import { TestimonialCarousel } from "@/components/marketing/TestimonialCarousel";
@@ -76,7 +77,10 @@ const Index = () => {
               
               {!user && <div className="mb-8">
                   <Link to="/auth">
-                    
+                    <Button className="bg-cyan-400 text-cyan-950 hover:bg-cyan-500">
+                      <LogIn className="mr-2 h-4 w-4" />
+                      Sign In to Save Your Analysis
+                    </Button>
                   </Link>
                 </div>}
               
