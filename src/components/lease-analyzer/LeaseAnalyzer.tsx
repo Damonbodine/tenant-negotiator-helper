@@ -1,74 +1,78 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
+import { LeaseResultsView } from "./LeaseResultsView";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+const STEPS = {
+  UPLOAD: 'upload',
+  PROCESSING: 'processing',
+  RESULTS: 'results'
 };
 
-const googleApiKey = Deno.env.get('GOOGLE_DOCUMENTAI_API_KEY');
-const projectId = Deno.env.get('GOOGLE_PROJECT_ID');
-const processorId = Deno.env.get('GOOGLE_PROCESSOR_ID');
-const location = 'us'; // Change if your processor is somewhere else, like 'us-central1'
+export function LeaseAnalyzer() {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [step, setStep] = useState(STEPS.UPLOAD);
+  const [analysisResults, setAnalysisResults] = useState<any | null>(null);
 
-serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (file && file.type === 'application/pdf' && file.size <= 10 * 1024 * 1024) {
+      setSelectedFile(file);
+    } else {
+      alert("Please upload a PDF under 10MB.");
+    }
+  };
 
-  try {
-    const requestData = await req.json();
+  const handleAnalyzeDocument = async () => {
+    if (!selectedFile) return;
 
-    const { fileBase64, fileName } = requestData;
+    setStep(STEPS.PROCESSING);
 
-    if (!fileBase64) {
-      return new Response(JSON.stringify({ error: 'Missing fileBase64' }), {
-        status: 400,
-        headers: corsHeaders,
-      });
+    const arrayBuffer = await selectedFile.arrayBuffer();
+    const base64String = btoa(
+      new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+    );
+
+    const { data, error } = await supabase.functions.invoke('document-ai-lease-analyzer', {
+      body: { fileBase64: base64String, fileName: selectedFile.name }
+    });
+
+    if (error) {
+      console.error(error);
+      alert('Analysis failed.');
+      setStep(STEPS.UPLOAD);
+      return;
     }
 
-    console.log(`Received file: ${fileName || 'Unnamed file'}`);
+    setAnalysisResults(data);
+    setStep(STEPS.RESULTS);
+  };
 
-    // Call Google Document AI
-    const docAIResponse = await fetch(`https://${location}-documentai.googleapis.com/v1/projects/${projectId}/locations/${location}/processors/${processorId}:process`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${googleApiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        rawDocument: {
-          content: fileBase64,
-          mimeType: "application/pdf"
-        }
-      })
-    });
+  const handleReset = () => {
+    setSelectedFile(null);
+    setStep(STEPS.UPLOAD);
+    setAnalysisResults(null);
+  };
 
-    if (!docAIResponse.ok) {
-      const errorText = await docAIResponse.text();
-      console.error("Google Document AI error:", errorText);
-      return new Response(JSON.stringify({ error: "Google Document AI error", details: errorText }), {
-        status: 500,
-        headers: corsHeaders
-      });
-    }
+  return (
+    <div className="container mx-auto py-8">
+      <h1 className="text-3xl font-bold mb-6">Lease Analyzer</h1>
+      {step === STEPS.UPLOAD && (
+        <div className="space-y-6">
+          <Input type="file" accept="application/pdf" onChange={handleFileChange} />
+          {selectedFile && (
+            <Button onClick={handleAnalyzeDocument}>Analyze Lease</Button>
+          )}
+        </div>
+      )}
+      {step === STEPS.PROCESSING && (
+        <div>Processing your document...</div>
+      )}
+      {step === STEPS.RESULTS && analysisResults && (
+        <LeaseResultsView analysis={analysisResults} onAnalyzeAnother={handleReset} />
+      )}
+    </div>
+  );
+}
 
-    const parsedDocument = await docAIResponse.json();
-
-    console.log("Successfully parsed document with Google Document AI");
-
-    return new Response(JSON.stringify({
-      message: "Lease analyzed successfully",
-      parsedDocument,
-    }), {
-      headers: corsHeaders,
-    });
-
-  } catch (error) {
-    console.error("Error in document-ai-lease-analyzer function:", error);
-    return new Response(JSON.stringify({ error: "Internal Server Error", details: error.message }), {
-      status: 500,
-      headers: corsHeaders,
-    });
-  }
-});
