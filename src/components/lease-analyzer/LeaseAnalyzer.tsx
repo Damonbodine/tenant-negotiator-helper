@@ -4,12 +4,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload } from "lucide-react";
-import { useToast } from "@/shared/hooks/use-toast";
+import { FileText, Upload, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Progress } from "@/components/ui/progress";
+import { supabase } from "@/integrations/supabase/client";
+import { LeaseAnalysisResult } from "./types";
+import { LeaseResultsView } from "./LeaseResultsView";
+
+const STEPS = {
+  UPLOAD: 'upload',
+  PROCESSING: 'processing',
+  RESULTS: 'results'
+};
 
 export function LeaseAnalyzer() {
-  const [isUploading, setIsUploading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [step, setStep] = useState(STEPS.UPLOAD);
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const [analysisResults, setAnalysisResults] = useState<LeaseAnalysisResult | null>(null);
   const { toast } = useToast();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -25,10 +38,10 @@ export function LeaseAnalyzer() {
         return;
       }
       
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
         toast({
           title: "File too large",
-          description: "Please upload a PDF smaller than 5MB.",
+          description: "Please upload a PDF smaller than 10MB.",
           variant: "destructive"
         });
         return;
@@ -38,29 +51,181 @@ export function LeaseAnalyzer() {
     }
   };
 
-  const handleUpload = async () => {
+  const extractTextFromPdf = async (file: File): Promise<string> => {
+    // We'll use PDF.js to extract text from the PDF client-side
+    const pdfjsLib = await import('pdfjs-dist');
+    // Set worker path to pdf.js worker
+    const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.entry');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+    
+    return new Promise(async (resolve, reject) => {
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+        const numPages = pdf.numPages;
+        let text = '';
+        
+        // Extract text from each page
+        for (let i = 1; i <= numPages; i++) {
+          setProcessingProgress(Math.floor((i / numPages) * 30)); // First 30% is text extraction
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          const strings = content.items.map((item: any) => item.str);
+          text += strings.join(' ') + '\n';
+        }
+        
+        resolve(text);
+      } catch (error) {
+        console.error("Error extracting text from PDF:", error);
+        reject(error);
+      }
+    });
+  };
+
+  const handleAnalyzeDocument = async () => {
     if (!selectedFile) return;
     
-    setIsUploading(true);
+    setIsProcessing(true);
+    setStep(STEPS.PROCESSING);
+    setProcessingProgress(0);
     
     try {
-      // For now, just show a success toast
-      // We'll implement the actual analysis functionality step by step
+      // Extract text from the PDF client-side to avoid large file uploads
       toast({
-        title: "File received",
-        description: `Successfully uploaded ${selectedFile.name}. Analysis functionality coming soon!`,
+        title: "Extracting text",
+        description: "Reading your lease document...",
+      });
+      
+      const extractedText = await extractTextFromPdf(selectedFile);
+      setProcessingProgress(30);
+      
+      // Now send the text to our edge function for analysis
+      toast({
+        title: "Analyzing document",
+        description: "Using AI to analyze your lease terms...",
+      });
+
+      const { data, error } = await supabase.functions.invoke('document-ai-lease-analyzer', {
+        body: { text: extractedText, fileName: selectedFile.name }
+      });
+
+      if (error) {
+        throw new Error(`Error analyzing document: ${error.message}`);
+      }
+
+      setProcessingProgress(100);
+      
+      if (!data || !data.analysis) {
+        throw new Error("Invalid response from the analyzer service");
+      }
+
+      // Set the analysis results
+      setAnalysisResults(data.analysis);
+      
+      // Move to the results step
+      setStep(STEPS.RESULTS);
+      
+      toast({
+        title: "Analysis complete",
+        description: "Your lease has been successfully analyzed!",
       });
     } catch (error) {
-      console.error("Error uploading file:", error);
+      console.error("Error analyzing lease document:", error);
       toast({
-        title: "Upload failed",
-        description: "There was an error uploading your file. Please try again.",
+        title: "Analysis failed",
+        description: error instanceof Error ? error.message : "There was an error analyzing your document. Please try again.",
         variant: "destructive"
       });
+      setStep(STEPS.UPLOAD);
     } finally {
-      setIsUploading(false);
+      setIsProcessing(false);
     }
   };
+
+  const handleResetAnalysis = () => {
+    setSelectedFile(null);
+    setAnalysisResults(null);
+    setStep(STEPS.UPLOAD);
+  };
+
+  const renderUploadStep = () => (
+    <Card className="border-cyan-400/30 bg-cyan-950/20 mb-8">
+      <CardHeader>
+        <CardTitle className="text-cyan-400">Upload Lease Document</CardTitle>
+        <CardDescription>
+          We accept PDF files up to 10MB in size
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-6">
+          <div className="grid w-full items-center gap-4">
+            <Label htmlFor="lease-file" className="text-cyan-400">
+              Select PDF File
+            </Label>
+            <Input 
+              id="lease-file"
+              type="file" 
+              accept=".pdf"
+              onChange={handleFileChange}
+              className="cursor-pointer"
+              disabled={isProcessing}
+            />
+          </div>
+          
+          {selectedFile && (
+            <div>
+              <p className="text-sm text-cyan-100/90 mb-2">
+                Selected file: <span className="font-medium">{selectedFile.name}</span>
+              </p>
+              <Button 
+                onClick={handleAnalyzeDocument} 
+                disabled={isProcessing}
+                className="bg-cyan-600 hover:bg-cyan-700"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                {isProcessing ? "Processing..." : "Analyze Lease"}
+              </Button>
+            </div>
+          )}
+          
+          <div className="bg-cyan-950/40 p-4 rounded-md">
+            <h3 className="text-sm font-medium text-cyan-400 mb-2">Privacy Notice</h3>
+            <p className="text-xs text-cyan-100/70">
+              Your lease document will be processed to extract relevant information. 
+              The document is not stored permanently and is only used for analysis purposes.
+              We use Google Document AI and OpenAI to process and analyze your document.
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const renderProcessingStep = () => (
+    <Card className="border-cyan-400/30 bg-cyan-950/20 mb-8">
+      <CardHeader>
+        <CardTitle className="text-cyan-400">Analyzing Your Lease</CardTitle>
+        <CardDescription>
+          Please wait while we process your document
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="flex flex-col items-center justify-center py-8">
+          <Loader2 className="h-12 w-12 animate-spin text-cyan-400 mb-4" />
+          <p className="text-cyan-100/80 text-lg font-medium">
+            {processingProgress < 30 ? "Extracting text from document..." :
+             processingProgress < 60 ? "Analyzing document structure..." :
+             processingProgress < 90 ? "Identifying key lease terms..." :
+             "Finalizing analysis..."}
+          </p>
+          <div className="w-full max-w-md mt-6">
+            <Progress value={processingProgress} className="h-2 bg-cyan-950/60" />
+            <p className="text-right text-xs text-cyan-100/60 mt-2">{processingProgress}%</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div className="container mx-auto py-8">
@@ -70,93 +235,54 @@ export function LeaseAnalyzer() {
         lease terms in plain language and identifies important clauses.
       </p>
       
-      <Card className="border-cyan-400/30 bg-cyan-950/20 mb-8">
-        <CardHeader>
-          <CardTitle className="text-cyan-400">Upload Lease Document</CardTitle>
-          <CardDescription>
-            We accept PDF files up to 5MB in size
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-6">
-            <div className="grid w-full items-center gap-4">
-              <Label htmlFor="lease-file" className="text-cyan-400">
-                Select PDF File
-              </Label>
-              <Input 
-                id="lease-file"
-                type="file" 
-                accept=".pdf"
-                onChange={handleFileChange}
-                className="cursor-pointer"
-              />
-            </div>
-            
-            {selectedFile && (
-              <div>
-                <p className="text-sm text-cyan-100/90 mb-2">
-                  Selected file: <span className="font-medium">{selectedFile.name}</span>
-                </p>
-                <Button 
-                  onClick={handleUpload} 
-                  disabled={isUploading}
-                  className="bg-cyan-600 hover:bg-cyan-700"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  {isUploading ? "Uploading..." : "Analyze Lease"}
-                </Button>
-              </div>
-            )}
-            
-            <div className="bg-cyan-950/40 p-4 rounded-md">
-              <h3 className="text-sm font-medium text-cyan-400 mb-2">Privacy Notice</h3>
-              <p className="text-xs text-cyan-100/70">
-                Your lease document will be processed to extract relevant information. 
-                The document is not stored permanently and is only used for analysis purposes.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {step === STEPS.UPLOAD && renderUploadStep()}
+      {step === STEPS.PROCESSING && renderProcessingStep()}
+      {step === STEPS.RESULTS && analysisResults && (
+        <Card className="border-cyan-400/30 bg-cyan-950/20 mb-8">
+          <LeaseResultsView analysis={analysisResults} onAnalyzeAnother={handleResetAnalysis} />
+        </Card>
+      )}
       
-      <Card className="border-cyan-400/30 bg-cyan-950/20">
-        <CardHeader>
-          <CardTitle className="text-cyan-400">How It Works</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-4 bg-cyan-950/40 rounded-lg text-center">
-              <div className="bg-cyan-800/30 w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-3">
-                <span className="text-cyan-400 font-bold">1</span>
+      {step === STEPS.UPLOAD && (
+        <Card className="border-cyan-400/30 bg-cyan-950/20">
+          <CardHeader>
+            <CardTitle className="text-cyan-400">How It Works</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="p-4 bg-cyan-950/40 rounded-lg text-center">
+                <div className="bg-cyan-800/30 w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <span className="text-cyan-400 font-bold">1</span>
+                </div>
+                <h3 className="text-cyan-400 mb-2">Upload</h3>
+                <p className="text-sm text-cyan-100/80">
+                  Upload your lease document in PDF format
+                </p>
               </div>
-              <h3 className="text-cyan-400 mb-2">Upload</h3>
-              <p className="text-sm text-cyan-100/80">
-                Upload your lease document in PDF format
-              </p>
-            </div>
-            
-            <div className="p-4 bg-cyan-950/40 rounded-lg text-center">
-              <div className="bg-cyan-800/30 w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-3">
-                <span className="text-cyan-400 font-bold">2</span>
+              
+              <div className="p-4 bg-cyan-950/40 rounded-lg text-center">
+                <div className="bg-cyan-800/30 w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <span className="text-cyan-400 font-bold">2</span>
+                </div>
+                <h3 className="text-cyan-400 mb-2">AI Analysis</h3>
+                <p className="text-sm text-cyan-100/80">
+                  Our AI analyzes the document using Google Document AI and OpenAI
+                </p>
               </div>
-              <h3 className="text-cyan-400 mb-2">Process</h3>
-              <p className="text-sm text-cyan-100/80">
-                Our AI analyzes the document to extract key information
-              </p>
-            </div>
-            
-            <div className="p-4 bg-cyan-950/40 rounded-lg text-center">
-              <div className="bg-cyan-800/30 w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-3">
-                <span className="text-cyan-400 font-bold">3</span>
+              
+              <div className="p-4 bg-cyan-950/40 rounded-lg text-center">
+                <div className="bg-cyan-800/30 w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <span className="text-cyan-400 font-bold">3</span>
+                </div>
+                <h3 className="text-cyan-400 mb-2">Review</h3>
+                <p className="text-sm text-cyan-100/80">
+                  Get a breakdown of your lease with explanations of complex terms
+                </p>
               </div>
-              <h3 className="text-cyan-400 mb-2">Review</h3>
-              <p className="text-sm text-cyan-100/80">
-                Get a breakdown of your lease with explanations of complex terms
-              </p>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
