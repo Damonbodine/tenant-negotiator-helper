@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload } from "lucide-react";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/shared/hooks/use-toast";
 
 export function LeaseAnalyzer() {
   const [isUploading, setIsUploading] = useState(false);
