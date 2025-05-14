@@ -7,10 +7,10 @@ const GOOGLE_API_KEY = Deno.env.get("GOOGLE_DOCUMENTAI_API_KEY");
 const OPENAI_API_KEY = Deno.env.get("OPENAI_RENTERS_MENTOR_KEY");
 
 // Google Document AI processor ID and location
-// Users need to create a processor in Google Cloud Console and replace this
-const PROCESSOR_ID = "YOUR_PROCESSOR_ID"; 
+// These values are now set to the ones provided by the user
+const PROCESSOR_ID = "spheric-ray-454302-f6"; 
 const PROCESSOR_LOCATION = "us";
-const PROCESSOR_PROJECT_ID = "YOUR_PROJECT_ID";
+const PROCESSOR_PROJECT_ID = "910967701703";
 
 // Constants
 const MAX_CHUNK_SIZE = 12000; // Characters per chunk for OpenAI
