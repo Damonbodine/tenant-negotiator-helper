@@ -1,2 +1,10 @@
 
-id = "izzdyfrcxunfzlfgdjuv"
+memory = 512
+timeout = 30
+verify_jwt = false
+
+[deno]
+runtime = "deno"
+
+[environment]
+ANTHROPIC_API_KEY = "required"
