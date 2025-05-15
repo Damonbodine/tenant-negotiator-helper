@@ -106,13 +106,13 @@ serve(async (req: Request) => {
         );
       }
     } else if (path === '/api/lease-analyzer' || path.startsWith('/api/lease-analyzer')) {
-      console.log('Routing to claude-lease-analyzer function');
+      console.log('Routing to lease-analyzer function');
       
       // Parse request body safely
       let requestBody;
       try {
         requestBody = await req.json();
-        console.log('Request body:', JSON.stringify(requestBody).substring(0, 200) + '...');
+        console.log('Lease Analyzer Request body:', requestBody.fileName || 'unknown file');
       } catch (e) {
         console.error('Error parsing request body:', e);
         return new Response(
@@ -125,28 +125,16 @@ serve(async (req: Request) => {
       }
       
       try {
-        // Call the claude-lease-analyzer function
-        console.log('Invoking claude-lease-analyzer with request body');
-        const { data, error } = await supabase.functions.invoke('claude-lease-analyzer', {
+        // Call the lease-analyzer function
+        console.log('Invoking lease-analyzer function');
+        const { data, error } = await supabase.functions.invoke('lease-analyzer', {
           body: requestBody,
         });
 
         if (error) {
-          console.error('Error invoking claude-lease-analyzer:', error);
+          console.error('Error invoking lease-analyzer:', error);
           return new Response(
             JSON.stringify({ error: error.message || 'Invocation error' }),
-            { 
-              status: 500,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            }
-          );
-        }
-
-        // Make sure we never return empty data
-        if (!data) {
-          console.error('No data returned from claude-lease-analyzer');
-          return new Response(
-            JSON.stringify({ error: 'No data returned from analyzer' }),
             { 
               status: 500,
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -157,65 +145,6 @@ serve(async (req: Request) => {
         console.log('Lease analyzer response received');
         
         // Return the data even if there might be some missing fields
-        // The front-end will handle partial data with null checks
-        return new Response(
-          JSON.stringify(data),
-          { 
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        );
-      } catch (error) {
-        console.error('Error in claude-lease-analyzer invocation:', error);
-        return new Response(
-          JSON.stringify({ error: error.message || 'Function invocation error' }),
-          { 
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        );
-      }
-    } else if (path === '/api/document-ai-lease-analyzer' || path === '/document-ai-lease-analyzer' || path.includes('document-ai-lease-analyzer')) {
-      console.log('Routing to document-ai-lease-analyzer function');
-      
-      // Parse request body safely
-      let requestBody;
-      try {
-        requestBody = await req.json();
-        console.log('Document-AI request received with file:', requestBody.fileName || 'unknown file');
-      } catch (e) {
-        console.error('Error parsing request body:', e);
-        return new Response(
-          JSON.stringify({ error: 'Invalid request body' }),
-          { 
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        );
-      }
-      
-      try {
-        // Direct invocation of document-ai-lease-analyzer
-        console.log('About to invoke document-ai-lease-analyzer function with fileBase64 length:', 
-                    requestBody.fileBase64 ? requestBody.fileBase64.length : 'missing');
-                    
-        const { data, error } = await supabase.functions.invoke('document-ai-lease-analyzer', {
-          body: requestBody,
-        });
-
-        if (error) {
-          console.error('Error invoking document-ai-lease-analyzer:', error);
-          return new Response(
-            JSON.stringify({ error: error.message || 'Invocation error' }),
-            { 
-              status: 500,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            }
-          );
-        }
-
-        console.log('Document AI analysis completed successfully');
-        
         return new Response(
           JSON.stringify(data || { error: 'No data returned' }),
           { 
@@ -224,7 +153,7 @@ serve(async (req: Request) => {
           }
         );
       } catch (error) {
-        console.error('Error in document-ai-lease-analyzer invocation:', error);
+        console.error('Error in lease-analyzer invocation:', error);
         return new Response(
           JSON.stringify({ error: error.message || 'Function invocation error' }),
           { 

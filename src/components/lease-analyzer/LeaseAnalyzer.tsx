@@ -2,13 +2,13 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { supabase } from "@/integrations/supabase/client";
 import { LeaseResultsView } from "./LeaseResultsView";
 import { DebugInfo } from "@/components/negotiation/DebugInfo";
 import { Progress } from "@/components/ui/progress";
-import { Loader2 } from "lucide-react";
+import { Loader2, FileText, Upload } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { extractTextFromPdf } from "./utils/pdfUtils";
+import { processDocumentWithAI } from "./utils/documentAiUtils";
+import { LeaseAnalysisResult } from "./types";
 
 const STEPS = {
   UPLOAD: 'upload',
@@ -19,8 +19,7 @@ const STEPS = {
 export function LeaseAnalyzer() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [step, setStep] = useState(STEPS.UPLOAD);
-  const [analysisResults, setAnalysisResults] = useState<any | null>(null);
-  const [extractedText, setExtractedText] = useState<string | null>(null);
+  const [analysisResults, setAnalysisResults] = useState<LeaseAnalysisResult | null>(null);
   const [progress, setProgress] = useState<number>(0);
   const [processingPhase, setProcessingPhase] = useState<string>('');
   
@@ -36,7 +35,6 @@ export function LeaseAnalyzer() {
     const file = e.target.files?.[0] || null;
     if (file && file.type === 'application/pdf' && file.size <= 10 * 1024 * 1024) {
       setSelectedFile(file);
-      setExtractedText(null);
       setProgress(0);
       // Reset debug info
       setRawErrorResponse(null);
@@ -57,84 +55,41 @@ export function LeaseAnalyzer() {
     try {
       setStep(STEPS.PROCESSING);
       setProgress(0);
-      setProcessingPhase('Processing PDF document...');
+      setProcessingPhase('Preparing document for analysis...');
       setRequestStartTime(new Date().toISOString());
       setRawErrorResponse(null);
       setHttpStatus(null);
       
-      // Extract text from PDF first using our utility
-      const text = await extractTextFromPdf(selectedFile, (percent, currentPage, totalPages) => {
-        setProcessingPhase(`Extracting text from page ${currentPage}/${totalPages}...`);
-        setProgress(Math.round(percent / 2)); // First 50% of progress
-      });
-      
-      setExtractedText(text);
-      setProgress(50);
-      setProcessingPhase('Analyzing lease content...');
-      setDebugInfo(prev => ({ ...prev, extractedTextLength: text.length }));
-      
-      // Call the edge function with the extracted text
-      console.log(`Sending ${text.length} characters to edge function for analysis`);
-      const response = await supabase.functions.invoke('document-ai-lease-analyzer', {
-        body: { 
-          text: text,
-          fileName: selectedFile.name
+      // Process the document with Google Document AI
+      const result = await processDocumentWithAI(
+        selectedFile, 
+        (percent, phase) => {
+          setProgress(percent);
+          setProcessingPhase(phase);
+          setDebugInfo(prev => ({ ...prev, currentProgress: percent, currentPhase: phase }));
         }
-      });
+      );
       
-      // Handle the response
-      const data = response.data;
-      const error = response.error;
-      
-      // Set debug information
-      setHttpStatus(error ? 500 : 200); // Approximate status from error presence
       setRequestEndTime(new Date().toISOString());
+      
       setDebugInfo(prev => ({
         ...prev,
-        responseData: data,
-        requestStatus: error ? 500 : 200,
-        requestDuration: `${new Date().getTime() - new Date(requestStartTime!).getTime()}ms`,
+        responseReceived: true,
+        responseTime: `${new Date().getTime() - new Date(requestStartTime!).getTime()}ms`,
+        resultSize: JSON.stringify(result).length,
       }));
-
-      if (error) {
-        console.error("Lease analysis error:", error);
-        setRawErrorResponse(JSON.stringify(error, null, 2));
-        setProgress(100);
-        toast({
-          title: "Analysis Failed",
-          description: "There was an error analyzing your lease. See details below.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Handle successful response
-      setProgress(100);
       
-      if (!data) {
-        console.error("No data returned from function");
-        setRawErrorResponse("No data returned from function call");
-        toast({
-          title: "Analysis Error",
-          description: "No results were returned from the analysis service.",
-          variant: "destructive"
-        });
-        return;
+      if (!result) {
+        throw new Error("No results returned from analysis");
       }
       
-      if (data.error) {
-        console.error("Error in analysis result:", data.error);
-        setRawErrorResponse(JSON.stringify(data.error, null, 2));
-        toast({
-          title: "Analysis Error",
-          description: data.error,
-          variant: "destructive"
-        });
-        return;
+      if (result.error) {
+        throw new Error(result.error);
       }
-
-      console.log("Lease analysis result:", data);
-      setAnalysisResults(data);
+      
+      // Set analysis results and move to results step
+      setAnalysisResults(result.analysis);
+      setHttpStatus(200);
       setStep(STEPS.RESULTS);
       
       toast({
@@ -147,9 +102,11 @@ export function LeaseAnalyzer() {
       setRawErrorResponse(error instanceof Error ? error.message : JSON.stringify(error, null, 2));
       setProgress(100);
       setRequestEndTime(new Date().toISOString());
+      setHttpStatus(500);
+      
       toast({
         title: "Analysis Failed",
-        description: "An unexpected error occurred. See details below.",
+        description: "An error occurred during analysis. See details below.",
         variant: "destructive"
       });
     }
@@ -159,7 +116,6 @@ export function LeaseAnalyzer() {
     setSelectedFile(null);
     setStep(STEPS.UPLOAD);
     setAnalysisResults(null);
-    setExtractedText(null);
     setProgress(0);
     setRawErrorResponse(null);
     setDebugInfo({});
@@ -189,14 +145,23 @@ export function LeaseAnalyzer() {
 
       {step === STEPS.UPLOAD && (
         <div className="space-y-6">
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+            <div className="flex justify-center mb-4">
+              <FileText className="h-12 w-12 text-gray-400" />
+            </div>
+            
+            <h2 className="text-xl font-medium mb-2">Upload Your Lease</h2>
+            <p className="text-gray-500 mb-4">Upload a PDF lease agreement to analyze its terms and conditions</p>
+            
             <Input 
               type="file" 
               accept="application/pdf" 
               onChange={handleFileChange}
               className="mb-4"
             />
-            <p className="text-sm text-gray-500 mb-2">Upload a PDF lease document (Max 10MB)</p>
+            
+            <p className="text-sm text-gray-500 mb-4">Upload a PDF lease document (Max 10MB)</p>
+            
             {selectedFile && (
               <div className="mt-4">
                 <p className="text-sm font-medium">{selectedFile.name} ({Math.round(selectedFile.size / 1024)} KB)</p>
@@ -204,6 +169,7 @@ export function LeaseAnalyzer() {
                   onClick={handleAnalyzeDocument} 
                   className="mt-4"
                 >
+                  <Upload className="mr-2 h-4 w-4" />
                   Analyze Lease
                 </Button>
               </div>
@@ -214,13 +180,13 @@ export function LeaseAnalyzer() {
       
       {step === STEPS.PROCESSING && (
         <div className="space-y-6">
-          <div className="p-6 border rounded-lg bg-blue-50">
-            <div className="flex items-center mb-4">
-              <Loader2 className="h-5 w-5 mr-2 animate-spin text-blue-500" />
-              <p className="font-medium text-blue-800">{processingPhase}</p>
+          <div className="p-8 border rounded-lg bg-blue-50">
+            <div className="flex items-center mb-6">
+              <Loader2 className="h-6 w-6 mr-3 animate-spin text-blue-500" />
+              <p className="font-medium text-blue-800 text-lg">{processingPhase}</p>
             </div>
             <Progress value={progress} className="h-2 mb-2" />
-            <p className="text-sm text-blue-600">{progress}% complete</p>
+            <p className="text-sm text-blue-600 text-center">{progress}% complete</p>
           </div>
         </div>
       )}

@@ -44,5 +44,5 @@ config_port = 54329
 graphql_port = 54330
 
 [functions]
-[functions.document-ai-lease-analyzer]
+[functions.lease-analyzer]
 verify_jwt = false
