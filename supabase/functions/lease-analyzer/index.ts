@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -7,7 +6,8 @@ const OPENAI_API_KEY = Deno.env.get("OPENAI_RENTERS_MENTOR_KEY");
 const GOOGLE_DOCUMENT_AI_API_KEY = Deno.env.get("GOOGLE_DOCUMENTAI_API_KEY");
 
 // Google Document AI processor settings
-const PROCESSOR_ID = "projects/cloud-doc-ai-basic/locations/us/processors/6ec0c96e035a8e46"; 
+// These values should be updated with your specific Google Document AI processor details
+const PROCESSOR_ID = "6ec0c96e035a8e46"; 
 const PROCESSOR_LOCATION = "us";
 const PROCESSOR_PROJECT_ID = "cloud-doc-ai-basic";
 
