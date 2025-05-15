@@ -10,8 +10,12 @@ import * as pdfjs from "pdfjs-dist";
 import { Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
-// Set worker path to load from CDN
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+// Instead of using CDN, we'll use the worker from the package
+// This needs to be set before any PDF.js usage
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.min.js",
+  import.meta.url
+).toString();
 
 const STEPS = {
   UPLOAD: 'upload',
@@ -59,14 +63,28 @@ export function LeaseAnalyzer() {
       setProcessingPhase('Extracting text from PDF...');
       const arrayBuffer = await file.arrayBuffer();
       
+      console.log("PDF.js worker source:", pdfjs.GlobalWorkerOptions.workerSrc);
+      
       // Load the PDF file
-      const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+      const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
+      
+      // Add loading event listener
+      loadingTask.onProgress = (progress) => {
+        const percent = progress.loaded / progress.total * 100;
+        console.log(`PDF loading progress: ${Math.round(percent)}%`);
+      };
+      
+      const pdf = await loadingTask.promise;
       const numPages = pdf.numPages;
+      console.log(`PDF document loaded successfully with ${numPages} pages`);
+      
       let fullText = '';
       
       // Extract text from each page
       for (let i = 1; i <= numPages; i++) {
         setProgress(Math.round((i / numPages) * 50)); // First 50% of progress
+        console.log(`Extracting text from page ${i}/${numPages}`);
+        
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
         const pageText = textContent.items
@@ -115,12 +133,12 @@ export function LeaseAnalyzer() {
       const error = response.error;
       
       // Set debug information
-      setHttpStatus(response.error ? 500 : 200); // Approximate status from error presence
+      setHttpStatus(error ? 500 : 200); // Approximate status from error presence
       setRequestEndTime(new Date().toISOString());
       setDebugInfo(prev => ({
         ...prev,
         responseData: data,
-        requestStatus: response.error ? 500 : 200,
+        requestStatus: error ? 500 : 200,
         requestDuration: `${new Date().getTime() - new Date(requestStartTime!).getTime()}ms`,
       }));
 
