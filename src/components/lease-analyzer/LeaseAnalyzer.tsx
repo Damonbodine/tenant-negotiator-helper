@@ -103,20 +103,24 @@ export function LeaseAnalyzer() {
       
       // Call the edge function with the extracted text
       console.log(`Sending ${text.length} characters to edge function for analysis`);
-      const { data, error, status } = await supabase.functions.invoke('document-ai-lease-analyzer', {
+      const response = await supabase.functions.invoke('document-ai-lease-analyzer', {
         body: { 
           text: text,
           fileName: selectedFile.name
         }
       });
       
+      // Handle the response
+      const data = response.data;
+      const error = response.error;
+      
       // Set debug information
-      setHttpStatus(status);
+      setHttpStatus(response.error ? 500 : 200); // Approximate status from error presence
       setRequestEndTime(new Date().toISOString());
       setDebugInfo(prev => ({
         ...prev,
         responseData: data,
-        requestStatus: status,
+        requestStatus: response.error ? 500 : 200,
         requestDuration: `${new Date().getTime() - new Date(requestStartTime!).getTime()}ms`,
       }));
 
