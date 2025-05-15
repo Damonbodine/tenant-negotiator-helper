@@ -45,9 +45,17 @@ export interface LeaseAnalysisResult {
     issues: string[];
     severity: "low" | "medium" | "high";
   }[];
+  rawResponse?: string;
 }
 
 export interface LeaseAnalyzerResponse {
   analysis: LeaseAnalysisResult;
   error?: string;
+  debug?: {
+    processedAt: string;
+    textLength: number;
+    processorUsed: string;
+    processingTimeMs: number;
+    [key: string]: any;
+  };
 }
