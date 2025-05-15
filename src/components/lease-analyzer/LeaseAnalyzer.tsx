@@ -6,17 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { LeaseResultsView } from "./LeaseResultsView";
 import { DebugInfo } from "@/components/negotiation/DebugInfo";
 import { Progress } from "@/components/ui/progress";
-import * as pdfjs from "pdfjs-dist";
 import { Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-
-// Set up PDF.js worker
-// We'll create a blob URL from the worker script to avoid path issues
-const pdfWorkerSrc = `
-  importScripts('https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js');
-`;
-const blob = new Blob([pdfWorkerSrc], { type: 'application/javascript' });
-pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(blob);
+import { extractTextFromPdf } from "./utils/pdfUtils";
 
 const STEPS = {
   UPLOAD: 'upload',
@@ -58,49 +50,6 @@ export function LeaseAnalyzer() {
       });
     }
   };
-  
-  const extractTextFromPdf = async (file: File): Promise<string> => {
-    try {
-      setProcessingPhase('Extracting text from PDF...');
-      const arrayBuffer = await file.arrayBuffer();
-      
-      console.log("PDF.js worker source:", pdfjs.GlobalWorkerOptions.workerSrc);
-      
-      // Load the PDF file
-      const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
-      
-      // Add loading event listener
-      loadingTask.onProgress = (progress) => {
-        const percent = progress.loaded / progress.total * 100;
-        console.log(`PDF loading progress: ${Math.round(percent)}%`);
-      };
-      
-      const pdf = await loadingTask.promise;
-      const numPages = pdf.numPages;
-      console.log(`PDF document loaded successfully with ${numPages} pages`);
-      
-      let fullText = '';
-      
-      // Extract text from each page
-      for (let i = 1; i <= numPages; i++) {
-        setProgress(Math.round((i / numPages) * 50)); // First 50% of progress
-        console.log(`Extracting text from page ${i}/${numPages}`);
-        
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items
-          .map((item: any) => item.str)
-          .join(' ');
-        fullText += pageText + '\n\n';
-      }
-      
-      console.log(`Extracted ${fullText.length} characters from PDF`);
-      return fullText;
-    } catch (error) {
-      console.error("Error extracting text from PDF:", error);
-      throw new Error(`Failed to extract text from PDF: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  };
 
   const handleAnalyzeDocument = async () => {
     if (!selectedFile) return;
@@ -113,8 +62,12 @@ export function LeaseAnalyzer() {
       setRawErrorResponse(null);
       setHttpStatus(null);
       
-      // Extract text from PDF first
-      const text = await extractTextFromPdf(selectedFile);
+      // Extract text from PDF first using our utility
+      const text = await extractTextFromPdf(selectedFile, (percent, currentPage, totalPages) => {
+        setProcessingPhase(`Extracting text from page ${currentPage}/${totalPages}...`);
+        setProgress(Math.round(percent / 2)); // First 50% of progress
+      });
+      
       setExtractedText(text);
       setProgress(50);
       setProcessingPhase('Analyzing lease content...');
