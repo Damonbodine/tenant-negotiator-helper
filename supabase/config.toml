@@ -46,3 +46,4 @@ graphql_port = 54330
 [functions]
 [functions.lease-analyzer]
 verify_jwt = false
+
