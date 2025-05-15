@@ -25,6 +25,7 @@ const corsHeaders = {
 interface RequestBody {
   text: string;
   fileName: string;
+  debugMode?: boolean;
 }
 
 serve(async (req) => {
@@ -36,24 +37,13 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const debugMode = req.url.includes("debug=true");
+  console.log(`Debug mode: ${debugMode ? "enabled" : "disabled"}`);
+
   try {
     console.log("Document AI Lease Analyzer: Checking API keys");
     
     // API key validation with detailed error messages
-    if (!GOOGLE_API_KEY) {
-      console.error("Document AI Lease Analyzer: Missing Google Document AI API key");
-      return new Response(
-        JSON.stringify({
-          error: "Google Document AI API key not configured",
-          details: "Please add the GOOGLE_DOCUMENTAI_API_KEY secret to your Supabase project."
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
     if (!OPENAI_API_KEY) {
       console.error("Document AI Lease Analyzer: Missing OpenAI API key");
       return new Response(
@@ -71,14 +61,28 @@ serve(async (req) => {
     // Parse request body with error handling
     let requestData: RequestBody;
     try {
-      requestData = await req.json() as RequestBody;
-      console.log(`Document AI Lease Analyzer: Received document of ${requestData.text?.length || 0} characters`);
+      const requestBody = await req.json();
+      console.log("Document AI Lease Analyzer: Request body keys:", Object.keys(requestBody));
+      
+      // Handle both fileBase64 and text parameters for backward compatibility
+      requestData = {
+        text: requestBody.text || requestBody.fileBase64,
+        fileName: requestBody.fileName || "document.pdf",
+        debugMode: requestBody.debugMode || debugMode
+      };
+      
+      if (!requestData.text) {
+        throw new Error("No text or fileBase64 content provided");
+      }
+      
+      console.log(`Document AI Lease Analyzer: Received document of ${requestData.text.length} characters`);
     } catch (error) {
       console.error("Document AI Lease Analyzer: Failed to parse request body", error);
       return new Response(
         JSON.stringify({
           error: "Invalid request format",
-          details: "Could not parse the request JSON body"
+          details: "Could not parse the request JSON body or missing required fields",
+          message: error.message
         }),
         {
           status: 400,
@@ -87,7 +91,8 @@ serve(async (req) => {
       );
     }
 
-    const { text, fileName } = requestData;
+    const { text, fileName, debugMode: requestDebugMode } = requestData;
+    const isDebugMode = requestDebugMode || debugMode;
 
     if (!text) {
       console.error("Document AI Lease Analyzer: No text provided");
@@ -109,18 +114,35 @@ serve(async (req) => {
       // For initial implementation, we'll use just OpenAI for analysis
       // In future iterations, we'll first send to Google Document AI for structured extraction
       console.log("Document AI Lease Analyzer: Starting analysis with OpenAI");
+      const startTime = new Date();
       const analysis = await analyzeWithOpenAI(text);
-      console.log("Document AI Lease Analyzer: Analysis complete");
+      const endTime = new Date();
+      const duration = endTime.getTime() - startTime.getTime();
+      console.log(`Document AI Lease Analyzer: Analysis complete in ${duration}ms`);
+
+      const response = {
+        analysis,
+        debug: {
+          processedAt: new Date().toISOString(),
+          textLength: text.length,
+          processorUsed: "OpenAI",
+          processingTimeMs: duration,
+          isDebugMode
+        }
+      };
+
+      // If in debug mode, include more details
+      if (isDebugMode) {
+        response.debug = {
+          ...response.debug,
+          textSampleFirst100Chars: text.substring(0, 100),
+          textSampleLast100Chars: text.substring(text.length - 100),
+          textChunks: splitTextIntoChunks(text, MAX_CHUNK_SIZE).length
+        };
+      }
 
       return new Response(
-        JSON.stringify({
-          analysis,
-          debug: {
-            processedAt: new Date().toISOString(),
-            textLength: text.length,
-            processorUsed: "OpenAI",
-          }
-        }),
+        JSON.stringify(response),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
@@ -296,15 +318,33 @@ Format your response as a JSON object with these fields. If information is missi
                         analysisContent.match(/{[\s\S]*}/);
                         
       const jsonStr = jsonMatch ? jsonMatch[0] : analysisContent;
-      const analysisJson = JSON.parse(jsonStr.replace(/```json|```/g, '').trim());
+      let cleanJsonStr = jsonStr.replace(/```json|```/g, '').trim();
+      
+      // Add more JSON cleaning if needed
+      if (!cleanJsonStr.startsWith('{')) {
+        const jsonStartIndex = cleanJsonStr.indexOf('{');
+        if (jsonStartIndex >= 0) {
+          cleanJsonStr = cleanJsonStr.substring(jsonStartIndex);
+        }
+      }
+      
+      if (!cleanJsonStr.endsWith('}')) {
+        const jsonEndIndex = cleanJsonStr.lastIndexOf('}');
+        if (jsonEndIndex >= 0) {
+          cleanJsonStr = cleanJsonStr.substring(0, jsonEndIndex + 1);
+        }
+      }
+      
+      console.log("Document AI Lease Analyzer: Cleaned JSON string:", cleanJsonStr.substring(0, 100) + "...");
+      const analysisJson = JSON.parse(cleanJsonStr);
       
       // Transform into our expected structure if needed
       return {
         summary: analysisJson.summary || "No summary available",
         confidence: 0.8, // Placeholder confidence score
         financialTerms: {
-          monthlyRent: parseFloat(String(analysisJson.financialTerms?.monthlyRent || analysisJson.keyFinancialTerms?.rent).replace(/[^0-9.]/g, "")) || null,
-          securityDeposit: parseFloat(String(analysisJson.financialTerms?.securityDeposit || analysisJson.keyFinancialTerms?.securityDeposit).replace(/[^0-9.]/g, "")) || null,
+          monthlyRent: parseFloat(String(analysisJson.financialTerms?.monthlyRent || analysisJson.keyFinancialTerms?.rent || "0").replace(/[^0-9.]/g, "") || "0") || null,
+          securityDeposit: parseFloat(String(analysisJson.financialTerms?.securityDeposit || analysisJson.keyFinancialTerms?.securityDeposit || "0").replace(/[^0-9.]/g, "") || "0") || null,
           lateFees: analysisJson.financialTerms?.lateFees || analysisJson.keyFinancialTerms?.lateFees || null,
           otherFees: analysisJson.financialTerms?.otherFees || analysisJson.keyFinancialTerms?.otherFees || [],
         },
@@ -322,12 +362,13 @@ Format your response as a JSON object with these fields. If information is missi
       
       // Return a basic analysis when parsing fails
       return {
-        summary: "The lease analysis encountered an error when parsing the structured data. Please try again with a clearer document.",
+        summary: "The lease analysis encountered an error when parsing the structured data. The analysis was completed but we couldn't structure the data properly. Please try again with a clearer document.",
         confidence: 0.3,
         redFlags: [{
           issues: ["Unable to properly analyze the document structure"],
           severity: "medium"
-        }]
+        }],
+        rawResponse: analysisContent.substring(0, 1000) // Include part of the raw response for debugging
       };
     }
   } catch (error) {
