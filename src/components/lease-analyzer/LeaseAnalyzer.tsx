@@ -10,12 +10,13 @@ import * as pdfjs from "pdfjs-dist";
 import { Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
-// Instead of using CDN, we'll use the worker from the package
-// This needs to be set before any PDF.js usage
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.js",
-  import.meta.url
-).toString();
+// Set up PDF.js worker
+// We'll create a blob URL from the worker script to avoid path issues
+const pdfWorkerSrc = `
+  importScripts('https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js');
+`;
+const blob = new Blob([pdfWorkerSrc], { type: 'application/javascript' });
+pdfjs.GlobalWorkerOptions.workerSrc = URL.createObjectURL(blob);
 
 const STEPS = {
   UPLOAD: 'upload',
