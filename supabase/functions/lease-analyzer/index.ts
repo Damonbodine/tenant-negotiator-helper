@@ -23,6 +23,8 @@ interface RequestBody {
   fileName: string;
   fileType: string;
   fileSize: number;
+  text?: string; // Optional text field for test mode
+  testMode?: boolean; // Flag for test mode
 }
 
 serve(async (req) => {
@@ -72,6 +74,7 @@ serve(async (req) => {
       
       try {
         requestData = JSON.parse(requestText);
+        console.log("Lease Analyzer: Request parsed successfully");
       } catch (parseError) {
         console.error("Lease Analyzer: JSON parse error:", parseError.message);
         return new Response(
@@ -89,12 +92,85 @@ serve(async (req) => {
       
       console.log(`Lease Analyzer: Received file ${requestData.fileName || 'unknown'} (${requestData.fileSize ? (requestData.fileSize / 1024 / 1024).toFixed(2) + ' MB' : 'unknown size'})`);
       
-      if (!requestData.fileBase64) {
-        throw new Error("No file content provided");
+      // Check if we're in test mode
+      if (requestData.testMode === true) {
+        console.log("Lease Analyzer: Test mode detected, sending sample response");
+        return new Response(
+          JSON.stringify({ 
+            analysis: {
+              summary: "This is a test response. The system is working but using sample data instead of analyzing a real document.",
+              confidence: 0.99,
+              financialTerms: {
+                monthlyRent: 1500,
+                securityDeposit: 1500,
+                lateFees: "$50 after 5 days",
+                otherFees: ["$25 application fee", "$150 cleaning fee"]
+              },
+              leaseTerms: {
+                startDate: "2025-06-01",
+                endDate: "2026-05-31",
+                leaseTerm: "12 months",
+                renewalTerms: "Month-to-month after initial term",
+                noticeRequired: "60 days"
+              },
+              propertyDetails: {
+                address: "123 Test Street, Testville, TS 12345",
+                unitNumber: "Apt 4B",
+                includedAmenities: ["Parking", "Water", "Garbage"]
+              },
+              parties: {
+                landlord: "Test Property Management LLC",
+                tenant: ["Jane Doe", "John Smith"],
+                propertyManager: "Test Manager"
+              },
+              petPolicy: {
+                allowed: true,
+                restrictions: "Dogs and cats only, max 2 pets",
+                petRent: 50,
+                petDeposit: 250
+              },
+              responsibilities: {
+                tenant: ["Routine cleaning", "Lawn maintenance", "Minor repairs"],
+                landlord: ["Major repairs", "Structural maintenance"]
+              },
+              criticalDates: {
+                moveIn: "2025-06-01",
+                moveOut: "2026-05-31",
+                rentDueDate: "1st of each month",
+                lateFeeDate: "6th of each month"
+              },
+              redFlags: [
+                {
+                  issues: ["Non-standard early termination fee", "Excessive security deposit"],
+                  severity: "medium"
+                }
+              ]
+            },
+            debug: {
+              processedAt: new Date().toISOString(),
+              testMode: true,
+              receivedFileData: {
+                fileName: requestData.fileName,
+                fileSize: requestData.fileSize,
+                fileType: requestData.fileType,
+                hasBase64: Boolean(requestData.fileBase64),
+                hasText: Boolean(requestData.text)
+              }
+            }
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      
+      // For real processing, check if we have file content
+      if (!requestData.fileBase64 && !requestData.text) {
+        throw new Error("No document content provided (both fileBase64 and text are missing)");
       }
       
       // Ensure fileBase64 is properly formatted (no data:application/pdf;base64, prefix)
-      if (requestData.fileBase64.includes(";base64,")) {
+      if (requestData.fileBase64 && requestData.fileBase64.includes(";base64,")) {
         console.log("Lease Analyzer: Removing base64 prefix");
         requestData.fileBase64 = requestData.fileBase64.split(";base64,")[1];
       }
@@ -113,86 +189,40 @@ serve(async (req) => {
       );
     }
 
-    // For debugging, test response to verify basic functionality
-    if (requestData.fileName === "test.pdf") {
-      console.log("Lease Analyzer: Test mode detected, sending sample response");
-      return new Response(
-        JSON.stringify({ 
-          analysis: {
-            summary: "This is a test response. The system is working but using sample data instead of analyzing a real document.",
-            confidence: 0.99,
-            financialTerms: {
-              monthlyRent: 1500,
-              securityDeposit: 1500,
-              lateFees: "$50 after 5 days",
-              otherFees: ["$25 application fee", "$150 cleaning fee"]
-            },
-            leaseTerms: {
-              startDate: "2025-06-01",
-              endDate: "2026-05-31",
-              leaseTerm: "12 months",
-              renewalTerms: "Month-to-month after initial term",
-              noticeRequired: "60 days"
-            },
-            propertyDetails: {
-              address: "123 Test Street, Testville, TS 12345",
-              unitNumber: "Apt 4B",
-              includedAmenities: ["Parking", "Water", "Garbage"]
-            },
-            parties: {
-              landlord: "Test Property Management LLC",
-              tenant: ["Jane Doe", "John Smith"],
-              propertyManager: "Test Manager"
-            },
-            petPolicy: {
-              allowed: true,
-              restrictions: "Dogs and cats only, max 2 pets",
-              petRent: 50,
-              petDeposit: 250
-            },
-            responsibilities: {
-              tenant: ["Routine cleaning", "Lawn maintenance", "Minor repairs"],
-              landlord: ["Major repairs", "Structural maintenance"]
-            },
-            criticalDates: {
-              moveIn: "2025-06-01",
-              moveOut: "2026-05-31",
-              rentDueDate: "1st of each month",
-              lateFeeDate: "6th of each month"
-            },
-            redFlags: [
-              {
-                issues: ["Non-standard early termination fee", "Excessive security deposit"],
-                severity: "medium"
-              }
-            ]
-          },
-          debug: {
-            processedAt: new Date().toISOString(),
-            testMode: true
+    // Process document with Google Document AI (if we have a file) or use text directly
+    let extractedText: string;
+    
+    if (requestData.fileBase64) {
+      console.log("Lease Analyzer: Processing document with Google Document AI");
+      try {
+        extractedText = await processWithDocumentAI(requestData.fileBase64);
+        console.log(`Lease Analyzer: Document processing complete. Extracted ${extractedText.length} characters.`);
+      } catch (docAiError) {
+        console.error("Lease Analyzer: Document AI error:", docAiError);
+        return new Response(
+          JSON.stringify({
+            error: `Document AI processing error: ${docAiError.message}`,
+            details: "Failed to process the document with Google Document AI"
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
           }
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Process document with Google Document AI
-    console.log("Lease Analyzer: Processing document with Google Document AI");
-    let extractedText;
-    try {
-      extractedText = await processWithDocumentAI(requestData.fileBase64);
-      console.log(`Lease Analyzer: Document processing complete. Extracted ${extractedText.length} characters.`);
-    } catch (docAiError) {
-      console.error("Lease Analyzer: Document AI error:", docAiError);
+        );
+      }
+    } else if (requestData.text) {
+      // Use text directly if provided (useful for testing)
+      console.log("Lease Analyzer: Using provided text directly");
+      extractedText = requestData.text;
+    } else {
+      // This should never happen due to our earlier check, but just in case
       return new Response(
         JSON.stringify({
-          error: `Document AI processing error: ${docAiError.message}`,
-          details: "Failed to process the document with Google Document AI"
+          error: "Document content is required",
+          details: "Either fileBase64 or text must be provided"
         }),
         {
-          status: 500,
+          status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );
