@@ -70,12 +70,15 @@ export function LeaseAnalyzer() {
       setProgress(30);
       setProcessingPhase('Sending test document...');
       
+      // Direct call to the lease-analyzer function with both fileBase64 and text fields
       const response = await supabase.functions.invoke('lease-analyzer', {
         body: {
-          fileBase64: 'VGVzdCBQREYgQ29udGVudA==', // "Test PDF Content" in base64
+          fileBase64: 'JVBERi0xLjUgVGVzdCBQREY=', // "%PDF-1.5 Test PDF" in base64
           fileName: "test.pdf",
           fileType: "application/pdf",
-          fileSize: 14
+          fileSize: 14,
+          text: "Sample text content for test mode", // Add text field for compatibility
+          testMode: true // Explicitly indicate test mode
         }
       });
       
