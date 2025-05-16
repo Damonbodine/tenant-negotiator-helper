@@ -12,6 +12,18 @@ export async function processDocumentWithAI(
   onProgress?: (percent: number, phase: string) => void
 ): Promise<any> {
   try {
+    if (!file) {
+      throw new Error("No file provided");
+    }
+
+    if (file.type !== 'application/pdf') {
+      throw new Error("Only PDF files are supported at this time");
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error("File size must be less than 10MB");
+    }
+
     // Convert file to base64
     const reader = new FileReader();
     const fileBase64Promise = new Promise<string>((resolve, reject) => {
@@ -38,6 +50,12 @@ export async function processDocumentWithAI(
       onProgress(30, "Sending document for analysis...");
     }
 
+    console.log("Sending file to lease-analyzer function:", {
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size
+    });
+
     // Send to our Supabase Edge Function
     const response = await supabase.functions.invoke('lease-analyzer', {
       body: {
@@ -56,6 +74,8 @@ export async function processDocumentWithAI(
       console.error("Error from lease-analyzer function:", response.error);
       throw new Error(response.error.message || "Error processing document");
     }
+    
+    console.log("Received response from lease-analyzer function");
     
     return response.data;
   } catch (error) {
