@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
@@ -19,10 +18,10 @@ const corsHeaders = {
 };
 
 interface RequestBody {
-  fileBase64: string;
-  fileName: string;
-  fileType: string;
-  fileSize: number;
+  fileBase64?: string;
+  fileName?: string;
+  fileType?: string;
+  fileSize?: number;
   text?: string; // Optional text field for test mode
   testMode?: boolean; // Flag for test mode
 }
@@ -69,30 +68,10 @@ serve(async (req) => {
     // Parse request body
     let requestData: RequestBody;
     try {
-      const requestText = await req.text();
-      console.log("Lease Analyzer: Raw request size:", requestText.length);
+      requestData = await req.json();
+      console.log("Lease Analyzer: Request received for file:", requestData.fileName || 'unknown');
       
-      try {
-        requestData = JSON.parse(requestText);
-        console.log("Lease Analyzer: Request parsed successfully");
-      } catch (parseError) {
-        console.error("Lease Analyzer: JSON parse error:", parseError.message);
-        return new Response(
-          JSON.stringify({
-            error: "Invalid JSON format",
-            details: "Could not parse the request body as JSON",
-            message: parseError.message
-          }),
-          {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
-      
-      console.log(`Lease Analyzer: Received file ${requestData.fileName || 'unknown'} (${requestData.fileSize ? (requestData.fileSize / 1024 / 1024).toFixed(2) + ' MB' : 'unknown size'})`);
-      
-      // Check if we're in test mode
+      // Check if this is test mode
       if (requestData.testMode === true) {
         console.log("Lease Analyzer: Test mode detected, sending sample response");
         return new Response(
@@ -163,10 +142,20 @@ serve(async (req) => {
           }
         );
       }
-      
+
       // For real processing, check if we have file content
       if (!requestData.fileBase64 && !requestData.text) {
-        throw new Error("No document content provided (both fileBase64 and text are missing)");
+        console.error("Lease Analyzer: No document content provided");
+        return new Response(
+          JSON.stringify({
+            error: "Document content is required",
+            details: "Either fileBase64 or text must be provided for document analysis"
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
       }
       
       // Ensure fileBase64 is properly formatted (no data:application/pdf;base64, prefix)
@@ -180,7 +169,7 @@ serve(async (req) => {
         JSON.stringify({
           error: "Invalid request format",
           details: "Could not parse the request JSON body or missing required fields",
-          message: error.message
+          message: error instanceof Error ? error.message : String(error)
         }),
         {
           status: 400,
@@ -201,7 +190,7 @@ serve(async (req) => {
         console.error("Lease Analyzer: Document AI error:", docAiError);
         return new Response(
           JSON.stringify({
-            error: `Document AI processing error: ${docAiError.message}`,
+            error: `Document AI processing error: ${docAiError instanceof Error ? docAiError.message : String(docAiError)}`,
             details: "Failed to process the document with Google Document AI"
           }),
           {
@@ -238,7 +227,7 @@ serve(async (req) => {
       console.error("Lease Analyzer: OpenAI error:", openAiError);
       return new Response(
         JSON.stringify({
-          error: `OpenAI analysis error: ${openAiError.message}`,
+          error: `OpenAI analysis error: ${openAiError instanceof Error ? openAiError.message : String(openAiError)}`,
           details: "Failed to analyze the document text with OpenAI"
         }),
         {
@@ -266,7 +255,7 @@ serve(async (req) => {
     console.error("Lease Analyzer: Error processing document:", error);
     return new Response(
       JSON.stringify({
-        error: `Error processing document: ${error.message}`,
+        error: `Error processing document: ${error instanceof Error ? error.message : String(error)}`,
         details: "An error occurred during document analysis"
       }),
       {

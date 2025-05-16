@@ -67,8 +67,7 @@ export async function processDocumentWithAI(
         fileBase64: fileBase64,
         fileName: file.name,
         fileType: file.type,
-        fileSize: file.size,
-        text: `Sample text content from ${file.name}` // Add text field for compatibility
+        fileSize: file.size
       }
     });
     
@@ -86,6 +85,45 @@ export async function processDocumentWithAI(
     return response.data;
   } catch (error) {
     console.error("Error in document processing:", error);
+    throw error;
+  }
+}
+
+/**
+ * Run a test to check if the lease analyzer function is working
+ * @returns A promise that resolves to the test result
+ */
+export async function runLeaseAnalyzerTest(): Promise<any> {
+  try {
+    console.log("Running lease analyzer test mode");
+    
+    // Create a test PDF content
+    const testContent = "%PDF-1.5 Test PDF";
+    
+    // Convert to base64
+    const testBase64 = btoa(testContent);
+    
+    // Send test request to our Supabase Edge Function
+    const response = await supabase.functions.invoke('lease-analyzer', {
+      body: {
+        fileBase64: testBase64,
+        fileName: "test.pdf",
+        fileType: "application/pdf",
+        fileSize: testContent.length,
+        testMode: true
+      }
+    });
+    
+    if (response.error) {
+      console.error("Test mode error:", response.error);
+      throw new Error(response.error.message || "Error in test mode");
+    }
+    
+    console.log("Test completed successfully:", response.data);
+    
+    return response.data;
+  } catch (error) {
+    console.error("Error in test mode:", error);
     throw error;
   }
 }
