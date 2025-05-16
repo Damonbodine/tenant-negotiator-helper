@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,10 +6,9 @@ import { DebugInfo } from "@/components/negotiation/DebugInfo";
 import { Progress } from "@/components/ui/progress";
 import { Loader2, FileText, Upload, Bug } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { processDocumentWithAI } from "./utils/documentAiUtils";
+import { processDocumentWithAI, runLeaseAnalyzerTest } from "./utils/documentAiUtils";
 import { LeaseAnalysisResult } from "./types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { supabase } from "@/integrations/supabase/client";
 
 const STEPS = {
   UPLOAD: 'upload',
@@ -63,45 +61,17 @@ export function LeaseAnalyzer() {
       setRawErrorResponse(null);
       setHttpStatus(null);
       
-      // Create a small test PDF file (1 KB)
-      const testPdfBlob = new Blob(['%PDF-1.5 Test PDF'], { type: 'application/pdf' });
-      const testFile = new File([testPdfBlob], "test.pdf", { type: 'application/pdf' });
-      
       setProgress(30);
       setProcessingPhase('Sending test document...');
       
-      // Direct call to the lease-analyzer function with both fileBase64 and text fields
-      const response = await supabase.functions.invoke('lease-analyzer', {
-        body: {
-          fileBase64: 'JVBERi0xLjUgVGVzdCBQREY=', // "%PDF-1.5 Test PDF" in base64
-          fileName: "test.pdf",
-          fileType: "application/pdf",
-          fileSize: 14,
-          text: "Sample text content for test mode", // Add text field for compatibility
-          testMode: true // Explicitly indicate test mode
-        }
-      });
+      // Use the dedicated test function
+      const result = await runLeaseAnalyzerTest();
       
       setRequestEndTime(new Date().toISOString());
       setProgress(100);
       
-      if (response.error) {
-        console.error("Test mode error:", response.error);
-        setRawErrorResponse(JSON.stringify(response.error, null, 2));
-        setHttpStatus(500);
-        
-        toast({
-          title: "Test Failed",
-          description: `Error: ${response.error.message || "Unknown error"}`,
-          variant: "destructive"
-        });
-        
-        setStep(STEPS.UPLOAD);
-        return;
-      }
-      
       setHttpStatus(200);
-      setAnalysisResults(response.data?.analysis || {
+      setAnalysisResults(result.analysis || {
         summary: "Test successful but no analysis data returned",
         confidence: 0
       });
@@ -109,7 +79,7 @@ export function LeaseAnalyzer() {
       setDebugInfo(prev => ({
         ...prev,
         testMode: true,
-        responseData: response.data
+        responseData: result
       }));
       
       setStep(STEPS.RESULTS);
