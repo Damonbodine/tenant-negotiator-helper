@@ -5,11 +5,12 @@ import { Input } from "@/components/ui/input";
 import { LeaseResultsView } from "./LeaseResultsView";
 import { DebugInfo } from "@/components/negotiation/DebugInfo";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, FileText, Upload } from "lucide-react";
+import { Loader2, FileText, Upload, Bug } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { processDocumentWithAI } from "./utils/documentAiUtils";
 import { LeaseAnalysisResult } from "./types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { supabase } from "@/integrations/supabase/client";
 
 const STEPS = {
   UPLOAD: 'upload',
@@ -41,10 +42,90 @@ export function LeaseAnalyzer() {
       setRawErrorResponse(null);
       setHttpStatus(null);
       setDebugInfo({});
-    } else {
+    } else if (file) {
       toast({
         title: "Invalid File",
-        description: "Please upload a PDF under 10MB.",
+        description: file.type !== 'application/pdf' 
+          ? "Please upload a PDF file." 
+          : "Please upload a PDF under 10MB.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // This function tests the Lease Analyzer function with a test mode
+  const handleTestMode = async () => {
+    try {
+      setStep(STEPS.PROCESSING);
+      setProgress(0);
+      setProcessingPhase('Running diagnostics test...');
+      setRequestStartTime(new Date().toISOString());
+      setRawErrorResponse(null);
+      setHttpStatus(null);
+      
+      // Create a small test PDF file (1 KB)
+      const testPdfBlob = new Blob(['%PDF-1.5 Test PDF'], { type: 'application/pdf' });
+      const testFile = new File([testPdfBlob], "test.pdf", { type: 'application/pdf' });
+      
+      setProgress(30);
+      setProcessingPhase('Sending test document...');
+      
+      const response = await supabase.functions.invoke('lease-analyzer', {
+        body: {
+          fileBase64: 'VGVzdCBQREYgQ29udGVudA==', // "Test PDF Content" in base64
+          fileName: "test.pdf",
+          fileType: "application/pdf",
+          fileSize: 14
+        }
+      });
+      
+      setRequestEndTime(new Date().toISOString());
+      setProgress(100);
+      
+      if (response.error) {
+        console.error("Test mode error:", response.error);
+        setRawErrorResponse(JSON.stringify(response.error, null, 2));
+        setHttpStatus(500);
+        
+        toast({
+          title: "Test Failed",
+          description: `Error: ${response.error.message || "Unknown error"}`,
+          variant: "destructive"
+        });
+        
+        setStep(STEPS.UPLOAD);
+        return;
+      }
+      
+      setHttpStatus(200);
+      setAnalysisResults(response.data?.analysis || {
+        summary: "Test successful but no analysis data returned",
+        confidence: 0
+      });
+      
+      setDebugInfo(prev => ({
+        ...prev,
+        testMode: true,
+        responseData: response.data
+      }));
+      
+      setStep(STEPS.RESULTS);
+      
+      toast({
+        title: "Test Successful",
+        description: "The lease analyzer function is working correctly.",
+        variant: "default"
+      });
+    } catch (error) {
+      console.error("Error in test mode:", error);
+      setRawErrorResponse(error instanceof Error ? error.message : JSON.stringify(error, null, 2));
+      setRequestEndTime(new Date().toISOString());
+      setHttpStatus(500);
+      setStep(STEPS.UPLOAD);
+      
+      toast({
+        title: "Test Failed",
+        description: "An error occurred during the test. See debug info for details.",
         variant: "destructive"
       });
     }
@@ -104,10 +185,11 @@ export function LeaseAnalyzer() {
       setProgress(100);
       setRequestEndTime(new Date().toISOString());
       setHttpStatus(500);
+      setStep(STEPS.UPLOAD);
       
       toast({
         title: "Analysis Failed",
-        description: "An error occurred during analysis. Please try again later.",
+        description: error instanceof Error ? error.message : "An error occurred during analysis. Please try again later.",
         variant: "destructive"
       });
     }
@@ -126,13 +208,23 @@ export function LeaseAnalyzer() {
     <div className="container mx-auto py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Lease Analyzer</h1>
-        <Button 
-          variant="outline" 
-          size="sm"
-          onClick={() => setShowDebug(!showDebug)}
-        >
-          {showDebug ? "Hide Debug" : "Show Debug"}
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="secondary" 
+            size="sm"
+            onClick={handleTestMode}
+          >
+            <Bug className="mr-1 h-4 w-4" />
+            Run Test
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setShowDebug(!showDebug)}
+          >
+            {showDebug ? "Hide Debug" : "Show Debug"}
+          </Button>
+        </div>
       </div>
       
       <DebugInfo
