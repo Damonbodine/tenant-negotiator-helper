@@ -1,6 +1,5 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { getApiKey } from "@/utils/keyManager";
 
 /**
  * Processes a PDF file using Google Document AI through a Supabase Edge Function
@@ -38,10 +37,6 @@ export async function processDocumentWithAI(
     if (onProgress) {
       onProgress(30, "Sending document for analysis...");
     }
-    
-    // Get the API keys from localStorage to include with the request
-    const googleApiKey = await getApiKey("GOOGLE_DOCUMENTAI_API_KEY");
-    const openaiApiKey = await getApiKey("OPENAI_RENTERS_MENTOR_KEY");
 
     // Send to our Supabase Edge Function
     const response = await supabase.functions.invoke('lease-analyzer', {
@@ -49,13 +44,7 @@ export async function processDocumentWithAI(
         fileBase64: fileBase64,
         fileName: file.name,
         fileType: file.type,
-        fileSize: file.size,
-        clientApiKeys: {
-          // Only sending indicators that keys exist, not the actual keys
-          // The actual keys are stored in Supabase secrets
-          googleApiKeyProvided: !!googleApiKey,
-          openaiApiKeyProvided: !!openaiApiKey
-        }
+        fileSize: file.size
       }
     });
     

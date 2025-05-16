@@ -6,7 +6,6 @@ const OPENAI_API_KEY = Deno.env.get("OPENAI_RENTERS_MENTOR_KEY");
 const GOOGLE_DOCUMENT_AI_API_KEY = Deno.env.get("GOOGLE_DOCUMENTAI_API_KEY");
 
 // Google Document AI processor settings
-// These values should be updated with your specific Google Document AI processor details
 const PROCESSOR_ID = "6ec0c96e035a8e46"; 
 const PROCESSOR_LOCATION = "us";
 const PROCESSOR_PROJECT_ID = "cloud-doc-ai-basic";
@@ -23,7 +22,6 @@ interface RequestBody {
   fileName: string;
   fileType: string;
   fileSize: number;
-  debugMode?: boolean;
 }
 
 serve(async (req) => {
@@ -41,8 +39,8 @@ serve(async (req) => {
       console.error("Lease Analyzer: Missing Google Document AI API key");
       return new Response(
         JSON.stringify({
-          error: "Google Document AI API key not configured",
-          details: "Please add the GOOGLE_DOCUMENTAI_API_KEY secret to your Supabase project."
+          error: "Server configuration error: Missing Google Document AI API key",
+          details: "Please contact support. The server is missing required API credentials."
         }),
         {
           status: 500,
@@ -55,8 +53,8 @@ serve(async (req) => {
       console.error("Lease Analyzer: Missing OpenAI API key");
       return new Response(
         JSON.stringify({
-          error: "OpenAI API key not configured",
-          details: "Please add the OPENAI_RENTERS_MENTOR_KEY secret to your Supabase project."
+          error: "Server configuration error: Missing OpenAI API key",
+          details: "Please contact support. The server is missing required API credentials."
         }),
         {
           status: 500,
