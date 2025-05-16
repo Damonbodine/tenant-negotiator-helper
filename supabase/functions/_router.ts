@@ -105,63 +105,6 @@ serve(async (req: Request) => {
           }
         );
       }
-    } else if (path === '/api/lease-analyzer' || path.startsWith('/api/lease-analyzer')) {
-      console.log('Routing to lease-analyzer function');
-      
-      // Parse request body safely
-      let requestBody;
-      try {
-        requestBody = await req.json();
-        console.log('Lease Analyzer Request body:', requestBody.fileName || 'unknown file');
-      } catch (e) {
-        console.error('Error parsing request body:', e);
-        return new Response(
-          JSON.stringify({ error: 'Invalid request body' }),
-          { 
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        );
-      }
-      
-      try {
-        // Call the lease-analyzer function
-        console.log('Invoking lease-analyzer function');
-        const { data, error } = await supabase.functions.invoke('lease-analyzer', {
-          body: requestBody,
-        });
-
-        if (error) {
-          console.error('Error invoking lease-analyzer:', error);
-          return new Response(
-            JSON.stringify({ error: error.message || 'Invocation error' }),
-            { 
-              status: 500,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            }
-          );
-        }
-
-        console.log('Lease analyzer response received');
-        
-        // Return the data even if there might be some missing fields
-        return new Response(
-          JSON.stringify(data || { error: 'No data returned' }),
-          { 
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        );
-      } catch (error) {
-        console.error('Error in lease-analyzer invocation:', error);
-        return new Response(
-          JSON.stringify({ error: error.message || 'Function invocation error' }),
-          { 
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        );
-      }
     }
 
     // If no matching route is found

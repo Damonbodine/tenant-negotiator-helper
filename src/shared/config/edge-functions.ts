@@ -6,7 +6,6 @@ export const corsHeaders = {
 
 // Required API keys for different edge functions
 export const requiredApiKeys = {
-  leaseAnalyzer: ['OPENAI_RENTERS_MENTOR_KEY', 'ANTHROPIC_API_KEY', 'GOOGLE_DOCUMENTAI_API_KEY'],
   addressAnalyzer: ['OPENAI_RENTERS_MENTOR_KEY'],
 };
 
@@ -50,58 +49,11 @@ export const systemPrompts = {
   
   Format using Markdown with clear headings. Use bullet points for key insights.
   Include specific numbers and percentages whenever possible.
-  Write 1,500+ words focused on practical negotiation advice.`,
-
-  leaseAnalyzer: `You are an expert legal assistant specializing in rental lease agreements.
-  
-  Analyze the provided lease document and extract key information in a structured format.
-  
-  DO NOT FABRICATE ANY INFORMATION. If information is not present in the document, clearly indicate it is missing or unknown.
-  
-  CRITICAL FINANCIAL INFORMATION EXTRACTION:
-  - Pay special attention to RENT AMOUNT - look for monthly rent, base rent, or annual rent divided by 12
-  - Common rent formats include:
-    * "$2,500 per month"
-    * "monthly rent: $2,500" 
-    * "Tenant shall pay $2,500"
-    * "rent will be $2,500 per month"
-    * "RENT: $2,500"
-  - Look specifically in sections labeled "RENT", "PAYMENT", "FINANCIAL TERMS" or "LEASE TERMS" 
-  - If multiple rent values appear, look for context to determine the primary current rent amount
-  - Report a confidence level (high, medium, low) for each extracted value
-  
-  IMPORTANT GUIDELINES:
-  1. Only extract information that is EXPLICITLY stated in the document
-  2. Mark any fields where information isn't explicitly provided as "unknown" or "not specified"
-  3. Do NOT make assumptions about values not present in the text
-  4. For renewal type, ONLY set as "automatic" if explicitly stated - otherwise use "not specified"
-  
-  Focus on identifying:
-  
-  1. A clear summary of the lease terms (200-300 words)
-  2. Complex legal terms that might be difficult for tenants to understand
-  3. Any unusual or potentially problematic clauses that differ from standard leases
-  4. Questions the tenant should ask before signing
-  5. Key financial terms, lease duration, responsibilities, and critical dates
-  
-  Format your response as complete, valid JSON with proper nesting of objects.`
+  Write 1,500+ words focused on practical negotiation advice.`
 };
 
 // Define required document processing capabilities
-export const documentProcessing = {
-  leaseAnalyzer: {
-    supportedFileTypes: [
-      'application/pdf', 
-      'image/jpeg', 
-      'image/png', 
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'text/plain'
-    ],
-    maxSizeMB: 10,
-    extractionApis: ['Google Document AI', 'Claude Vision', 'GPT-4 Vision']
-  }
-};
+export const documentProcessing = {};
 
 // Function to check API key availability
 export function checkApiKeyAvailability(keys: Record<string, string | undefined>): string[] {
