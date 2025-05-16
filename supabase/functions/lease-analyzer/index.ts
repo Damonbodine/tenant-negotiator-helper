@@ -2,14 +2,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
-// Access API keys from environment variables
+// Access API keys from environment variables (with detailed validation)
 const OPENAI_API_KEY = Deno.env.get("OPENAI_RENTERS_MENTOR_KEY") || Deno.env.get("OPENAI_API_KEY");
 const GOOGLE_DOCUMENT_AI_API_KEY = Deno.env.get("GOOGLE_DOCUMENTAI_API_KEY");
 
 // Google Document AI processor settings - Updated with provided details
-const PROCESSOR_ID = "77d90ffb8cbda21b"; // Updated with correct processor ID
+const PROCESSOR_ID = "77d90ffb8cbda21b";
 const PROCESSOR_LOCATION = "us";
-const PROCESSOR_PROJECT_ID = "361961931016"; // Updated with correct project ID
+const PROCESSOR_PROJECT_ID = "361961931016";
 
 // CORS headers
 const corsHeaders = {
@@ -61,6 +61,7 @@ interface RequestBody {
   testMode?: boolean; // Flag for test mode
 }
 
+// Main server function with improved error handling
 serve(async (req) => {
   console.log("Lease Analyzer: Request received");
   
@@ -71,13 +72,13 @@ serve(async (req) => {
   }
 
   try {
-    // Check API keys
+    // Check API keys with better error messages
     if (!GOOGLE_DOCUMENT_AI_API_KEY) {
       console.error("Lease Analyzer: Missing Google Document AI API key");
       return new Response(
         JSON.stringify({
-          error: "Server configuration error: Missing Google Document AI API key",
-          details: "Please contact support. The server is missing required API credentials."
+          error: "Server configuration error: Google Document AI API key not configured",
+          details: "Please check that GOOGLE_DOCUMENTAI_API_KEY is set in Supabase Edge Function secrets"
         }),
         {
           status: 500,
@@ -90,8 +91,23 @@ serve(async (req) => {
       console.error("Lease Analyzer: Missing OpenAI API key");
       return new Response(
         JSON.stringify({
-          error: "Server configuration error: Missing OpenAI API key",
-          details: "Please contact support. The server is missing required API credentials."
+          error: "Server configuration error: OpenAI API key not configured",
+          details: "Please check that OPENAI_RENTERS_MENTOR_KEY is set in Supabase Edge Function secrets"
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Check Processor details
+    if (!PROCESSOR_ID || !PROCESSOR_LOCATION || !PROCESSOR_PROJECT_ID) {
+      console.error("Lease Analyzer: Missing Document AI processor details");
+      return new Response(
+        JSON.stringify({
+          error: "Server configuration error: Document AI processor details not configured",
+          details: "Please check that PROCESSOR_ID, PROCESSOR_LOCATION, and PROCESSOR_PROJECT_ID are correctly set"
         }),
         {
           status: 500,
@@ -108,6 +124,8 @@ serve(async (req) => {
     let fileType = "application/pdf";
     let fileName = "document.pdf";
     let textContent = "";
+
+    console.log(`Lease Analyzer: Content-Type detected: ${contentType}`);
 
     if (contentType.includes("multipart/form-data")) {
       console.log("Lease Analyzer: Processing form data request");
@@ -281,7 +299,7 @@ serve(async (req) => {
           console.log("Lease Analyzer: Using provided text directly");
           textContent = requestData.text;
         } else {
-          // This should never happen due to our earlier check, but just in case
+          // No content provided
           return new Response(
             JSON.stringify({
               error: "Document content is required",
@@ -395,11 +413,12 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error("Lease Analyzer: Error processing document:", error);
+    console.error("Lease Analyzer: Unhandled error:", error);
     return new Response(
       JSON.stringify({
-        error: `Error processing document: ${error instanceof Error ? error.message : String(error)}`,
-        details: "An error occurred during document analysis"
+        error: `Unhandled error: ${error instanceof Error ? error.message : String(error)}`,
+        details: "An unexpected error occurred during document analysis",
+        stack: error instanceof Error ? error.stack : undefined
       }),
       {
         status: 500,
@@ -413,8 +432,18 @@ serve(async (req) => {
  * Process PDF with Google Document AI - now with imageless mode support
  */
 async function processWithDocumentAI(fileBytes: Uint8Array, mimeType: string = "application/pdf"): Promise<string> {
+  if (!GOOGLE_DOCUMENT_AI_API_KEY) {
+    throw new Error("GOOGLE_DOCUMENTAI_API_KEY is not set");
+  }
+
+  if (!PROCESSOR_PROJECT_ID || !PROCESSOR_LOCATION || !PROCESSOR_ID) {
+    throw new Error("Document AI processor details (PROCESSOR_PROJECT_ID, PROCESSOR_LOCATION, PROCESSOR_ID) are not properly configured");
+  }
+
   // Document AI API endpoint
-  const url = `https://documentai.googleapis.com/v1/projects/${PROCESSOR_PROJECT_ID}/locations/${PROCESSOR_LOCATION}/processors/${PROCESSOR_ID}:process`;
+  const endpoint = `https://documentai.googleapis.com/v1/projects/${PROCESSOR_PROJECT_ID}/locations/${PROCESSOR_LOCATION}/processors/${PROCESSOR_ID}:process`;
+  
+  console.log(`Lease Analyzer: Document AI endpoint: ${endpoint}`);
   
   // Convert Uint8Array to base64
   const fileBase64 = btoa(String.fromCharCode.apply(null, Array.from(fileBytes)));
@@ -422,10 +451,9 @@ async function processWithDocumentAI(fileBytes: Uint8Array, mimeType: string = "
   try {
     console.log("Lease Analyzer: Calling Google Document AI API with imageless mode");
     
-    const response = await fetch(url, {
+    const response = await fetch(`${endpoint}?key=${GOOGLE_DOCUMENT_AI_API_KEY}`, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${GOOGLE_DOCUMENT_AI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -440,15 +468,18 @@ async function processWithDocumentAI(fileBytes: Uint8Array, mimeType: string = "
 
     if (!response.ok) {
       const errorText = await response.text();
-      let errorInfo;
+      console.error("Document AI API error response:", errorText);
+      let errorMessage = `Document AI API error: ${response.status} ${response.statusText}`;
+      
       try {
-        errorInfo = JSON.parse(errorText);
+        const errorJson = JSON.parse(errorText);
+        errorMessage += ` - ${errorJson.error?.message || "Unknown error"}`;
       } catch {
-        errorInfo = { text: errorText };
+        // If parsing fails, just use the raw error text
+        errorMessage += ` - ${errorText.substring(0, 200)}...`;
       }
       
-      console.error("Document AI API error:", errorInfo);
-      throw new Error(`Document AI API error: ${response.status} ${response.statusText}`);
+      throw new Error(errorMessage);
     }
 
     const result = await response.json();
@@ -469,6 +500,10 @@ async function processWithDocumentAI(fileBytes: Uint8Array, mimeType: string = "
  * Analyze extracted text with OpenAI
  */
 async function analyzeWithOpenAI(text: string, context: any): Promise<any> {
+  if (!OPENAI_API_KEY) {
+    throw new Error("OPENAI_API_KEY is not set");
+  }
+  
   // Split text into chunks if needed (for very large documents)
   const MAX_CHUNK_SIZE = 12000;
   const chunks = splitTextIntoChunks(text, MAX_CHUNK_SIZE);
