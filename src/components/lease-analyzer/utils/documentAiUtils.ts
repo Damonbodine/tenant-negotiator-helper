@@ -1,6 +1,33 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second between retries
+
+/**
+ * Wait for a specified amount of time
+ * @param ms Time to wait in milliseconds
+ */
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * Retry a function multiple times with exponential backoff
+ * @param fn Function to retry
+ * @param retries Maximum number of retries
+ * @param delayMs Delay between retries in milliseconds
+ * @returns Promise that resolves to the function result
+ */
+async function retry<T>(fn: () => Promise<T>, retries = MAX_RETRIES, delayMs = RETRY_DELAY): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries <= 0) throw error;
+    console.log(`Retrying after error: ${error.message}, ${retries} retries left`);
+    await delay(delayMs);
+    return retry(fn, retries - 1, delayMs * 1.5); // Exponential backoff
+  }
+}
+
 /**
  * Processes a PDF file using Google Document AI through a Supabase Edge Function
  * @param file The PDF file to process
@@ -68,17 +95,27 @@ export async function processDocumentWithAI(
       fileSize: file.size
     });
 
-    // First try with FormData (preferred method)
+    // Try direct function invocation first with retry logic
     try {
       if (onProgress) {
-        onProgress(40, "Attempting multipart upload...");
+        onProgress(40, "Attempting direct function invocation...");
       }
       
-      const response = await supabase.functions.invoke('lease-analyzer', {
-        body: formData,
-        headers: {
-          'x-debug': 'true' // Add debug header to get more information
-        }
+      // Use retry logic for more resilience
+      const response = await retry(async () => {
+        return await supabase.functions.invoke('lease-analyzer', {
+          body: {
+            testMode: false,
+            fileBase64: fileBase64,
+            fileName: file.name,
+            fileType: file.type,
+            fileSize: file.size,
+            debug: true
+          },
+          headers: {
+            'x-debug': 'true'
+          }
+        });
       });
       
       console.log("Response from lease-analyzer function:", response);
@@ -88,50 +125,17 @@ export async function processDocumentWithAI(
       }
       
       if (response.error) {
-        console.error("Error from lease-analyzer function with FormData:", response.error);
+        console.error("Error from lease-analyzer function:", response.error);
         const errorMessage = response.error.message || "Error processing document";
         const errorDetails = response.error.details || {};
         throw new Error(`${errorMessage}. Details: ${JSON.stringify(errorDetails)}`);
       }
       
-      console.log("Received response from lease-analyzer function (FormData)");
+      console.log("Received response from lease-analyzer function");
       return response.data;
-    } catch (formDataError) {
-      console.log("FormData approach failed, falling back to JSON with base64:", formDataError);
-      
-      if (onProgress) {
-        onProgress(50, "Switching to base64 encoding...");
-      }
-      
-      // Fall back to JSON with base64 approach
-      const response = await supabase.functions.invoke('lease-analyzer', {
-        body: {
-          fileBase64: fileBase64,
-          fileName: file.name,
-          fileType: file.type,
-          fileSize: file.size,
-          debug: true // Request debug mode for more information
-        },
-        headers: {
-          'x-debug': 'true' // Add debug header to get more information
-        }
-      });
-      
-      console.log("Response from lease-analyzer function (base64):", response);
-      
-      if (onProgress) {
-        onProgress(100, "Analysis complete");
-      }
-      
-      if (response.error) {
-        console.error("Error from lease-analyzer function with base64:", response.error);
-        const errorMessage = response.error.message || "Error processing document";
-        const errorDetails = response.error.details || {};
-        throw new Error(`${errorMessage}. Details: ${JSON.stringify(errorDetails)}`);
-      }
-      
-      console.log("Received response from lease-analyzer function (base64)");
-      return response.data;
+    } catch (error) {
+      console.error("Error in document processing:", error);
+      throw error;
     }
   } catch (error) {
     console.error("Error in document processing:", error);
@@ -148,18 +152,20 @@ export async function runLeaseAnalyzerTest(): Promise<any> {
   try {
     console.log("Running lease analyzer test mode");
     
-    // Send test request to our Supabase Edge Function
-    const response = await supabase.functions.invoke('lease-analyzer', {
-      body: {
-        testMode: true,
-        fileName: "test.pdf",
-        fileType: "application/pdf",
-        fileSize: 1024,
-        debug: true // Request debug mode
-      },
-      headers: {
-        'x-debug': 'true' // Add debug header to get more information
-      }
+    // Use retry logic for more resilience
+    const response = await retry(async () => {
+      return await supabase.functions.invoke('lease-analyzer', {
+        body: {
+          testMode: true,
+          fileName: "test.pdf",
+          fileType: "application/pdf",
+          fileSize: 1024,
+          debug: true
+        },
+        headers: {
+          'x-debug': 'true'
+        }
+      });
     });
     
     console.log("Test mode response:", response);

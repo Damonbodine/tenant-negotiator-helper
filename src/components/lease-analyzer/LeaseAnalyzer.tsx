@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { LeaseResultsView } from "./LeaseResultsView";
 import { DebugInfo } from "@/components/negotiation/DebugInfo";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, FileText, Upload, Bug } from "lucide-react";
+import { Loader2, FileText, Upload, Bug, RefreshCw } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { processDocumentWithAI, runLeaseAnalyzerTest } from "./utils/documentAiUtils";
 import { LeaseAnalysisResult } from "./types";
@@ -23,6 +23,7 @@ export function LeaseAnalyzer() {
   const [analysisResults, setAnalysisResults] = useState<LeaseAnalysisResult | null>(null);
   const [progress, setProgress] = useState<number>(0);
   const [processingPhase, setProcessingPhase] = useState<string>('');
+  const [isRetrying, setIsRetrying] = useState<boolean>(false);
   
   // Debug states
   const [showDebug, setShowDebug] = useState(true); // Default to showing debug info
@@ -62,6 +63,7 @@ export function LeaseAnalyzer() {
       setRawErrorResponse(null);
       setHttpStatus(null);
       setDebugInfo({});
+      setIsRetrying(false);
       
       setProgress(30);
       setProcessingPhase('Sending test document...');
@@ -103,6 +105,18 @@ export function LeaseAnalyzer() {
         description: error instanceof Error ? error.message : "An error occurred during the test. See debug info for details.",
         variant: "destructive"
       });
+      
+      // Add connectivity troubleshooting info
+      setDebugInfo(prev => ({
+        ...prev,
+        connectivityIssue: true,
+        possibleCauses: [
+          "Edge function may still be deploying - wait a few minutes and try again",
+          "Network connectivity issues between browser and Supabase",
+          "Supabase service might be experiencing issues",
+          "API keys or permissions might need verification"
+        ]
+      }));
     }
   };
 
@@ -117,6 +131,7 @@ export function LeaseAnalyzer() {
       setRawErrorResponse(null);
       setHttpStatus(null);
       setDebugInfo({});
+      setIsRetrying(false);
       
       // Process the document with Google Document AI
       const result = await processDocumentWithAI(
@@ -164,11 +179,36 @@ export function LeaseAnalyzer() {
       setHttpStatus(500);
       setStep(STEPS.UPLOAD);
       
+      // Add connectivity troubleshooting info
+      setDebugInfo(prev => ({
+        ...prev,
+        connectivityIssue: true,
+        possibleCauses: [
+          "Edge function may still be deploying - wait a few minutes and try again",
+          "Network connectivity issues between browser and Supabase",
+          "Supabase service might be experiencing issues",
+          "API keys or permissions might need verification"
+        ]
+      }));
+      
       toast({
         title: "Analysis Failed",
         description: error instanceof Error ? error.message : "An error occurred during analysis. Please try again later.",
         variant: "destructive"
       });
+    }
+  };
+
+  const handleRetry = async () => {
+    setIsRetrying(true);
+    
+    // Wait a moment to allow for any deployment or network issues to resolve
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    if (selectedFile) {
+      handleAnalyzeDocument();
+    } else {
+      handleTestMode();
     }
   };
 
@@ -179,6 +219,7 @@ export function LeaseAnalyzer() {
     setProgress(0);
     setRawErrorResponse(null);
     setDebugInfo({});
+    setIsRetrying(false);
   };
 
   return (
@@ -190,6 +231,7 @@ export function LeaseAnalyzer() {
             variant="secondary" 
             size="sm"
             onClick={handleTestMode}
+            disabled={isRetrying}
           >
             <Bug className="mr-1 h-4 w-4" />
             Run Test
@@ -212,6 +254,39 @@ export function LeaseAnalyzer() {
         rawErrorResponse={rawErrorResponse}
         additionalInfo={debugInfo}
       />
+
+      {httpStatus === 500 && debugInfo.connectivityIssue && (
+        <Alert className="bg-amber-50 border-amber-200 mb-4">
+          <AlertTitle className="text-amber-800">Connectivity Issues Detected</AlertTitle>
+          <AlertDescription className="text-amber-700">
+            <p className="mb-2">We're having trouble connecting to our backend services. Here are some options:</p>
+            <ul className="list-disc list-inside space-y-1">
+              <li>Wait a few minutes and try again (edge functions might still be deploying)</li>
+              <li>Check your network connection</li>
+              <li>Verify that your API keys are correctly configured in Supabase</li>
+            </ul>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="mt-3 bg-amber-100 hover:bg-amber-200 text-amber-800"
+              onClick={handleRetry}
+              disabled={isRetrying}
+            >
+              {isRetrying ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Retrying...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Retry Connection
+                </>
+              )}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {step === STEPS.UPLOAD && (
         <div className="space-y-6">
@@ -238,6 +313,7 @@ export function LeaseAnalyzer() {
                 <Button 
                   onClick={handleAnalyzeDocument} 
                   className="mt-4"
+                  disabled={isRetrying}
                 >
                   <Upload className="mr-2 h-4 w-4" />
                   Analyze Lease
