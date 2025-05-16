@@ -15,7 +15,7 @@ const PROCESSOR_PROJECT_ID = "361961931016";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-debug",
 };
 
 // Regex patterns for rent and deposit extraction
@@ -59,11 +59,19 @@ interface RequestBody {
   fileSize?: number;
   text?: string; // Optional text field for test mode
   testMode?: boolean; // Flag for test mode
+  debug?: boolean; // Flag for debug mode
 }
 
 // Main server function with improved error handling
 serve(async (req) => {
   console.log("Lease Analyzer: Request received");
+  
+  // Check if debug mode is requested
+  const isDebugMode = req.headers.get("x-debug") === "true";
+  const debugInfo: Record<string, any> = {
+    requestTime: new Date().toISOString(),
+    headers: Object.fromEntries(req.headers.entries())
+  };
   
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -75,11 +83,18 @@ serve(async (req) => {
     // Check API keys with better error messages
     if (!GOOGLE_DOCUMENT_AI_API_KEY) {
       console.error("Lease Analyzer: Missing Google Document AI API key");
+      const errorResponse = {
+        error: "Server configuration error: Google Document AI API key not configured",
+        details: "Please check that GOOGLE_DOCUMENTAI_API_KEY is set in Supabase Edge Function secrets"
+      };
+      
+      if (isDebugMode) {
+        console.log("Debug info requested, adding to error response");
+        Object.assign(errorResponse, { debug: debugInfo });
+      }
+      
       return new Response(
-        JSON.stringify({
-          error: "Server configuration error: Google Document AI API key not configured",
-          details: "Please check that GOOGLE_DOCUMENTAI_API_KEY is set in Supabase Edge Function secrets"
-        }),
+        JSON.stringify(errorResponse),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -89,11 +104,17 @@ serve(async (req) => {
     
     if (!OPENAI_API_KEY) {
       console.error("Lease Analyzer: Missing OpenAI API key");
+      const errorResponse = {
+        error: "Server configuration error: OpenAI API key not configured",
+        details: "Please check that OPENAI_RENTERS_MENTOR_KEY is set in Supabase Edge Function secrets"
+      };
+      
+      if (isDebugMode) {
+        Object.assign(errorResponse, { debug: debugInfo });
+      }
+      
       return new Response(
-        JSON.stringify({
-          error: "Server configuration error: OpenAI API key not configured",
-          details: "Please check that OPENAI_RENTERS_MENTOR_KEY is set in Supabase Edge Function secrets"
-        }),
+        JSON.stringify(errorResponse),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -104,11 +125,17 @@ serve(async (req) => {
     // Check Processor details
     if (!PROCESSOR_ID || !PROCESSOR_LOCATION || !PROCESSOR_PROJECT_ID) {
       console.error("Lease Analyzer: Missing Document AI processor details");
+      const errorResponse = {
+        error: "Server configuration error: Document AI processor details not configured",
+        details: "Please check that PROCESSOR_ID, PROCESSOR_LOCATION, and PROCESSOR_PROJECT_ID are correctly set"
+      };
+      
+      if (isDebugMode) {
+        Object.assign(errorResponse, { debug: debugInfo });
+      }
+      
       return new Response(
-        JSON.stringify({
-          error: "Server configuration error: Document AI processor details not configured",
-          details: "Please check that PROCESSOR_ID, PROCESSOR_LOCATION, and PROCESSOR_PROJECT_ID are correctly set"
-        }),
+        JSON.stringify(errorResponse),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -124,22 +151,31 @@ serve(async (req) => {
     let fileType = "application/pdf";
     let fileName = "document.pdf";
     let textContent = "";
+    let isDebugRequested = isDebugMode;
 
     console.log(`Lease Analyzer: Content-Type detected: ${contentType}`);
+    debugInfo.contentType = contentType;
 
     if (contentType.includes("multipart/form-data")) {
       console.log("Lease Analyzer: Processing form data request");
+      debugInfo.requestFormat = "multipart/form-data";
       
       try {
         const formData = await req.formData();
         const formFile = formData.get("file") as File | null;
         
         if (!formFile) {
+          const errorResponse = {
+            error: "No file provided",
+            details: "The request must include a 'file' field with the PDF document"
+          };
+          
+          if (isDebugMode) {
+            Object.assign(errorResponse, { debug: debugInfo });
+          }
+          
           return new Response(
-            JSON.stringify({
-              error: "No file provided",
-              details: "The request must include a 'file' field with the PDF document"
-            }),
+            JSON.stringify(errorResponse),
             {
               status: 400,
               headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -148,11 +184,17 @@ serve(async (req) => {
         }
         
         if (formFile.size > 10 * 1024 * 1024) {
+          const errorResponse = {
+            error: "File too large",
+            details: "Maximum file size is 10MB"
+          };
+          
+          if (isDebugMode) {
+            Object.assign(errorResponse, { debug: debugInfo });
+          }
+          
           return new Response(
-            JSON.stringify({
-              error: "File too large",
-              details: "Maximum file size is 10MB"
-            }),
+            JSON.stringify(errorResponse),
             {
               status: 413,
               headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -172,14 +214,25 @@ serve(async (req) => {
         };
         
         console.log(`Lease Analyzer: Received ${fileName} (${formFile.size} bytes)`);
+        debugInfo.fileInfo = {
+          name: fileName,
+          type: fileType,
+          size: formFile.size
+        };
       } catch (error) {
         console.error("Lease Analyzer: Failed to parse form data", error);
+        const errorResponse = {
+          error: "Invalid form data",
+          details: "Could not parse the form data or missing required fields",
+          message: error instanceof Error ? error.message : String(error)
+        };
+        
+        if (isDebugMode) {
+          Object.assign(errorResponse, { debug: { ...debugInfo, error } });
+        }
+        
         return new Response(
-          JSON.stringify({
-            error: "Invalid form data",
-            details: "Could not parse the form data or missing required fields",
-            message: error instanceof Error ? error.message : String(error)
-          }),
+          JSON.stringify(errorResponse),
           {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -189,77 +242,106 @@ serve(async (req) => {
     } else {
       // Process as JSON request
       console.log("Lease Analyzer: Processing JSON request");
+      debugInfo.requestFormat = "json";
       
       try {
         requestData = await req.json();
+        isDebugRequested = isDebugRequested || Boolean(requestData.debug);
         console.log("Lease Analyzer: Request received for file:", requestData.fileName || 'unknown');
+        debugInfo.requestData = {
+          fileName: requestData.fileName,
+          fileSize: requestData.fileSize,
+          fileType: requestData.fileType,
+          hasFileBase64: Boolean(requestData.fileBase64),
+          hasText: Boolean(requestData.text),
+          isTestMode: Boolean(requestData.testMode)
+        };
         
         // Check if this is test mode
         if (requestData.testMode === true) {
           console.log("Lease Analyzer: Test mode detected, sending sample response");
-          return new Response(
-            JSON.stringify({ 
-              analysis: {
-                summary: "This is a test response. The system is working but using sample data instead of analyzing a real document.",
-                confidence: 0.99,
-                financialTerms: {
-                  monthlyRent: 1500,
-                  securityDeposit: 1500,
-                  lateFees: "$50 after 5 days",
-                  otherFees: ["$25 application fee", "$150 cleaning fee"]
-                },
-                leaseTerms: {
-                  startDate: "2025-06-01",
-                  endDate: "2026-05-31",
-                  leaseTerm: "12 months",
-                  renewalTerms: "Month-to-month after initial term",
-                  noticeRequired: "60 days"
-                },
-                propertyDetails: {
-                  address: "123 Test Street, Testville, TS 12345",
-                  unitNumber: "Apt 4B",
-                  includedAmenities: ["Parking", "Water", "Garbage"]
-                },
-                parties: {
-                  landlord: "Test Property Management LLC",
-                  tenant: ["Jane Doe", "John Smith"],
-                  propertyManager: "Test Manager"
-                },
-                petPolicy: {
-                  allowed: true,
-                  restrictions: "Dogs and cats only, max 2 pets",
-                  petRent: 50,
-                  petDeposit: 250
-                },
-                responsibilities: {
-                  tenant: ["Routine cleaning", "Lawn maintenance", "Minor repairs"],
-                  landlord: ["Major repairs", "Structural maintenance"]
-                },
-                criticalDates: {
-                  moveIn: "2025-06-01",
-                  moveOut: "2026-05-31",
-                  rentDueDate: "1st of each month",
-                  lateFeeDate: "6th of each month"
-                },
-                redFlags: [
-                  {
-                    issues: ["Non-standard early termination fee", "Excessive security deposit"],
-                    severity: "medium"
-                  }
-                ]
+          const testResponse = {
+            analysis: {
+              summary: "This is a test response. The system is working but using sample data instead of analyzing a real document.",
+              confidence: 0.99,
+              financialTerms: {
+                monthlyRent: 1500,
+                securityDeposit: 1500,
+                lateFees: "$50 after 5 days",
+                otherFees: ["$25 application fee", "$150 cleaning fee"]
               },
-              debug: {
-                processedAt: new Date().toISOString(),
-                testMode: true,
-                receivedFileData: {
-                  fileName: requestData.fileName,
-                  fileSize: requestData.fileSize,
-                  fileType: requestData.fileType,
-                  hasBase64: Boolean(requestData.fileBase64),
-                  hasText: Boolean(requestData.text)
+              leaseTerms: {
+                startDate: "2025-06-01",
+                endDate: "2026-05-31",
+                leaseTerm: "12 months",
+                renewalTerms: "Month-to-month after initial term",
+                noticeRequired: "60 days"
+              },
+              propertyDetails: {
+                address: "123 Test Street, Testville, TS 12345",
+                unitNumber: "Apt 4B",
+                includedAmenities: ["Parking", "Water", "Garbage"]
+              },
+              parties: {
+                landlord: "Test Property Management LLC",
+                tenant: ["Jane Doe", "John Smith"],
+                propertyManager: "Test Manager"
+              },
+              petPolicy: {
+                allowed: true,
+                restrictions: "Dogs and cats only, max 2 pets",
+                petRent: 50,
+                petDeposit: 250
+              },
+              responsibilities: {
+                tenant: ["Routine cleaning", "Lawn maintenance", "Minor repairs"],
+                landlord: ["Major repairs", "Structural maintenance"]
+              },
+              criticalDates: {
+                moveIn: "2025-06-01",
+                moveOut: "2026-05-31",
+                rentDueDate: "1st of each month",
+                lateFeeDate: "6th of each month"
+              },
+              redFlags: [
+                {
+                  issues: ["Non-standard early termination fee", "Excessive security deposit"],
+                  severity: "medium"
+                }
+              ]
+            },
+            debug: {
+              processedAt: new Date().toISOString(),
+              testMode: true,
+              receivedFileData: {
+                fileName: requestData.fileName,
+                fileSize: requestData.fileSize,
+                fileType: requestData.fileType,
+                hasBase64: Boolean(requestData.fileBase64),
+                hasText: Boolean(requestData.text)
+              },
+              debugMode: isDebugRequested
+            }
+          };
+          
+          if (isDebugRequested) {
+            testResponse.debug = {
+              ...testResponse.debug,
+              ...debugInfo,
+              environment: {
+                hasOpenAiKey: Boolean(OPENAI_API_KEY),
+                hasGoogleDocumentAiKey: Boolean(GOOGLE_DOCUMENT_AI_API_KEY),
+                processorDetails: {
+                  processorId: PROCESSOR_ID,
+                  location: PROCESSOR_LOCATION,
+                  projectId: PROCESSOR_PROJECT_ID
                 }
               }
-            }),
+            };
+          }
+          
+          return new Response(
+            JSON.stringify(testResponse),
             {
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             }
@@ -281,13 +363,32 @@ serve(async (req) => {
             fileBytes = new Uint8Array(atob(requestData.fileBase64).split('').map(c => c.charCodeAt(0)));
             fileName = requestData.fileName || "document.pdf";
             fileType = requestData.fileType || "application/pdf";
+            
+            debugInfo.fileInfo = {
+              name: fileName,
+              type: fileType,
+              size: fileBytes.length,
+              base64Length: requestData.fileBase64.length
+            };
           } catch (error) {
             console.error("Lease Analyzer: Failed to decode base64 data", error);
+            const errorResponse = {
+              error: "Invalid base64 data",
+              details: "Could not decode the base64 file content"
+            };
+            
+            if (isDebugRequested) {
+              Object.assign(errorResponse, { 
+                debug: { 
+                  ...debugInfo,
+                  error: String(error),
+                  base64Sample: requestData.fileBase64?.substring(0, 100) + "..." 
+                } 
+              });
+            }
+            
             return new Response(
-              JSON.stringify({
-                error: "Invalid base64 data",
-                details: "Could not decode the base64 file content"
-              }),
+              JSON.stringify(errorResponse),
               {
                 status: 400,
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -298,13 +399,20 @@ serve(async (req) => {
           // Use text directly if provided (useful for testing)
           console.log("Lease Analyzer: Using provided text directly");
           textContent = requestData.text;
+          debugInfo.textLength = textContent.length;
         } else {
           // No content provided
+          const errorResponse = {
+            error: "Document content is required",
+            details: "Either fileBase64 or text must be provided"
+          };
+          
+          if (isDebugRequested) {
+            Object.assign(errorResponse, { debug: debugInfo });
+          }
+          
           return new Response(
-            JSON.stringify({
-              error: "Document content is required",
-              details: "Either fileBase64 or text must be provided"
-            }),
+            JSON.stringify(errorResponse),
             {
               status: 400,
               headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -313,12 +421,18 @@ serve(async (req) => {
         }
       } catch (error) {
         console.error("Lease Analyzer: Failed to parse request body", error);
+        const errorResponse = {
+          error: "Invalid request format",
+          details: "Could not parse the request JSON body or missing required fields",
+          message: error instanceof Error ? error.message : String(error)
+        };
+        
+        if (isDebugRequested) {
+          Object.assign(errorResponse, { debug: { ...debugInfo, error: String(error) } });
+        }
+        
         return new Response(
-          JSON.stringify({
-            error: "Invalid request format",
-            details: "Could not parse the request JSON body or missing required fields",
-            message: error instanceof Error ? error.message : String(error)
-          }),
+          JSON.stringify(errorResponse),
           {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -332,16 +446,31 @@ serve(async (req) => {
     
     if (fileBytes) {
       console.log("Lease Analyzer: Processing document with Google Document AI");
+      debugInfo.processingStage = "documentAI";
       try {
         extractedText = await processWithDocumentAI(fileBytes, fileType);
         console.log(`Lease Analyzer: Document processing complete. Extracted ${extractedText.length} characters.`);
+        debugInfo.extractedTextLength = extractedText.length;
       } catch (docAiError) {
         console.error("Lease Analyzer: Document AI error:", docAiError);
+        const errorResponse = {
+          error: `Document AI processing error: ${docAiError instanceof Error ? docAiError.message : String(docAiError)}`,
+          details: "Failed to process the document with Google Document AI"
+        };
+        
+        if (isDebugRequested) {
+          Object.assign(errorResponse, { 
+            debug: { 
+              ...debugInfo, 
+              error: docAiError instanceof Error 
+                ? { message: docAiError.message, stack: docAiError.stack } 
+                : String(docAiError) 
+            } 
+          });
+        }
+        
         return new Response(
-          JSON.stringify({
-            error: `Document AI processing error: ${docAiError instanceof Error ? docAiError.message : String(docAiError)}`,
-            details: "Failed to process the document with Google Document AI"
-          }),
+          JSON.stringify(errorResponse),
           {
             status: 500,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -354,11 +483,17 @@ serve(async (req) => {
       extractedText = textContent;
     } else {
       // This should never happen due to our earlier check, but just in case
+      const errorResponse = {
+        error: "Document content is required",
+        details: "Either fileBase64 or text must be provided"
+      };
+      
+      if (isDebugRequested) {
+        Object.assign(errorResponse, { debug: debugInfo });
+      }
+      
       return new Response(
-        JSON.stringify({
-          error: "Document content is required",
-          details: "Either fileBase64 or text must be provided"
-        }),
+        JSON.stringify(errorResponse),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -376,6 +511,9 @@ serve(async (req) => {
     
     // Analyze text with OpenAI
     console.log("Lease Analyzer: Analyzing text with OpenAI");
+    debugInfo.processingStage = "openAI";
+    debugInfo.regexFindings = context.regexFindings;
+    
     let analysis;
     try {
       analysis = await analyzeWithOpenAI(extractedText, context);
@@ -385,11 +523,25 @@ serve(async (req) => {
       analysis.regexFindings = context.regexFindings;
     } catch (openAiError) {
       console.error("Lease Analyzer: OpenAI error:", openAiError);
+      const errorResponse = {
+        error: `OpenAI analysis error: ${openAiError instanceof Error ? openAiError.message : String(openAiError)}`,
+        details: "Failed to analyze the document text with OpenAI"
+      };
+      
+      if (isDebugRequested) {
+        Object.assign(errorResponse, { 
+          debug: { 
+            ...debugInfo, 
+            error: openAiError instanceof Error 
+              ? { message: openAiError.message, stack: openAiError.stack }
+              : String(openAiError),
+            textSample: extractedText.substring(0, 200) + "..." 
+          } 
+        });
+      }
+      
       return new Response(
-        JSON.stringify({
-          error: `OpenAI analysis error: ${openAiError instanceof Error ? openAiError.message : String(openAiError)}`,
-          details: "Failed to analyze the document text with OpenAI"
-        }),
+        JSON.stringify(errorResponse),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -397,29 +549,52 @@ serve(async (req) => {
       );
     }
 
+    const response = {
+      analysis, 
+      debug: {
+        processedAt: new Date().toISOString(),
+        textLength: extractedText.length,
+        fileName: fileName,
+        fileSize: fileBytes ? fileBytes.length : textContent.length,
+        regexFindings: context.regexFindings
+      }
+    };
+    
+    if (isDebugRequested) {
+      response.debug = {
+        ...response.debug,
+        ...debugInfo,
+        processingComplete: true
+      };
+    }
+    
     return new Response(
-      JSON.stringify({ 
-        analysis, 
-        debug: {
-          processedAt: new Date().toISOString(),
-          textLength: extractedText.length,
-          fileName: fileName,
-          fileSize: fileBytes ? fileBytes.length : textContent.length,
-          regexFindings: context.regexFindings
-        }
-      }),
+      JSON.stringify(response),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
   } catch (error) {
     console.error("Lease Analyzer: Unhandled error:", error);
+    const errorResponse = {
+      error: `Unhandled error: ${error instanceof Error ? error.message : String(error)}`,
+      details: "An unexpected error occurred during document analysis",
+      stack: error instanceof Error ? error.stack : undefined
+    };
+    
+    if (isDebugMode) {
+      Object.assign(errorResponse, { 
+        debug: { 
+          ...debugInfo, 
+          unhandledError: error instanceof Error 
+            ? { message: error.message, stack: error.stack } 
+            : String(error)
+        } 
+      });
+    }
+    
     return new Response(
-      JSON.stringify({
-        error: `Unhandled error: ${error instanceof Error ? error.message : String(error)}`,
-        details: "An unexpected error occurred during document analysis",
-        stack: error instanceof Error ? error.stack : undefined
-      }),
+      JSON.stringify(errorResponse),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -451,29 +626,45 @@ async function processWithDocumentAI(fileBytes: Uint8Array, mimeType: string = "
   try {
     console.log("Lease Analyzer: Calling Google Document AI API with imageless mode");
     
+    // Create a detailed request payload
+    const payload = {
+      rawDocument: {
+        content: fileBase64,
+        mimeType: mimeType,
+      },
+      // Enable imageless mode to handle larger documents and improve processing
+      imagelessMode: true
+    };
+    
+    console.log("Lease Analyzer: Sending Document AI request with imageless mode enabled");
+    
     const response = await fetch(`${endpoint}?key=${GOOGLE_DOCUMENT_AI_API_KEY}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        rawDocument: {
-          content: fileBase64,
-          mimeType: mimeType,
-        },
-        // Enable imageless mode to handle larger documents and improve processing
-        imagelessMode: true
-      }),
+      body: JSON.stringify(payload),
     });
 
+    // Add detailed error handling
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Document AI API error response:", errorText);
+      console.error(`Document AI API error response (${response.status}):`, errorText);
+      
       let errorMessage = `Document AI API error: ${response.status} ${response.statusText}`;
+      let errorDetails = errorText;
       
       try {
         const errorJson = JSON.parse(errorText);
-        errorMessage += ` - ${errorJson.error?.message || "Unknown error"}`;
+        errorMessage = `Document AI API error (${response.status}): ${errorJson.error?.message || "Unknown error"}`;
+        errorDetails = errorJson;
+        
+        // Check for specific error codes
+        if (errorJson.error?.code === 403) {
+          errorMessage = "Document AI API access denied. Please check your API key and permissions.";
+        } else if (errorJson.error?.code === 404) {
+          errorMessage = `Document AI processor not found. Please verify the processor ID (${PROCESSOR_ID}) exists.`;
+        }
       } catch {
         // If parsing fails, just use the raw error text
         errorMessage += ` - ${errorText.substring(0, 200)}...`;

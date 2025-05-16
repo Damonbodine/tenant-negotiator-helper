@@ -37,7 +37,6 @@ export async function processDocumentWithAI(
     }
     
     // Convert file to base64 for backward compatibility
-    // This approach supports both multipart/form-data and legacy base64 methods
     const reader = new FileReader();
     const fileBase64Promise = new Promise<string>((resolve, reject) => {
       reader.onload = (e) => {
@@ -69,17 +68,20 @@ export async function processDocumentWithAI(
       fileSize: file.size
     });
 
-    // Send to edge function - we'll try using FormData
-    // If that fails, we'll fall back to JSON with base64
+    // First try with FormData (preferred method)
     try {
       if (onProgress) {
         onProgress(40, "Attempting multipart upload...");
       }
       
-      // First try with FormData (preferred method)
       const response = await supabase.functions.invoke('lease-analyzer', {
-        body: formData
+        body: formData,
+        headers: {
+          'x-debug': 'true' // Add debug header to get more information
+        }
       });
+      
+      console.log("Response from lease-analyzer function:", response);
       
       if (onProgress) {
         onProgress(100, "Analysis complete");
@@ -87,7 +89,9 @@ export async function processDocumentWithAI(
       
       if (response.error) {
         console.error("Error from lease-analyzer function with FormData:", response.error);
-        throw new Error(response.error.message || "Error processing document");
+        const errorMessage = response.error.message || "Error processing document";
+        const errorDetails = response.error.details || {};
+        throw new Error(`${errorMessage}. Details: ${JSON.stringify(errorDetails)}`);
       }
       
       console.log("Received response from lease-analyzer function (FormData)");
@@ -105,9 +109,15 @@ export async function processDocumentWithAI(
           fileBase64: fileBase64,
           fileName: file.name,
           fileType: file.type,
-          fileSize: file.size
+          fileSize: file.size,
+          debug: true // Request debug mode for more information
+        },
+        headers: {
+          'x-debug': 'true' // Add debug header to get more information
         }
       });
+      
+      console.log("Response from lease-analyzer function (base64):", response);
       
       if (onProgress) {
         onProgress(100, "Analysis complete");
@@ -115,7 +125,9 @@ export async function processDocumentWithAI(
       
       if (response.error) {
         console.error("Error from lease-analyzer function with base64:", response.error);
-        throw new Error(response.error.message || "Error processing document");
+        const errorMessage = response.error.message || "Error processing document";
+        const errorDetails = response.error.details || {};
+        throw new Error(`${errorMessage}. Details: ${JSON.stringify(errorDetails)}`);
       }
       
       console.log("Received response from lease-analyzer function (base64)");
@@ -137,19 +149,26 @@ export async function runLeaseAnalyzerTest(): Promise<any> {
     console.log("Running lease analyzer test mode");
     
     // Send test request to our Supabase Edge Function
-    // Use the testMode flag to trigger a simplified response
     const response = await supabase.functions.invoke('lease-analyzer', {
       body: {
         testMode: true,
         fileName: "test.pdf",
         fileType: "application/pdf",
-        fileSize: 1024
+        fileSize: 1024,
+        debug: true // Request debug mode
+      },
+      headers: {
+        'x-debug': 'true' // Add debug header to get more information
       }
     });
     
+    console.log("Test mode response:", response);
+    
     if (response.error) {
       console.error("Test mode error:", response.error);
-      throw new Error(response.error.message || "Error in test mode");
+      const errorMessage = response.error.message || "Error in test mode";
+      const errorDetails = response.error.details || {};
+      throw new Error(`${errorMessage}. Details: ${JSON.stringify(errorDetails)}`);
     }
     
     console.log("Test completed successfully:", response.data);

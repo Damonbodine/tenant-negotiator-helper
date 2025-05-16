@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +25,7 @@ export function LeaseAnalyzer() {
   const [processingPhase, setProcessingPhase] = useState<string>('');
   
   // Debug states
-  const [showDebug, setShowDebug] = useState(false);
+  const [showDebug, setShowDebug] = useState(true); // Default to showing debug info
   const [requestStartTime, setRequestStartTime] = useState<string | null>(null);
   const [requestEndTime, setRequestEndTime] = useState<string | null>(null);
   const [httpStatus, setHttpStatus] = useState<number | null>(null);
@@ -60,6 +61,7 @@ export function LeaseAnalyzer() {
       setRequestStartTime(new Date().toISOString());
       setRawErrorResponse(null);
       setHttpStatus(null);
+      setDebugInfo({});
       
       setProgress(30);
       setProcessingPhase('Sending test document...');
@@ -98,7 +100,7 @@ export function LeaseAnalyzer() {
       
       toast({
         title: "Test Failed",
-        description: "An error occurred during the test. See debug info for details.",
+        description: error instanceof Error ? error.message : "An error occurred during the test. See debug info for details.",
         variant: "destructive"
       });
     }
@@ -114,6 +116,7 @@ export function LeaseAnalyzer() {
       setRequestStartTime(new Date().toISOString());
       setRawErrorResponse(null);
       setHttpStatus(null);
+      setDebugInfo({});
       
       // Process the document with Google Document AI
       const result = await processDocumentWithAI(
@@ -132,6 +135,7 @@ export function LeaseAnalyzer() {
         responseReceived: true,
         responseTime: `${new Date().getTime() - new Date(requestStartTime!).getTime()}ms`,
         resultSize: JSON.stringify(result).length,
+        rawResponse: JSON.stringify(result, null, 2).substring(0, 500) + "..." // Add raw response sample
       }));
       
       if (!result) {
