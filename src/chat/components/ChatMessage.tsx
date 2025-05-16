@@ -22,7 +22,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
         `}
       >
         {message.type === "user" ? (
-          <p>{message.text}</p>
+          <p className="break-words">{message.text}</p>
         ) : (
           <CollapsibleMessage text={message.text} />
         )}
