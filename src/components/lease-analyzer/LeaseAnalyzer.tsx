@@ -1,17 +1,14 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LeaseResultsView } from "./LeaseResultsView";
 import { DebugInfo } from "@/components/negotiation/DebugInfo";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, FileText, Upload, KeyRound, AlertCircle } from "lucide-react";
+import { Loader2, FileText, Upload } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { processDocumentWithAI } from "./utils/documentAiUtils";
 import { LeaseAnalysisResult } from "./types";
-import { hasApiKey } from "@/utils/keyManager";
-import { API_KEYS } from "@/utils/keyManager";
-import { ApiKeyInput } from "@/components/ApiKeyInput";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const STEPS = {
@@ -27,11 +24,6 @@ export function LeaseAnalyzer() {
   const [progress, setProgress] = useState<number>(0);
   const [processingPhase, setProcessingPhase] = useState<string>('');
   
-  // API key states
-  const [missingApiKeys, setMissingApiKeys] = useState<string[]>([]);
-  const [showApiKeyInput, setShowApiKeyInput] = useState<string | null>(null);
-  const [isCheckingKeys, setIsCheckingKeys] = useState(true);
-  
   // Debug states
   const [showDebug, setShowDebug] = useState(false);
   const [requestStartTime, setRequestStartTime] = useState<string | null>(null);
@@ -39,27 +31,6 @@ export function LeaseAnalyzer() {
   const [httpStatus, setHttpStatus] = useState<number | null>(null);
   const [rawErrorResponse, setRawErrorResponse] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<Record<string, any>>({});
-
-  // Check for required API keys on component mount
-  useEffect(() => {
-    const checkApiKeys = async () => {
-      setIsCheckingKeys(true);
-      const missingKeys: string[] = [];
-      
-      if (!(await hasApiKey(API_KEYS.GOOGLE.storageKey))) {
-        missingKeys.push('GOOGLE');
-      }
-      
-      if (!(await hasApiKey(API_KEYS.OPENAI.storageKey))) {
-        missingKeys.push('OPENAI');
-      }
-      
-      setMissingApiKeys(missingKeys);
-      setIsCheckingKeys(false);
-    };
-    
-    checkApiKeys();
-  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
@@ -81,16 +52,6 @@ export function LeaseAnalyzer() {
 
   const handleAnalyzeDocument = async () => {
     if (!selectedFile) return;
-
-    // Check if API keys are available before proceeding
-    if (missingApiKeys.length > 0) {
-      toast({
-        title: "API Keys Required",
-        description: "Please configure all required API keys before analyzing.",
-        variant: "destructive"
-      });
-      return;
-    }
 
     try {
       setStep(STEPS.PROCESSING);
@@ -146,7 +107,7 @@ export function LeaseAnalyzer() {
       
       toast({
         title: "Analysis Failed",
-        description: "An error occurred during analysis. See details below.",
+        description: "An error occurred during analysis. Please try again later.",
         variant: "destructive"
       });
     }
@@ -161,28 +122,6 @@ export function LeaseAnalyzer() {
     setDebugInfo({});
   };
 
-  const handleApiKeyInputClose = () => {
-    setShowApiKeyInput(null);
-    // Re-check API keys after closing the input dialog
-    const checkApiKeys = async () => {
-      setIsCheckingKeys(true);
-      const missingKeys: string[] = [];
-      
-      if (!(await hasApiKey(API_KEYS.GOOGLE.storageKey))) {
-        missingKeys.push('GOOGLE');
-      }
-      
-      if (!(await hasApiKey(API_KEYS.OPENAI.storageKey))) {
-        missingKeys.push('OPENAI');
-      }
-      
-      setMissingApiKeys(missingKeys);
-      setIsCheckingKeys(false);
-    };
-    
-    checkApiKeys();
-  };
-
   return (
     <div className="container mx-auto py-8">
       <div className="flex justify-between items-center mb-6">
@@ -195,46 +134,6 @@ export function LeaseAnalyzer() {
           {showDebug ? "Hide Debug" : "Show Debug"}
         </Button>
       </div>
-      
-      {/* API Key Configuration Section */}
-      {!isCheckingKeys && missingApiKeys.length > 0 && (
-        <Alert className="mb-6 bg-amber-50 border-amber-200">
-          <AlertCircle className="h-4 w-4 text-amber-600" />
-          <AlertTitle className="text-amber-800">API Keys Required</AlertTitle>
-          <AlertDescription className="text-amber-700">
-            To analyze lease documents, please configure the required API keys:
-            <div className="flex flex-wrap gap-2 mt-2">
-              {missingApiKeys.includes('GOOGLE') && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex items-center gap-1 border-amber-300 text-amber-800"
-                  onClick={() => setShowApiKeyInput('GOOGLE')}
-                >
-                  <KeyRound className="h-3 w-3" /> Google Document AI API Key
-                </Button>
-              )}
-              {missingApiKeys.includes('OPENAI') && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex items-center gap-1 border-amber-300 text-amber-800"
-                  onClick={() => setShowApiKeyInput('OPENAI')}
-                >
-                  <KeyRound className="h-3 w-3" /> OpenAI API Key
-                </Button>
-              )}
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      {showApiKeyInput && (
-        <ApiKeyInput 
-          keyType={showApiKeyInput}
-          onClose={handleApiKeyInputClose}
-        />
-      )}
       
       <DebugInfo
         showDebugInfo={showDebug}
@@ -270,19 +169,27 @@ export function LeaseAnalyzer() {
                 <Button 
                   onClick={handleAnalyzeDocument} 
                   className="mt-4"
-                  disabled={missingApiKeys.length > 0}
                 >
                   <Upload className="mr-2 h-4 w-4" />
                   Analyze Lease
                 </Button>
-                {missingApiKeys.length > 0 && (
-                  <p className="text-xs text-red-500 mt-2">
-                    Please configure the required API keys before analyzing
-                  </p>
-                )}
               </div>
             )}
           </div>
+
+          <Alert className="bg-blue-50 border-blue-200">
+            <AlertTitle className="text-blue-800">How It Works</AlertTitle>
+            <AlertDescription className="text-blue-700">
+              <p className="mb-2">Our AI-powered lease analyzer will:</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>Extract key terms from your lease</li>
+                <li>Identify monthly rent, security deposit, and other financial obligations</li>
+                <li>Find important dates like move-in and rent due dates</li>
+                <li>Highlight potential red flags or concerning clauses</li>
+                <li>Summarize tenant and landlord responsibilities</li>
+              </ul>
+            </AlertDescription>
+          </Alert>
         </div>
       )}
       
