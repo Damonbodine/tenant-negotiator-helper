@@ -1,14 +1,15 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
 // Access API keys from environment variables
-const OPENAI_API_KEY = Deno.env.get("OPENAI_RENTERS_MENTOR_KEY");
+const OPENAI_API_KEY = Deno.env.get("OPENAI_RENTERS_MENTOR_KEY") || Deno.env.get("OPENAI_API_KEY");
 const GOOGLE_DOCUMENT_AI_API_KEY = Deno.env.get("GOOGLE_DOCUMENTAI_API_KEY");
 
-// Google Document AI processor settings
-const PROCESSOR_ID = "6ec0c96e035a8e46"; 
+// Google Document AI processor settings - Updated with provided details
+const PROCESSOR_ID = "77d90ffb8cbda21b"; // Updated with correct processor ID
 const PROCESSOR_LOCATION = "us";
-const PROCESSOR_PROJECT_ID = "cloud-doc-ai-basic";
+const PROCESSOR_PROJECT_ID = "361961931016"; // Updated with correct project ID
 
 // CORS headers
 const corsHeaders = {
@@ -16,6 +17,40 @@ const corsHeaders = {
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
+
+// Regex patterns for rent and deposit extraction
+const rentPatterns = [
+  /(?:RENT|PAYMENT|BASE\s+RENT|MONTHLY\s+RENT)(?:\s*:|\.|\s+is|\s+shall\s+be|\s+will\s+be)\s*\$?([\d,]+(?:\.\d{1,2})?)/ig,
+  /\$([\d,]+(?:\.\d{1,2})?)\s*(?:per|\/)\s*(?:month|mo)/ig,
+  /(?:tenant|lessee)(?:\s*shall|\s*will|\s*agrees\s*to)?\s*pay\s*\$?([\d,]+(?:\.\d{1,2})?)/ig,
+  /rent\s*(?:is|shall\s*be|will\s*be|amount)?\s*(?:is|\:)?\s*\$?([\d,]+(?:\.\d{1,2})?)/ig,
+  /rent.*?\$\s*([\d,]+(?:\.\d{1,2})?)/ig,
+  /tenant(?:'s)?\s*monthly\s*rent\s*(?:for\s*the\s*(?:apartment|unit|property))?\s*is\s*\$?([\d,]+(?:\.\d{1,2})?)/ig,
+];
+
+const depositPatterns = [
+  /(?:security\s*deposit)(?:\s*:|\.|\s+is|\s+shall\s+be|\s+will\s+be|\s*of|\s*amount|\s*in\s*the\s*amount\s*of)?\s*\$?([\d,]+(?:\.\d{1,2})?)/ig,
+  /(?:deposit|security\s*deposit)\s*(?:of|is|in\s*the\s*amount\s*of|amount|:)?\s*\$?([\d,]+(?:\.\d{1,2})?)/ig,
+];
+
+// Helper functions for text extraction
+function extractNumbers(text: string, patterns: RegExp[]) {
+  const nums: number[] = [];
+  for (const pat of patterns) {
+    for (const m of text.matchAll(pat)) {
+      const val = parseFloat(m[1].replace(/,/g, ""));
+      if (!isNaN(val) && val > 100) nums.push(val);
+    }
+  }
+  return nums;
+}
+
+function preprocess(text: string) {
+  return text
+    .replace(/\s+/g, " ")
+    .replace(/\$\s+/g, "$")
+    .replace(/(\d),(\d)/g, "$1$2");
+}
 
 interface RequestBody {
   fileBase64?: string;
@@ -65,91 +100,67 @@ serve(async (req) => {
       );
     }
 
-    // Parse request body
+    // Check if this is a form data submission or JSON request
+    const contentType = req.headers.get("content-type") || "";
     let requestData: RequestBody;
-    try {
-      requestData = await req.json();
-      console.log("Lease Analyzer: Request received for file:", requestData.fileName || 'unknown');
-      
-      // Check if this is test mode
-      if (requestData.testMode === true) {
-        console.log("Lease Analyzer: Test mode detected, sending sample response");
-        return new Response(
-          JSON.stringify({ 
-            analysis: {
-              summary: "This is a test response. The system is working but using sample data instead of analyzing a real document.",
-              confidence: 0.99,
-              financialTerms: {
-                monthlyRent: 1500,
-                securityDeposit: 1500,
-                lateFees: "$50 after 5 days",
-                otherFees: ["$25 application fee", "$150 cleaning fee"]
-              },
-              leaseTerms: {
-                startDate: "2025-06-01",
-                endDate: "2026-05-31",
-                leaseTerm: "12 months",
-                renewalTerms: "Month-to-month after initial term",
-                noticeRequired: "60 days"
-              },
-              propertyDetails: {
-                address: "123 Test Street, Testville, TS 12345",
-                unitNumber: "Apt 4B",
-                includedAmenities: ["Parking", "Water", "Garbage"]
-              },
-              parties: {
-                landlord: "Test Property Management LLC",
-                tenant: ["Jane Doe", "John Smith"],
-                propertyManager: "Test Manager"
-              },
-              petPolicy: {
-                allowed: true,
-                restrictions: "Dogs and cats only, max 2 pets",
-                petRent: 50,
-                petDeposit: 250
-              },
-              responsibilities: {
-                tenant: ["Routine cleaning", "Lawn maintenance", "Minor repairs"],
-                landlord: ["Major repairs", "Structural maintenance"]
-              },
-              criticalDates: {
-                moveIn: "2025-06-01",
-                moveOut: "2026-05-31",
-                rentDueDate: "1st of each month",
-                lateFeeDate: "6th of each month"
-              },
-              redFlags: [
-                {
-                  issues: ["Non-standard early termination fee", "Excessive security deposit"],
-                  severity: "medium"
-                }
-              ]
-            },
-            debug: {
-              processedAt: new Date().toISOString(),
-              testMode: true,
-              receivedFileData: {
-                fileName: requestData.fileName,
-                fileSize: requestData.fileSize,
-                fileType: requestData.fileType,
-                hasBase64: Boolean(requestData.fileBase64),
-                hasText: Boolean(requestData.text)
-              }
-            }
-          }),
-          {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
+    let file: Uint8Array | null = null;
+    let fileBytes: Uint8Array | null = null;
+    let fileType = "application/pdf";
+    let fileName = "document.pdf";
+    let textContent = "";
 
-      // For real processing, check if we have file content
-      if (!requestData.fileBase64 && !requestData.text) {
-        console.error("Lease Analyzer: No document content provided");
+    if (contentType.includes("multipart/form-data")) {
+      console.log("Lease Analyzer: Processing form data request");
+      
+      try {
+        const formData = await req.formData();
+        const formFile = formData.get("file") as File | null;
+        
+        if (!formFile) {
+          return new Response(
+            JSON.stringify({
+              error: "No file provided",
+              details: "The request must include a 'file' field with the PDF document"
+            }),
+            {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            }
+          );
+        }
+        
+        if (formFile.size > 10 * 1024 * 1024) {
+          return new Response(
+            JSON.stringify({
+              error: "File too large",
+              details: "Maximum file size is 10MB"
+            }),
+            {
+              status: 413,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            }
+          );
+        }
+        
+        // Process the file
+        fileBytes = new Uint8Array(await formFile.arrayBuffer());
+        fileType = formFile.type || "application/pdf";
+        fileName = formFile.name || "document.pdf";
+        
+        requestData = {
+          fileName,
+          fileType,
+          fileSize: formFile.size
+        };
+        
+        console.log(`Lease Analyzer: Received ${fileName} (${formFile.size} bytes)`);
+      } catch (error) {
+        console.error("Lease Analyzer: Failed to parse form data", error);
         return new Response(
           JSON.stringify({
-            error: "Document content is required",
-            details: "Either fileBase64 or text must be provided for document analysis"
+            error: "Invalid form data",
+            details: "Could not parse the form data or missing required fields",
+            message: error instanceof Error ? error.message : String(error)
           }),
           {
             status: 400,
@@ -157,34 +168,154 @@ serve(async (req) => {
           }
         );
       }
+    } else {
+      // Process as JSON request
+      console.log("Lease Analyzer: Processing JSON request");
       
-      // Ensure fileBase64 is properly formatted (no data:application/pdf;base64, prefix)
-      if (requestData.fileBase64 && requestData.fileBase64.includes(";base64,")) {
-        console.log("Lease Analyzer: Removing base64 prefix");
-        requestData.fileBase64 = requestData.fileBase64.split(";base64,")[1];
-      }
-    } catch (error) {
-      console.error("Lease Analyzer: Failed to parse request body", error);
-      return new Response(
-        JSON.stringify({
-          error: "Invalid request format",
-          details: "Could not parse the request JSON body or missing required fields",
-          message: error instanceof Error ? error.message : String(error)
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+      try {
+        requestData = await req.json();
+        console.log("Lease Analyzer: Request received for file:", requestData.fileName || 'unknown');
+        
+        // Check if this is test mode
+        if (requestData.testMode === true) {
+          console.log("Lease Analyzer: Test mode detected, sending sample response");
+          return new Response(
+            JSON.stringify({ 
+              analysis: {
+                summary: "This is a test response. The system is working but using sample data instead of analyzing a real document.",
+                confidence: 0.99,
+                financialTerms: {
+                  monthlyRent: 1500,
+                  securityDeposit: 1500,
+                  lateFees: "$50 after 5 days",
+                  otherFees: ["$25 application fee", "$150 cleaning fee"]
+                },
+                leaseTerms: {
+                  startDate: "2025-06-01",
+                  endDate: "2026-05-31",
+                  leaseTerm: "12 months",
+                  renewalTerms: "Month-to-month after initial term",
+                  noticeRequired: "60 days"
+                },
+                propertyDetails: {
+                  address: "123 Test Street, Testville, TS 12345",
+                  unitNumber: "Apt 4B",
+                  includedAmenities: ["Parking", "Water", "Garbage"]
+                },
+                parties: {
+                  landlord: "Test Property Management LLC",
+                  tenant: ["Jane Doe", "John Smith"],
+                  propertyManager: "Test Manager"
+                },
+                petPolicy: {
+                  allowed: true,
+                  restrictions: "Dogs and cats only, max 2 pets",
+                  petRent: 50,
+                  petDeposit: 250
+                },
+                responsibilities: {
+                  tenant: ["Routine cleaning", "Lawn maintenance", "Minor repairs"],
+                  landlord: ["Major repairs", "Structural maintenance"]
+                },
+                criticalDates: {
+                  moveIn: "2025-06-01",
+                  moveOut: "2026-05-31",
+                  rentDueDate: "1st of each month",
+                  lateFeeDate: "6th of each month"
+                },
+                redFlags: [
+                  {
+                    issues: ["Non-standard early termination fee", "Excessive security deposit"],
+                    severity: "medium"
+                  }
+                ]
+              },
+              debug: {
+                processedAt: new Date().toISOString(),
+                testMode: true,
+                receivedFileData: {
+                  fileName: requestData.fileName,
+                  fileSize: requestData.fileSize,
+                  fileType: requestData.fileType,
+                  hasBase64: Boolean(requestData.fileBase64),
+                  hasText: Boolean(requestData.text)
+                }
+              }
+            }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            }
+          );
         }
-      );
+
+        // For real processing, check if we have file content
+        if (requestData.fileBase64) {
+          // Process base64-encoded file
+          console.log("Lease Analyzer: Processing base64 encoded file");
+          
+          // Ensure fileBase64 is properly formatted (no data:application/pdf;base64, prefix)
+          if (requestData.fileBase64.includes(";base64,")) {
+            console.log("Lease Analyzer: Removing base64 prefix");
+            requestData.fileBase64 = requestData.fileBase64.split(";base64,")[1];
+          }
+          
+          try {
+            fileBytes = new Uint8Array(atob(requestData.fileBase64).split('').map(c => c.charCodeAt(0)));
+            fileName = requestData.fileName || "document.pdf";
+            fileType = requestData.fileType || "application/pdf";
+          } catch (error) {
+            console.error("Lease Analyzer: Failed to decode base64 data", error);
+            return new Response(
+              JSON.stringify({
+                error: "Invalid base64 data",
+                details: "Could not decode the base64 file content"
+              }),
+              {
+                status: 400,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              }
+            );
+          }
+        } else if (requestData.text) {
+          // Use text directly if provided (useful for testing)
+          console.log("Lease Analyzer: Using provided text directly");
+          textContent = requestData.text;
+        } else {
+          // This should never happen due to our earlier check, but just in case
+          return new Response(
+            JSON.stringify({
+              error: "Document content is required",
+              details: "Either fileBase64 or text must be provided"
+            }),
+            {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            }
+          );
+        }
+      } catch (error) {
+        console.error("Lease Analyzer: Failed to parse request body", error);
+        return new Response(
+          JSON.stringify({
+            error: "Invalid request format",
+            details: "Could not parse the request JSON body or missing required fields",
+            message: error instanceof Error ? error.message : String(error)
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
     }
 
     // Process document with Google Document AI (if we have a file) or use text directly
     let extractedText: string;
     
-    if (requestData.fileBase64) {
+    if (fileBytes) {
       console.log("Lease Analyzer: Processing document with Google Document AI");
       try {
-        extractedText = await processWithDocumentAI(requestData.fileBase64);
+        extractedText = await processWithDocumentAI(fileBytes, fileType);
         console.log(`Lease Analyzer: Document processing complete. Extracted ${extractedText.length} characters.`);
       } catch (docAiError) {
         console.error("Lease Analyzer: Document AI error:", docAiError);
@@ -199,10 +330,10 @@ serve(async (req) => {
           }
         );
       }
-    } else if (requestData.text) {
+    } else if (textContent) {
       // Use text directly if provided (useful for testing)
       console.log("Lease Analyzer: Using provided text directly");
-      extractedText = requestData.text;
+      extractedText = textContent;
     } else {
       // This should never happen due to our earlier check, but just in case
       return new Response(
@@ -217,12 +348,23 @@ serve(async (req) => {
       );
     }
     
+    // Pre-process text and extract potential rent/deposit values with regex
+    const cleaned = preprocess(extractedText);
+    const rentVals = extractNumbers(cleaned, rentPatterns);
+    const depositVals = extractNumbers(cleaned, depositPatterns);
+    
+    // Add regex findings to context for OpenAI
+    const context = { regexFindings: { rentVals, depositVals } };
+    
     // Analyze text with OpenAI
     console.log("Lease Analyzer: Analyzing text with OpenAI");
     let analysis;
     try {
-      analysis = await analyzeWithOpenAI(extractedText);
+      analysis = await analyzeWithOpenAI(extractedText, context);
       console.log("Lease Analyzer: Text analysis complete");
+      
+      // Add regex findings to the final analysis
+      analysis.regexFindings = context.regexFindings;
     } catch (openAiError) {
       console.error("Lease Analyzer: OpenAI error:", openAiError);
       return new Response(
@@ -243,8 +385,9 @@ serve(async (req) => {
         debug: {
           processedAt: new Date().toISOString(),
           textLength: extractedText.length,
-          fileName: requestData.fileName,
-          fileSize: requestData.fileSize,
+          fileName: fileName,
+          fileSize: fileBytes ? fileBytes.length : textContent.length,
+          regexFindings: context.regexFindings
         }
       }),
       {
@@ -267,14 +410,17 @@ serve(async (req) => {
 });
 
 /**
- * Process PDF with Google Document AI
+ * Process PDF with Google Document AI - now with imageless mode support
  */
-async function processWithDocumentAI(fileBase64: string): Promise<string> {
+async function processWithDocumentAI(fileBytes: Uint8Array, mimeType: string = "application/pdf"): Promise<string> {
   // Document AI API endpoint
   const url = `https://documentai.googleapis.com/v1/projects/${PROCESSOR_PROJECT_ID}/locations/${PROCESSOR_LOCATION}/processors/${PROCESSOR_ID}:process`;
   
+  // Convert Uint8Array to base64
+  const fileBase64 = btoa(String.fromCharCode.apply(null, Array.from(fileBytes)));
+  
   try {
-    console.log("Lease Analyzer: Calling Google Document AI API");
+    console.log("Lease Analyzer: Calling Google Document AI API with imageless mode");
     
     const response = await fetch(url, {
       method: "POST",
@@ -285,8 +431,10 @@ async function processWithDocumentAI(fileBase64: string): Promise<string> {
       body: JSON.stringify({
         rawDocument: {
           content: fileBase64,
-          mimeType: "application/pdf",
+          mimeType: mimeType,
         },
+        // Enable imageless mode to handle larger documents and improve processing
+        imagelessMode: true
       }),
     });
 
@@ -320,7 +468,7 @@ async function processWithDocumentAI(fileBase64: string): Promise<string> {
 /**
  * Analyze extracted text with OpenAI
  */
-async function analyzeWithOpenAI(text: string): Promise<any> {
+async function analyzeWithOpenAI(text: string, context: any): Promise<any> {
   // Split text into chunks if needed (for very large documents)
   const MAX_CHUNK_SIZE = 12000;
   const chunks = splitTextIntoChunks(text, MAX_CHUNK_SIZE);
@@ -336,16 +484,16 @@ async function analyzeWithOpenAI(text: string): Promise<any> {
       // Process each chunk
       for (let i = 0; i < chunks.length; i++) {
         console.log(`Lease Analyzer: Analyzing chunk ${i+1} of ${chunks.length}`);
-        const chunkAnalysis = await analyzeSingleChunk(chunks[i], i, chunks.length);
+        const chunkAnalysis = await analyzeSingleChunk(chunks[i], i, chunks.length, context);
         chunkAnalyses.push(chunkAnalysis);
       }
       
       // Combine analyses
-      return combineAnalyses(chunkAnalyses);
+      return combineAnalyses(chunkAnalyses, context);
     } else {
       // Just one chunk, analyze it directly
       console.log("Lease Analyzer: Processing single text chunk");
-      return await analyzeSingleChunk(chunks[0], 0, 1);
+      return await analyzeSingleChunk(chunks[0], 0, 1, context);
     }
   } catch (error) {
     console.error("Error in OpenAI analysis:", error);
@@ -356,7 +504,7 @@ async function analyzeWithOpenAI(text: string): Promise<any> {
 /**
  * Analyze a single chunk of text with OpenAI
  */
-async function analyzeSingleChunk(text: string, chunkIndex: number, totalChunks: number): Promise<any> {
+async function analyzeSingleChunk(text: string, chunkIndex: number, totalChunks: number, context: any): Promise<any> {
   try {
     const prompt = `
 You are an expert lease document analyzer. You're analyzing the following lease text (part ${chunkIndex + 1} of ${totalChunks}):
@@ -373,6 +521,8 @@ Extract the following information in a structured JSON format:
 7. Key responsibilities of tenant and landlord
 8. Critical dates (move-in, move-out, rent due)
 9. Any red flags or concerning terms in the lease
+
+Additional context: ${JSON.stringify(context)}. If rent or deposit values have been detected by regex, prioritize these values but verify they make sense in context.
 
 If this information is not present in this chunk, indicate "not found in this section".
 `;
@@ -394,6 +544,7 @@ If this information is not present in this chunk, indicate "not found in this se
           { role: "user", content: prompt },
         ],
         temperature: 0.3,
+        response_format: { type: "json_object" }, // Ensure JSON response
       }),
     });
 
@@ -406,22 +557,14 @@ If this information is not present in this chunk, indicate "not found in this se
     const data = await response.json();
     const content = data.choices[0].message.content;
     
-    // Try to extract JSON from the response
     try {
-      // Look for JSON in the response (it might be wrapped in code blocks)
-      const jsonMatch = content.match(/```json\n([\s\S]*)\n```/) || 
-                        content.match(/```\n([\s\S]*)\n```/) ||
-                        content.match(/{[\s\S]*}/);
-                        
-      const jsonStr = jsonMatch ? jsonMatch[0] : content;
-      const cleanJsonStr = jsonStr.replace(/```json|```/g, '').trim();
-      
-      return JSON.parse(cleanJsonStr);
+      // Parse JSON response directly since we're using response_format: { type: "json_object" }
+      return JSON.parse(content);
     } catch (parseError) {
       console.error("Error parsing OpenAI response as JSON:", parseError);
       return { 
         error: "Could not parse response", 
-        rawContent: content 
+        rawContent: content.substring(0, 500) + "..." // Include part of the raw response
       };
     }
   } catch (error) {
@@ -433,17 +576,17 @@ If this information is not present in this chunk, indicate "not found in this se
 /**
  * Combine multiple chunk analyses into a single analysis
  */
-function combineAnalyses(chunkAnalyses: any[]): any {
+function combineAnalyses(chunkAnalyses: any[], context: any): any {
   console.log("Lease Analyzer: Combining analyses from multiple chunks");
   
   // Create a final analysis request to OpenAI
-  return createFinalAnalysis(chunkAnalyses);
+  return createFinalAnalysis(chunkAnalyses, context);
 }
 
 /**
  * Create a final analysis from multiple chunk analyses
  */
-async function createFinalAnalysis(chunkAnalyses: any[]): Promise<any> {
+async function createFinalAnalysis(chunkAnalyses: any[], context: any): Promise<any> {
   try {
     const prompt = `
 I'm providing you with analyses of different sections of a lease document. Each section was analyzed separately, and now I need you to combine them into a single coherent analysis.
@@ -451,6 +594,8 @@ I'm providing you with analyses of different sections of a lease document. Each 
 Here are the individual analyses:
 
 ${JSON.stringify(chunkAnalyses)}
+
+Additional context: ${JSON.stringify(context)}. If rent or deposit values have been detected by regex, prioritize these values but verify they make sense in context.
 
 Create a comprehensive analysis of the entire lease with the following structure:
 1. A summary of the lease in plain language (1-2 paragraphs)
@@ -496,13 +641,22 @@ Format your response as a JSON object that matches this structure. If informatio
     const analysisContent = data.choices[0].message.content;
     
     try {
-      // Parse the JSON response
+      // Parse JSON from response (should be clean since we used response_format: { type: "json_object" })
       const analysisJson = JSON.parse(analysisContent);
+      
+      // Enhance confidence if rent value matches regex findings
+      let confidenceScore = 0.9; // Default high confidence
+      
+      // Check if rent value matches regex findings
+      if (analysisJson.financialTerms?.monthlyRent && 
+          context.regexFindings?.rentVals?.includes(analysisJson.financialTerms.monthlyRent)) {
+        confidenceScore = 0.95; // Boost confidence score
+      }
       
       // Transform into our standard structure
       return {
         summary: analysisJson.summary || "No summary available",
-        confidence: 0.9, // Google Document AI + GPT-4o provides high confidence
+        confidence: confidenceScore,
         financialTerms: analysisJson.financialTerms || {
           monthlyRent: null,
           securityDeposit: null,

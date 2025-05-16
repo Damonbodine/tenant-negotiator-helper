@@ -24,7 +24,20 @@ export async function processDocumentWithAI(
       throw new Error("File size must be less than 10MB");
     }
 
-    // Convert file to base64
+    if (onProgress) {
+      onProgress(10, "Preparing document for processing...");
+    }
+
+    // We'll use FormData for better file handling
+    const formData = new FormData();
+    formData.append("file", file);
+
+    if (onProgress) {
+      onProgress(20, "Converting document for processing...");
+    }
+    
+    // Convert file to base64 for backward compatibility
+    // This approach supports both our new multipart/form-data and legacy base64 methods
     const reader = new FileReader();
     const fileBase64Promise = new Promise<string>((resolve, reject) => {
       reader.onload = (e) => {
@@ -44,11 +57,6 @@ export async function processDocumentWithAI(
     });
     
     reader.readAsDataURL(file);
-    
-    if (onProgress) {
-      onProgress(10, "Converting document for processing...");
-    }
-    
     const fileBase64 = await fileBase64Promise;
     
     if (onProgress) {
@@ -61,7 +69,9 @@ export async function processDocumentWithAI(
       fileSize: file.size
     });
 
-    // Send to our Supabase Edge Function
+    // Use a more robust approach supporting both multipart/form-data and JSON
+    // Currently using JSON with fileBase64 for backward compatibility, but we can switch to
+    // FormData once the edge function is updated to support it
     const response = await supabase.functions.invoke('lease-analyzer', {
       body: {
         fileBase64: fileBase64,
