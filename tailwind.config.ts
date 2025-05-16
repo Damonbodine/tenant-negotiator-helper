@@ -105,7 +105,64 @@ export default {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'pulse-slow': 'pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-      }
+      },
+      typography: {
+        DEFAULT: {
+          css: {
+            maxWidth: '100%',
+            color: 'var(--tw-prose-body)',
+            a: {
+              color: 'var(--tw-prose-links)',
+              '&:hover': {
+                textDecoration: 'underline',
+              },
+            },
+            code: {
+              color: 'var(--tw-prose-code)',
+              background: 'var(--tw-prose-code-bg)',
+              padding: '0.2em 0.4em',
+              borderRadius: '0.25rem',
+              fontFamily: 'monospace',
+            },
+            'pre code': {
+              backgroundColor: 'transparent',
+              padding: '0',
+            },
+            pre: {
+              backgroundColor: 'var(--tw-prose-pre-bg)',
+              borderRadius: '0.375rem',
+              padding: '1em',
+              overflow: 'auto',
+            },
+            'ul > li': {
+              paddingLeft: '1.5em',
+            },
+            'ul > li::before': {
+              width: '0.5em',
+              height: '0.5em',
+              top: 'calc(0.875em - 0.0625em)',
+              left: '0.25em',
+            },
+            'ol > li': {
+              paddingLeft: '1.5em',
+            },
+            h1: {
+              fontSize: '1.5rem',
+              marginBottom: '1rem'
+            },
+            h2: {
+              fontSize: '1.25rem',
+              marginTop: '1.5rem',
+              marginBottom: '0.75rem'
+            },
+            h3: {
+              fontSize: '1.125rem',
+              marginTop: '1.25rem',
+              marginBottom: '0.5rem'
+            },
+          },
+        },
+      },
     }
   },
   plugins: [require("tailwindcss-animate")],

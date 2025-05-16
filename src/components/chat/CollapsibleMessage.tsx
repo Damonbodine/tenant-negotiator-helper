@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import ReactMarkdown from 'react-markdown';
 
 interface CollapsibleMessageProps {
   text: string;
@@ -33,7 +34,9 @@ export function CollapsibleMessage({ text, maxHeight = 400, className }: Collaps
           !isExpanded && needsCollapsing && "max-h-[400px] overflow-hidden"
         )}
       >
-        {text}
+        <ReactMarkdown className="break-words">
+          {text}
+        </ReactMarkdown>
       </div>
       
       {needsCollapsing && (
