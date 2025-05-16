@@ -29,7 +29,7 @@ export async function processDocumentWithAI(
     const fileBase64Promise = new Promise<string>((resolve, reject) => {
       reader.onload = (e) => {
         if (e.target?.result) {
-          const base64 = e.target.result.toString().split(',')[1];
+          const base64 = e.target.result.toString();
           resolve(base64);
         } else {
           reject(new Error("Failed to read file"));
