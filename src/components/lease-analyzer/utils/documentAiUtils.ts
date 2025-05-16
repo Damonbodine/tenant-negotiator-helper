@@ -28,7 +28,7 @@ export async function processDocumentWithAI(
       onProgress(10, "Preparing document for processing...");
     }
 
-    // We'll use FormData for better file handling
+    // Create FormData for better file handling
     const formData = new FormData();
     formData.append("file", file);
 
@@ -37,7 +37,7 @@ export async function processDocumentWithAI(
     }
     
     // Convert file to base64 for backward compatibility
-    // This approach supports both our new multipart/form-data and legacy base64 methods
+    // This approach supports both multipart/form-data and legacy base64 methods
     const reader = new FileReader();
     const fileBase64Promise = new Promise<string>((resolve, reject) => {
       reader.onload = (e) => {
@@ -69,30 +69,58 @@ export async function processDocumentWithAI(
       fileSize: file.size
     });
 
-    // Use a more robust approach supporting both multipart/form-data and JSON
-    // Currently using JSON with fileBase64 for backward compatibility, but we can switch to
-    // FormData once the edge function is updated to support it
-    const response = await supabase.functions.invoke('lease-analyzer', {
-      body: {
-        fileBase64: fileBase64,
-        fileName: file.name,
-        fileType: file.type,
-        fileSize: file.size
+    // Send to edge function - we'll try using FormData
+    // If that fails, we'll fall back to JSON with base64
+    try {
+      if (onProgress) {
+        onProgress(40, "Attempting multipart upload...");
       }
-    });
-    
-    if (onProgress) {
-      onProgress(100, "Analysis complete");
+      
+      // First try with FormData (preferred method)
+      const response = await supabase.functions.invoke('lease-analyzer', {
+        body: formData
+      });
+      
+      if (onProgress) {
+        onProgress(100, "Analysis complete");
+      }
+      
+      if (response.error) {
+        console.error("Error from lease-analyzer function with FormData:", response.error);
+        throw new Error(response.error.message || "Error processing document");
+      }
+      
+      console.log("Received response from lease-analyzer function (FormData)");
+      return response.data;
+    } catch (formDataError) {
+      console.log("FormData approach failed, falling back to JSON with base64:", formDataError);
+      
+      if (onProgress) {
+        onProgress(50, "Switching to base64 encoding...");
+      }
+      
+      // Fall back to JSON with base64 approach
+      const response = await supabase.functions.invoke('lease-analyzer', {
+        body: {
+          fileBase64: fileBase64,
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size
+        }
+      });
+      
+      if (onProgress) {
+        onProgress(100, "Analysis complete");
+      }
+      
+      if (response.error) {
+        console.error("Error from lease-analyzer function with base64:", response.error);
+        throw new Error(response.error.message || "Error processing document");
+      }
+      
+      console.log("Received response from lease-analyzer function (base64)");
+      return response.data;
     }
-    
-    if (response.error) {
-      console.error("Error from lease-analyzer function:", response.error);
-      throw new Error(response.error.message || "Error processing document");
-    }
-    
-    console.log("Received response from lease-analyzer function");
-    
-    return response.data;
   } catch (error) {
     console.error("Error in document processing:", error);
     throw error;
@@ -101,26 +129,21 @@ export async function processDocumentWithAI(
 
 /**
  * Run a test to check if the lease analyzer function is working
+ * This uses a simplified test approach that doesn't require a real PDF
  * @returns A promise that resolves to the test result
  */
 export async function runLeaseAnalyzerTest(): Promise<any> {
   try {
     console.log("Running lease analyzer test mode");
     
-    // Create a test PDF content
-    const testContent = "%PDF-1.5 Test PDF";
-    
-    // Convert to base64
-    const testBase64 = btoa(testContent);
-    
     // Send test request to our Supabase Edge Function
+    // Use the testMode flag to trigger a simplified response
     const response = await supabase.functions.invoke('lease-analyzer', {
       body: {
-        fileBase64: testBase64,
+        testMode: true,
         fileName: "test.pdf",
         fileType: "application/pdf",
-        fileSize: testContent.length,
-        testMode: true
+        fileSize: 1024
       }
     });
     
