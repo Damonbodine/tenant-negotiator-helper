@@ -1,138 +1,131 @@
 
-import { Mail } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import { useToast } from "@/components/ui/use-toast";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Menu, X, LogIn, User, FileText } from "lucide-react";
 
 export function Header() {
-  const { toast } = useToast();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, signOut } = useAuth();
+  const location = useLocation();
+  const [scrolled, setScrolled] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10);
+    };
+    
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
-    try {
-      // This would typically go to a backend service
-      // For now, we'll use a mailto link as a fallback
-      const subject = encodeURIComponent(`Renters Mentor Contact from ${name}`);
-      const body = encodeURIComponent(`Name: ${name}\nEmail: ${email}\n\n${message}`);
-      
-      // Create a hidden anchor element to trigger the email client
-      const mailtoLink = document.createElement('a');
-      mailtoLink.href = `mailto:damonbodine@gmail.com?subject=${subject}&body=${body}`;
-      document.body.appendChild(mailtoLink);
-      mailtoLink.click();
-      document.body.removeChild(mailtoLink);
-      
-      toast({
-        title: "Message sent!",
-        description: "We've received your message and will get back to you soon.",
-      });
-      
-      // Reset form
-      setName("");
-      setEmail("");
-      setMessage("");
-      setIsDialogOpen(false);
-    } catch (error) {
-      toast({
-        title: "Something went wrong",
-        description: "Please try again later or email us directly.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [location.pathname]);
 
+  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+  
   return (
-    <header className="w-full bg-background/80 backdrop-blur-md border-b border-border py-3">
-      <div className="container flex items-center justify-between">
-        <div className="flex-1 flex items-center gap-4" />
-        <div className="flex items-center gap-4">
-          <img 
-            src="/lovable-uploads/cae8a638-944b-4b9a-bbed-1091a3fa8464.png" 
-            alt="Renters Mentor Logo" 
-            className="h-12 w-auto"
-          />
-          <h1 className="text-2xl font-bold text-cyan-400 uppercase tracking-wider">Renters Mentor</h1>
-        </div>
-        <div className="flex-1 flex justify-end">
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2 border-cyan-400/30 hover:bg-cyan-400/10">
-                <Mail className="h-4 w-4 text-cyan-400" />
-                <span className="text-cyan-400">Contact Us</span>
+    <header className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled ? "bg-background/80 backdrop-blur-md shadow-md" : "bg-transparent"}`}>
+      <div className="container mx-auto flex justify-between items-center p-4">
+        <Link to="/" className="flex items-center">
+          <span className="font-bold text-xl">Renter's Mentor</span>
+        </Link>
+        
+        {/* Desktop Navigation */}
+        <nav className="hidden md:flex items-center space-x-6">
+          <Link to="/" className="text-foreground/80 hover:text-foreground transition-colors">
+            Home
+          </Link>
+          <Link to="/practice" className="text-foreground/80 hover:text-foreground transition-colors">
+            Practice
+          </Link>
+          <Link to="/resources" className="text-foreground/80 hover:text-foreground transition-colors">
+            Resources
+          </Link>
+          <Link to="/lease-analyzer" className="text-foreground/80 hover:text-foreground transition-colors flex items-center">
+            <FileText className="h-4 w-4 mr-1" />
+            Lease Analyzer
+          </Link>
+          <Link to="/faq" className="text-foreground/80 hover:text-foreground transition-colors">
+            FAQ
+          </Link>
+          
+          {user ? (
+            <div className="flex items-center space-x-4">
+              <Link to="/profile">
+                <Button variant="outline" size="sm" className="flex items-center">
+                  <User className="h-4 w-4 mr-2" />
+                  Profile
+                </Button>
+              </Link>
+              <Button variant="ghost" size="sm" onClick={signOut}>
+                Sign Out
               </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Contact Us</DialogTitle>
-                <DialogDescription>
-                  Send us a message and we'll get back to you as soon as possible.
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit}>
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="name">Name</Label>
-                    <Input
-                      id="name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Your name"
-                      required
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="your.email@example.com"
-                      required
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="message">Message</Label>
-                    <Textarea
-                      id="message"
-                      value={message}
-                      onChange={(e) => setMessage(e.target.value)}
-                      placeholder="How can we help you?"
-                      required
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Sending..." : "Send message"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
+            </div>
+          ) : (
+            <Link to="/auth">
+              <Button size="sm" className="flex items-center">
+                <LogIn className="h-4 w-4 mr-2" />
+                Sign In
+              </Button>
+            </Link>
+          )}
+        </nav>
+        
+        {/* Mobile Menu Button */}
+        <button 
+          className="block md:hidden"
+          onClick={toggleMenu}
+          aria-expanded={isMenuOpen}
+          aria-label="Toggle navigation menu"
+        >
+          {isMenuOpen ? <X /> : <Menu />}
+        </button>
       </div>
+      
+      {/* Mobile Navigation */}
+      {isMenuOpen && (
+        <div className="md:hidden bg-background border-t border-border/50 py-4">
+          <div className="container flex flex-col space-y-4">
+            <Link to="/" className="px-4 py-2 hover:bg-accent rounded-md transition-colors">
+              Home
+            </Link>
+            <Link to="/practice" className="px-4 py-2 hover:bg-accent rounded-md transition-colors">
+              Practice
+            </Link>
+            <Link to="/resources" className="px-4 py-2 hover:bg-accent rounded-md transition-colors">
+              Resources
+            </Link>
+            <Link to="/lease-analyzer" className="px-4 py-2 hover:bg-accent rounded-md transition-colors flex items-center">
+              <FileText className="h-4 w-4 mr-2" />
+              Lease Analyzer
+            </Link>
+            <Link to="/faq" className="px-4 py-2 hover:bg-accent rounded-md transition-colors">
+              FAQ
+            </Link>
+            
+            {user ? (
+              <>
+                <Link to="/profile" className="px-4 py-2 hover:bg-accent rounded-md transition-colors flex items-center">
+                  <User className="h-4 w-4 mr-2" />
+                  Profile
+                </Link>
+                <Button variant="ghost" onClick={signOut} className="justify-start">
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <Link to="/auth" className="px-4 py-2 hover:bg-accent rounded-md transition-colors flex items-center">
+                <LogIn className="h-4 w-4 mr-2" />
+                Sign In
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
     </header>
   );
 }
