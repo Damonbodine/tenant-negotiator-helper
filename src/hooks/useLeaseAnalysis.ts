@@ -25,6 +25,9 @@ interface LeaseAnalysisResult {
   progress: number;
 }
 
+// Cache for storing analysis results
+const analysisCache = new Map<string, any>();
+
 // Type guard function to ensure data is a valid LeaseAnalysis
 function isLeaseAnalysis(data: any): data is LeaseAnalysis {
   return (
@@ -53,87 +56,96 @@ export const useLeaseAnalysis = (leaseId: string | null): LeaseAnalysisResult =>
     setIsLoading(true);
     setProgress(60); // Start from 60% assuming file upload is complete
 
-    // Initial fetch
-    const fetchLease = async () => {
-      const { data, error: fetchError } = await supabase
-        .from('leases')
-        .select('status, analysis, error')
-        .eq('id', leaseId)
-        .single();
-
-      if (fetchError) {
-        setError(`Failed to get lease data: ${fetchError.message}`);
-        setIsLoading(false);
-        return;
+    // Check if we have cached results
+    if (analysisCache.has(leaseId)) {
+      const cachedData = analysisCache.get(leaseId);
+      setStatus(cachedData.status);
+      if (cachedData.error) {
+        setError(cachedData.error);
       }
-
-      if (data) {
-        setStatus(data.status);
-        
-        if (data.error) {
-          setError(data.error);
+      if (cachedData.status === 'complete' && cachedData.analysis) {
+        setProgress(100);
+        if (isLeaseAnalysis(cachedData.analysis)) {
+          setAnalysis(cachedData.analysis);
         }
-        
-        if (data.status === 'complete' && data.analysis) {
-          setProgress(100);
+        setIsLoading(false);
+      }
+      return;
+    }
+
+    // Set up polling for analysis results
+    const pollInterval = 3000; // 3 seconds
+    let pollTimer: number | null = null;
+    
+    const checkAnalysisStatus = async () => {
+      try {
+        // Check for results from edge function
+        const { data, error: fetchError } = await supabase.functions.invoke('lease-analyzer', {
+          body: { leaseId, action: 'getStatus' }
+        });
+
+        if (fetchError) {
+          throw new Error(`Failed to get analysis status: ${fetchError.message}`);
+        }
+
+        if (data) {
+          setStatus(data.status);
           
-          if (isLeaseAnalysis(data.analysis)) {
-            setAnalysis(data.analysis);
-          } else {
-            setError('Invalid analysis format received');
-            console.error('Invalid analysis format:', data.analysis);
+          // Update cache
+          analysisCache.set(leaseId, data);
+          
+          if (data.error) {
+            setError(data.error);
+            setIsLoading(false);
+            // Clear polling
+            if (pollTimer !== null) {
+              window.clearTimeout(pollTimer);
+            }
           }
           
-          setIsLoading(false);
+          // Update progress based on status
+          if (data.status === 'processing') {
+            setProgress(Math.min(90, progress + 5));
+          }
+          
+          if (data.status === 'complete' && data.analysis) {
+            setProgress(100);
+            
+            if (isLeaseAnalysis(data.analysis)) {
+              setAnalysis(data.analysis);
+            } else {
+              setError('Invalid analysis format received');
+              console.error('Invalid analysis format:', data.analysis);
+            }
+            
+            setIsLoading(false);
+            // Clear polling
+            if (pollTimer !== null) {
+              window.clearTimeout(pollTimer);
+            }
+          } else {
+            // Continue polling if not complete
+            pollTimer = window.setTimeout(checkAnalysisStatus, pollInterval);
+          }
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+        setIsLoading(false);
+        // Clear polling
+        if (pollTimer !== null) {
+          window.clearTimeout(pollTimer);
         }
       }
     };
 
-    fetchLease();
-
-    // Set up real-time subscription
-    const subscription = supabase
-      .channel(`lease-${leaseId}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'leases', filter: `id=eq.${leaseId}` },
-        (payload) => {
-          const updated = payload.new as {
-            status: string;
-            analysis: Json;
-            error: string | null;
-          };
-
-          setStatus(updated.status);
-          
-          if (updated.error) {
-            setError(updated.error);
-            setIsLoading(false);
-          }
-
-          // Update progress based on status
-          if (updated.status === 'processing') {
-            setProgress(Math.min(90, progress + 5));
-          }
-          
-          if (updated.status === 'complete' && updated.analysis) {
-            setProgress(100);
-            
-            if (isLeaseAnalysis(updated.analysis)) {
-              setAnalysis(updated.analysis);
-            } else {
-              setError('Invalid analysis format received');
-              console.error('Invalid analysis format:', updated.analysis);
-            }
-            
-            setIsLoading(false);
-          }
-        }
-      )
-      .subscribe();
+    // Start initial check
+    checkAnalysisStatus();
 
     return () => {
-      supabase.removeChannel(subscription);
+      // Cleanup polling on unmount
+      if (pollTimer !== null) {
+        window.clearTimeout(pollTimer);
+      }
     };
   }, [leaseId, progress]);
 
