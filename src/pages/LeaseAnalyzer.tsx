@@ -5,6 +5,7 @@ import { LeaseAnalysisDisplay } from "@/components/lease/LeaseAnalysisDisplay";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
 import { DebugInfo } from "@/components/negotiation/DebugInfo";
+import { createClient } from "@supabase/supabase-js";
 
 /* Helper to validate the JSON coming back */
 interface Flag { level: 'high'|'medium'|'low'; clause: string; line: number }
@@ -23,6 +24,11 @@ function isLeaseAnalysis(data: any): data is LeaseAnalysis {
     'termMonths' in data && 'flags' in data && 'summary' in data
   );
 }
+
+// Create a Supabase client for direct function invocation
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function LeaseAnalyzer() {
   const [file, setFile] = useState<File | null>(null);
@@ -61,11 +67,10 @@ export default function LeaseAnalyzer() {
         debug: true
       };
 
-      // Call the claude-lease-analyzer function through the router
-      const response = await fetch('/api/lease-analyzer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+      // Use direct Supabase function invocation instead of fetch
+      console.log('Invoking claude-lease-analyzer function...');
+      const { data, error: fnError } = await supabase.functions.invoke('claude-lease-analyzer', {
+        body: payload,
       });
 
       // Record request end time for debug info
@@ -73,16 +78,16 @@ export default function LeaseAnalyzer() {
       setDebugInfo(prev => ({ 
         ...prev, 
         requestEndTime,
-        httpStatus: response.status
+        responseStatus: fnError ? 'error' : 'success'
       }));
 
-      if (!response.ok) {
-        const errorBody = await response.text();
-        setDebugInfo(prev => ({ ...prev, rawErrorResponse: errorBody }));
-        throw new Error(`API error ${response.status}: ${errorBody}`);
+      if (fnError) {
+        console.error('Function error:', fnError);
+        setDebugInfo(prev => ({ ...prev, rawErrorResponse: fnError }));
+        throw new Error(`Function error: ${fnError.message || JSON.stringify(fnError)}`);
       }
 
-      const data = await response.json();
+      console.log('Function response:', data);
       setDebugInfo(prev => ({ ...prev, rawResponse: data }));
       
       setProgress(100);
@@ -146,7 +151,7 @@ export default function LeaseAnalyzer() {
       {/* Debug info when debug mode is active */}
       <DebugInfo 
         showDebugInfo={isDebugMode}
-        httpStatus={debugInfo.httpStatus}
+        httpStatus={debugInfo.responseStatus}
         requestStartTime={debugInfo.requestStartTime}
         requestEndTime={debugInfo.requestEndTime}
         rawErrorResponse={debugInfo.rawErrorResponse}
