@@ -20,18 +20,13 @@ export default function LeaseAnalyzer() {
     try {
       setFile(selectedFile);
       
-      // Check if user is authenticated
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      if (userError || !userData.user) {
-        throw new Error("You must be logged in to analyze lease documents");
-      }
-      
-      // Create a lease record in the database
+      // Create a lease record in the database with a default user_id
+      // This bypasses the authentication requirement for now
       const { data: leaseData, error: leaseError } = await supabase
         .from('leases')
         .insert({
           filename: selectedFile.name,
-          user_id: userData.user.id,
+          user_id: '00000000-0000-0000-0000-000000000000', // Default user ID
           status: 'pending'
         })
         .select()
