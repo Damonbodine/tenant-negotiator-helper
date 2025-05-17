@@ -9,6 +9,7 @@ import { Card } from "@/shared/ui/card";
 import { LoadingIndicator } from "@/chat/components/LoadingIndicator";
 import { useToast } from "@/shared/hooks/use-toast";
 import { chatService } from "@/shared/services/chatService";
+import ReactMarkdown from "react-markdown";
 
 const NegotiationChat = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -109,7 +110,15 @@ const NegotiationChat = () => {
                     : "bg-card border border-border"}
                 `}
               >
-                <p>{message.text}</p>
+                {message.type === "user" ? (
+                  <p className="break-words">{message.text}</p>
+                ) : (
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <ReactMarkdown className="break-words">
+                      {message.text}
+                    </ReactMarkdown>
+                  </div>
+                )}
                 <div 
                   className={`
                     text-xs mt-1 
