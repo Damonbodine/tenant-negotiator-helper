@@ -53,10 +53,9 @@ function preprocess(text: string) {
 }
 
 interface RequestBody {
-  fileBase64?: string;
-  fileName?: string;
-  fileType?: string;
-  fileSize?: number;
+  leaseId?: string;
+  fileExt?: string;
+  publicUrl?: string;
   text?: string; // Optional text field for test mode
   testMode?: boolean; // Flag for test mode
   debug?: boolean; // Flag for debug mode
@@ -143,352 +142,40 @@ serve(async (req) => {
       );
     }
 
-    // Check if this is a form data submission or JSON request
-    const contentType = req.headers.get("content-type") || "";
-    let requestData: RequestBody;
-    let file: Uint8Array | null = null;
-    let fileBytes: Uint8Array | null = null;
-    let fileType = "application/pdf";
-    let fileName = "document.pdf";
-    let textContent = "";
-    let isDebugRequested = isDebugMode;
-
-    console.log(`Lease Analyzer: Content-Type detected: ${contentType}`);
-    debugInfo.contentType = contentType;
-
-    if (contentType.includes("multipart/form-data")) {
-      console.log("Lease Analyzer: Processing form data request");
-      debugInfo.requestFormat = "multipart/form-data";
-      
-      try {
-        const formData = await req.formData();
-        const formFile = formData.get("file") as File | null;
-        
-        if (!formFile) {
-          const errorResponse = {
-            error: "No file provided",
-            details: "The request must include a 'file' field with the PDF document"
-          };
-          
-          if (isDebugMode) {
-            Object.assign(errorResponse, { debug: debugInfo });
-          }
-          
-          return new Response(
-            JSON.stringify(errorResponse),
-            {
-              status: 400,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            }
-          );
-        }
-        
-        if (formFile.size > 10 * 1024 * 1024) {
-          const errorResponse = {
-            error: "File too large",
-            details: "Maximum file size is 10MB"
-          };
-          
-          if (isDebugMode) {
-            Object.assign(errorResponse, { debug: debugInfo });
-          }
-          
-          return new Response(
-            JSON.stringify(errorResponse),
-            {
-              status: 413,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            }
-          );
-        }
-        
-        // Process the file
-        fileBytes = new Uint8Array(await formFile.arrayBuffer());
-        fileType = formFile.type || "application/pdf";
-        fileName = formFile.name || "document.pdf";
-        
-        requestData = {
-          fileName,
-          fileType,
-          fileSize: formFile.size
-        };
-        
-        console.log(`Lease Analyzer: Received ${fileName} (${formFile.size} bytes)`);
-        debugInfo.fileInfo = {
-          name: fileName,
-          type: fileType,
-          size: formFile.size
-        };
-      } catch (error) {
-        console.error("Lease Analyzer: Failed to parse form data", error);
-        const errorResponse = {
-          error: "Invalid form data",
-          details: "Could not parse the form data or missing required fields",
-          message: error instanceof Error ? error.message : String(error)
-        };
-        
-        if (isDebugMode) {
-          Object.assign(errorResponse, { debug: { ...debugInfo, error } });
-        }
-        
-        return new Response(
-          JSON.stringify(errorResponse),
-          {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
-    } else {
-      // Process as JSON request
-      console.log("Lease Analyzer: Processing JSON request");
-      debugInfo.requestFormat = "json";
-      
-      try {
-        requestData = await req.json();
-        isDebugRequested = isDebugRequested || Boolean(requestData.debug);
-        console.log("Lease Analyzer: Request received for file:", requestData.fileName || 'unknown');
-        debugInfo.requestData = {
-          fileName: requestData.fileName,
-          fileSize: requestData.fileSize,
-          fileType: requestData.fileType,
-          hasFileBase64: Boolean(requestData.fileBase64),
-          hasText: Boolean(requestData.text),
-          isTestMode: Boolean(requestData.testMode)
-        };
-        
-        // Check if this is test mode
-        if (requestData.testMode === true) {
-          console.log("Lease Analyzer: Test mode detected, sending sample response");
-          const testResponse = {
-            analysis: {
-              summary: "This is a test response. The system is working but using sample data instead of analyzing a real document.",
-              confidence: 0.99,
-              financialTerms: {
-                monthlyRent: 1500,
-                securityDeposit: 1500,
-                lateFees: "$50 after 5 days",
-                otherFees: ["$25 application fee", "$150 cleaning fee"]
-              },
-              leaseTerms: {
-                startDate: "2025-06-01",
-                endDate: "2026-05-31",
-                leaseTerm: "12 months",
-                renewalTerms: "Month-to-month after initial term",
-                noticeRequired: "60 days"
-              },
-              propertyDetails: {
-                address: "123 Test Street, Testville, TS 12345",
-                unitNumber: "Apt 4B",
-                includedAmenities: ["Parking", "Water", "Garbage"]
-              },
-              parties: {
-                landlord: "Test Property Management LLC",
-                tenant: ["Jane Doe", "John Smith"],
-                propertyManager: "Test Manager"
-              },
-              petPolicy: {
-                allowed: true,
-                restrictions: "Dogs and cats only, max 2 pets",
-                petRent: 50,
-                petDeposit: 250
-              },
-              responsibilities: {
-                tenant: ["Routine cleaning", "Lawn maintenance", "Minor repairs"],
-                landlord: ["Major repairs", "Structural maintenance"]
-              },
-              criticalDates: {
-                moveIn: "2025-06-01",
-                moveOut: "2026-05-31",
-                rentDueDate: "1st of each month",
-                lateFeeDate: "6th of each month"
-              },
-              redFlags: [
-                {
-                  issues: ["Non-standard early termination fee", "Excessive security deposit"],
-                  severity: "medium"
-                }
-              ]
-            },
-            debug: {
-              processedAt: new Date().toISOString(),
-              testMode: true,
-              receivedFileData: {
-                fileName: requestData.fileName,
-                fileSize: requestData.fileSize,
-                fileType: requestData.fileType,
-                hasBase64: Boolean(requestData.fileBase64),
-                hasText: Boolean(requestData.text)
-              },
-              debugMode: isDebugRequested
-            }
-          };
-          
-          if (isDebugRequested) {
-            testResponse.debug = {
-              ...testResponse.debug,
-              ...debugInfo,
-              environment: {
-                hasOpenAiKey: Boolean(OPENAI_API_KEY),
-                hasGoogleDocumentAiKey: Boolean(GOOGLE_DOCUMENT_AI_API_KEY),
-                processorDetails: {
-                  processorId: PROCESSOR_ID,
-                  location: PROCESSOR_LOCATION,
-                  projectId: PROCESSOR_PROJECT_ID
-                }
-              }
-            };
-          }
-          
-          return new Response(
-            JSON.stringify(testResponse),
-            {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            }
-          );
-        }
-
-        // For real processing, check if we have file content
-        if (requestData.fileBase64) {
-          // Process base64-encoded file
-          console.log("Lease Analyzer: Processing base64 encoded file");
-          
-          // Ensure fileBase64 is properly formatted (no data:application/pdf;base64, prefix)
-          if (requestData.fileBase64.includes(";base64,")) {
-            console.log("Lease Analyzer: Removing base64 prefix");
-            requestData.fileBase64 = requestData.fileBase64.split(";base64,")[1];
-          }
-          
-          try {
-            fileBytes = new Uint8Array(atob(requestData.fileBase64).split('').map(c => c.charCodeAt(0)));
-            fileName = requestData.fileName || "document.pdf";
-            fileType = requestData.fileType || "application/pdf";
-            
-            debugInfo.fileInfo = {
-              name: fileName,
-              type: fileType,
-              size: fileBytes.length,
-              base64Length: requestData.fileBase64.length
-            };
-          } catch (error) {
-            console.error("Lease Analyzer: Failed to decode base64 data", error);
-            const errorResponse = {
-              error: "Invalid base64 data",
-              details: "Could not decode the base64 file content"
-            };
-            
-            if (isDebugRequested) {
-              Object.assign(errorResponse, { 
-                debug: { 
-                  ...debugInfo,
-                  error: String(error),
-                  base64Sample: requestData.fileBase64?.substring(0, 100) + "..." 
-                } 
-              });
-            }
-            
-            return new Response(
-              JSON.stringify(errorResponse),
-              {
-                status: 400,
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-              }
-            );
-          }
-        } else if (requestData.text) {
-          // Use text directly if provided (useful for testing)
-          console.log("Lease Analyzer: Using provided text directly");
-          textContent = requestData.text;
-          debugInfo.textLength = textContent.length;
-        } else {
-          // No content provided
-          const errorResponse = {
-            error: "Document content is required",
-            details: "Either fileBase64 or text must be provided"
-          };
-          
-          if (isDebugRequested) {
-            Object.assign(errorResponse, { debug: debugInfo });
-          }
-          
-          return new Response(
-            JSON.stringify(errorResponse),
-            {
-              status: 400,
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-            }
-          );
-        }
-      } catch (error) {
-        console.error("Lease Analyzer: Failed to parse request body", error);
-        const errorResponse = {
-          error: "Invalid request format",
-          details: "Could not parse the request JSON body or missing required fields",
-          message: error instanceof Error ? error.message : String(error)
-        };
-        
-        if (isDebugRequested) {
-          Object.assign(errorResponse, { debug: { ...debugInfo, error: String(error) } });
-        }
-        
-        return new Response(
-          JSON.stringify(errorResponse),
-          {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
-    }
-
-    // Process document with Google Document AI (if we have a file) or use text directly
-    let extractedText: string;
+    // Parse request body
+    const { leaseId, fileExt, publicUrl, text, testMode } = await req.json() as RequestBody;
     
-    if (fileBytes) {
-      console.log("Lease Analyzer: Processing document with Google Document AI");
-      debugInfo.processingStage = "documentAI";
-      try {
-        extractedText = await processWithDocumentAI(fileBytes, fileType);
-        console.log(`Lease Analyzer: Document processing complete. Extracted ${extractedText.length} characters.`);
-        debugInfo.extractedTextLength = extractedText.length;
-      } catch (docAiError) {
-        console.error("Lease Analyzer: Document AI error:", docAiError);
-        const errorResponse = {
-          error: `Document AI processing error: ${docAiError instanceof Error ? docAiError.message : String(docAiError)}`,
-          details: "Failed to process the document with Google Document AI"
-        };
-        
-        if (isDebugRequested) {
-          Object.assign(errorResponse, { 
-            debug: { 
-              ...debugInfo, 
-              error: docAiError instanceof Error 
-                ? { message: docAiError.message, stack: docAiError.stack } 
-                : String(docAiError) 
-            } 
-          });
-        }
-        
-        return new Response(
-          JSON.stringify(errorResponse),
-          {
-            status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // Check for test mode
+    if (testMode === true) {
+      console.log("Lease Analyzer: Test mode detected, sending sample response");
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          message: "Test mode response",
+          analysis: {
+            rent: 1500,
+            deposit: 1500,
+            termMonths: 12,
+            flags: [
+              { level: "medium", clause: "Early termination fee is 2x monthly rent", line: 45 }
+            ],
+            summary: "Standard 12-month lease with some concerns about the early termination clause."
           }
-        );
-      }
-    } else if (textContent) {
-      // Use text directly if provided (useful for testing)
-      console.log("Lease Analyzer: Using provided text directly");
-      extractedText = textContent;
-    } else {
-      // This should never happen due to our earlier check, but just in case
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+    
+    // Validate required fields
+    if (!leaseId || !publicUrl) {
       const errorResponse = {
-        error: "Document content is required",
-        details: "Either fileBase64 or text must be provided"
+        error: "Missing required parameters",
+        details: "Both leaseId and publicUrl are required"
       };
       
-      if (isDebugRequested) {
+      if (isDebugMode) {
         Object.assign(errorResponse, { debug: debugInfo });
       }
       
@@ -501,43 +188,19 @@ serve(async (req) => {
       );
     }
     
-    // Pre-process text and extract potential rent/deposit values with regex
-    const cleaned = preprocess(extractedText);
-    const rentVals = extractNumbers(cleaned, rentPatterns);
-    const depositVals = extractNumbers(cleaned, depositPatterns);
+    // Create Supabase client
+    const supabaseUrl = "https://izzdyfrcxunfzlfgdjuv.supabase.co";
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
-    // Add regex findings to context for OpenAI
-    const context = { regexFindings: { rentVals, depositVals } };
-    
-    // Analyze text with OpenAI
-    console.log("Lease Analyzer: Analyzing text with OpenAI");
-    debugInfo.processingStage = "openAI";
-    debugInfo.regexFindings = context.regexFindings;
-    
-    let analysis;
-    try {
-      analysis = await analyzeWithOpenAI(extractedText, context);
-      console.log("Lease Analyzer: Text analysis complete");
-      
-      // Add regex findings to the final analysis
-      analysis.regexFindings = context.regexFindings;
-    } catch (openAiError) {
-      console.error("Lease Analyzer: OpenAI error:", openAiError);
+    if (!supabaseKey) {
+      console.error("Lease Analyzer: Missing Supabase service role key");
       const errorResponse = {
-        error: `OpenAI analysis error: ${openAiError instanceof Error ? openAiError.message : String(openAiError)}`,
-        details: "Failed to analyze the document text with OpenAI"
+        error: "Server configuration error: Supabase service role key not configured",
+        details: "Please check that SUPABASE_SERVICE_ROLE_KEY is set in Supabase Edge Function secrets"
       };
       
-      if (isDebugRequested) {
-        Object.assign(errorResponse, { 
-          debug: { 
-            ...debugInfo, 
-            error: openAiError instanceof Error 
-              ? { message: openAiError.message, stack: openAiError.stack }
-              : String(openAiError),
-            textSample: extractedText.substring(0, 200) + "..." 
-          } 
-        });
+      if (isDebugMode) {
+        Object.assign(errorResponse, { debug: debugInfo });
       }
       
       return new Response(
@@ -548,47 +211,184 @@ serve(async (req) => {
         }
       );
     }
-
-    const response = {
-      analysis, 
-      debug: {
-        processedAt: new Date().toISOString(),
-        textLength: extractedText.length,
-        fileName: fileName,
-        fileSize: fileBytes ? fileBytes.length : textContent.length,
-        regexFindings: context.regexFindings
-      }
-    };
     
-    if (isDebugRequested) {
-      response.debug = {
-        ...response.debug,
-        ...debugInfo,
-        processingComplete: true
+    const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    try {
+      // Download the file
+      console.log(`Lease Analyzer: Downloading file from URL: ${publicUrl}`);
+      
+      const fileResponse = await fetch(publicUrl);
+      if (!fileResponse.ok) {
+        throw new Error(`Failed to download file: ${fileResponse.status} ${fileResponse.statusText}`);
+      }
+      
+      const fileBuffer = await fileResponse.arrayBuffer();
+      const fileBytes = new Uint8Array(fileBuffer);
+      
+      console.log(`Lease Analyzer: Downloaded file of size ${fileBytes.length} bytes`);
+      debugInfo.fileSize = fileBytes.length;
+      
+      // Extract text from the file based on its extension
+      let extractedText = "";
+      const extension = fileExt || publicUrl.split('.').pop()?.toLowerCase() || '';
+      
+      console.log(`Lease Analyzer: Processing file with extension: ${extension}`);
+      debugInfo.fileExtension = extension;
+      
+      if (extension === 'pdf') {
+        // Use pdf-parse
+        console.log("Lease Analyzer: Using pdf-parse for text extraction");
+        
+        const { default: pdfParse } = await import("https://esm.sh/pdf-parse@1.1.1");
+        try {
+          const pdfData = await pdfParse(fileBytes);
+          extractedText = pdfData.text;
+        } catch (pdfError) {
+          console.error("PDF parsing error:", pdfError);
+          throw new Error(`Failed to parse PDF: ${pdfError instanceof Error ? pdfError.message : String(pdfError)}`);
+        }
+      } else if (extension === 'docx') {
+        // Use mammoth for DOCX
+        console.log("Lease Analyzer: Using mammoth for DOCX extraction");
+        
+        const { default: mammoth } = await import("https://esm.sh/mammoth@1.6.0");
+        try {
+          const result = await mammoth.extractRawText({ arrayBuffer: fileBuffer });
+          extractedText = result.value;
+        } catch (docxError) {
+          console.error("DOCX parsing error:", docxError);
+          throw new Error(`Failed to parse DOCX: ${docxError instanceof Error ? docxError.message : String(docxError)}`);
+        }
+      } else {
+        // Use textract for other formats
+        console.log("Lease Analyzer: Using Google Document AI for text extraction");
+        
+        // For other formats, directly go to Document AI
+        extractedText = await processWithDocumentAI(fileBytes, 
+          extension === 'jpg' || extension === 'jpeg' ? 'image/jpeg' :
+          extension === 'png' ? 'image/png' : 
+          'application/octet-stream');
+      }
+      
+      console.log(`Lease Analyzer: Initial text extraction complete, got ${extractedText.length} characters`);
+      debugInfo.initialTextLength = extractedText.length;
+      
+      // If extracted text is too short, use Document AI
+      if (extractedText.length < 200) {
+        console.log("Lease Analyzer: Extracted text too short, using Document AI");
+        extractedText = await processWithDocumentAI(fileBytes, 
+          extension === 'pdf' ? 'application/pdf' :
+          extension === 'docx' ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' :
+          extension === 'jpg' || extension === 'jpeg' ? 'image/jpeg' :
+          extension === 'png' ? 'image/png' : 
+          'application/octet-stream');
+          
+        console.log(`Lease Analyzer: Document AI extraction complete, got ${extractedText.length} characters`);
+        debugInfo.documentAiTextLength = extractedText.length;
+      }
+      
+      // Truncate text if too long for OpenAI
+      const MAX_CHARS = 12000;
+      if (extractedText.length > MAX_CHARS) {
+        console.log(`Lease Analyzer: Truncating text from ${extractedText.length} to ${MAX_CHARS} characters`);
+        extractedText = extractedText.substring(0, MAX_CHARS);
+      }
+      
+      // Remove PII using regex
+      console.log("Lease Analyzer: Removing PII");
+      extractedText = removePII(extractedText);
+      
+      // Pre-process text and extract potential rent/deposit values with regex
+      const cleaned = preprocess(extractedText);
+      const rentVals = extractNumbers(cleaned, rentPatterns);
+      const depositVals = extractNumbers(cleaned, depositPatterns);
+      
+      console.log(`Lease Analyzer: Found ${rentVals.length} potential rent values and ${depositVals.length} potential deposit values`);
+      debugInfo.regexFindings = { rentVals, depositVals };
+      
+      // Get analysis from OpenAI
+      console.log("Lease Analyzer: Calling OpenAI for analysis");
+      const analysis = await analyzeWithOpenAI(extractedText, { rentVals, depositVals });
+      
+      // Update the lease record with the analysis
+      console.log(`Lease Analyzer: Updating lease record ${leaseId} with analysis`);
+      const { error: updateError } = await supabase
+        .from('leases')
+        .update({ 
+          analysis, 
+          status: 'complete',
+          error: null
+        })
+        .eq('id', leaseId);
+      
+      if (updateError) {
+        throw new Error(`Failed to update lease record: ${updateError.message}`);
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          ok: true,
+          message: "Lease analyzed successfully"
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+      
+    } catch (processingError) {
+      console.error("Lease Analyzer: Processing error:", processingError);
+      
+      // Update lease record with error
+      const errorMessage = processingError instanceof Error ? processingError.message : String(processingError);
+      
+      try {
+        await supabase
+          .from('leases')
+          .update({ 
+            status: 'error',
+            error: errorMessage.substring(0, 255) // Limit error message length
+          })
+          .eq('id', leaseId);
+      } catch (dbError) {
+        console.error("Failed to update lease with error status:", dbError);
+      }
+      
+      const errorResponse = {
+        ok: false,
+        error: "Failed to process lease document",
+        details: errorMessage
       };
+      
+      if (isDebugMode) {
+        Object.assign(errorResponse, { debug: { ...debugInfo, error: errorMessage } });
+      }
+      
+      return new Response(
+        JSON.stringify(errorResponse),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
     
-    return new Response(
-      JSON.stringify(response),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
   } catch (error) {
     console.error("Lease Analyzer: Unhandled error:", error);
+    
     const errorResponse = {
-      error: `Unhandled error: ${error instanceof Error ? error.message : String(error)}`,
-      details: "An unexpected error occurred during document analysis",
-      stack: error instanceof Error ? error.stack : undefined
+      ok: false,
+      error: "Unhandled server error",
+      details: error instanceof Error ? error.message : String(error)
     };
     
     if (isDebugMode) {
       Object.assign(errorResponse, { 
         debug: { 
           ...debugInfo, 
-          unhandledError: error instanceof Error 
-            ? { message: error.message, stack: error.stack } 
-            : String(error)
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined
         } 
       });
     }
@@ -604,7 +404,7 @@ serve(async (req) => {
 });
 
 /**
- * Process PDF with Google Document AI - now with imageless mode support
+ * Process document with Google Document AI
  */
 async function processWithDocumentAI(fileBytes: Uint8Array, mimeType: string = "application/pdf"): Promise<string> {
   if (!GOOGLE_DOCUMENT_AI_API_KEY) {
@@ -624,53 +424,25 @@ async function processWithDocumentAI(fileBytes: Uint8Array, mimeType: string = "
   const fileBase64 = btoa(String.fromCharCode.apply(null, Array.from(fileBytes)));
   
   try {
-    console.log("Lease Analyzer: Calling Google Document AI API with imageless mode");
-    
-    // Create a detailed request payload
-    const payload = {
-      rawDocument: {
-        content: fileBase64,
-        mimeType: mimeType,
-      },
-      // Enable imageless mode to handle larger documents and improve processing
-      imagelessMode: true
-    };
-    
-    console.log("Lease Analyzer: Sending Document AI request with imageless mode enabled");
+    console.log("Lease Analyzer: Calling Google Document AI API");
     
     const response = await fetch(`${endpoint}?key=${GOOGLE_DOCUMENT_AI_API_KEY}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        rawDocument: {
+          content: fileBase64,
+          mimeType: mimeType,
+        },
+      }),
     });
 
-    // Add detailed error handling
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Document AI API error response (${response.status}):`, errorText);
-      
-      let errorMessage = `Document AI API error: ${response.status} ${response.statusText}`;
-      let errorDetails = errorText;
-      
-      try {
-        const errorJson = JSON.parse(errorText);
-        errorMessage = `Document AI API error (${response.status}): ${errorJson.error?.message || "Unknown error"}`;
-        errorDetails = errorJson;
-        
-        // Check for specific error codes
-        if (errorJson.error?.code === 403) {
-          errorMessage = "Document AI API access denied. Please check your API key and permissions.";
-        } else if (errorJson.error?.code === 404) {
-          errorMessage = `Document AI processor not found. Please verify the processor ID (${PROCESSOR_ID}) exists.`;
-        }
-      } catch {
-        // If parsing fails, just use the raw error text
-        errorMessage += ` - ${errorText.substring(0, 200)}...`;
-      }
-      
-      throw new Error(errorMessage);
+      console.error(`Document AI API error: ${response.status} ${response.statusText}`, errorText);
+      throw new Error(`Document AI API error: ${response.status} ${response.statusText}`);
     }
 
     const result = await response.json();
@@ -688,71 +460,74 @@ async function processWithDocumentAI(fileBytes: Uint8Array, mimeType: string = "
 }
 
 /**
+ * Remove PII from text using regex patterns
+ */
+function removePII(text: string): string {
+  // SSN pattern: 123-45-6789 or 123456789
+  const ssnPattern = /\b\d{3}-?\d{2}-?\d{4}\b/g;
+  
+  // Phone number patterns
+  const phonePatterns = [
+    /\b\d{3}-\d{3}-\d{4}\b/g, // 123-456-7890
+    /\b\(\d{3}\) \d{3}-\d{4}\b/g, // (123) 456-7890
+    /\b\d{3}\.\d{3}\.\d{4}\b/g, // 123.456.7890
+  ];
+  
+  // Credit card pattern
+  const ccPattern = /\b(?:\d{4}[ -]?){3}\d{4}\b/g;
+  
+  // Date of birth pattern (various formats)
+  const dobPatterns = [
+    /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g, // MM/DD/YYYY
+    /\b\d{1,2}-\d{1,2}-\d{2,4}\b/g, // MM-DD-YYYY
+  ];
+  
+  // Replace SSNs
+  text = text.replace(ssnPattern, "[REDACTED SSN]");
+  
+  // Replace phone numbers
+  for (const pattern of phonePatterns) {
+    text = text.replace(pattern, "[REDACTED PHONE]");
+  }
+  
+  // Replace credit card numbers
+  text = text.replace(ccPattern, "[REDACTED CC]");
+  
+  // Replace dates of birth
+  for (const pattern of dobPatterns) {
+    text = text.replace(pattern, "[REDACTED DATE]");
+  }
+  
+  return text;
+}
+
+/**
  * Analyze extracted text with OpenAI
  */
 async function analyzeWithOpenAI(text: string, context: any): Promise<any> {
   if (!OPENAI_API_KEY) {
     throw new Error("OPENAI_API_KEY is not set");
   }
-  
-  // Split text into chunks if needed (for very large documents)
-  const MAX_CHUNK_SIZE = 12000;
-  const chunks = splitTextIntoChunks(text, MAX_CHUNK_SIZE);
-  
-  console.log(`Lease Analyzer: Split text into ${chunks.length} chunks for analysis`);
-  
+
+  const systemPrompt = 
+    'You are Renters Mentor, NOT a lawyer. Identify key lease facts, flag risky clauses ' +
+    '(high/med/low), and output strict JSON { rent, deposit, termMonths, flags:[{level,clause,line}], summary }. ' +
+    'Never give legal advice.';
+
   try {
-    // If we have multiple chunks, we'll analyze them separately and combine
-    if (chunks.length > 1) {
-      console.log("Lease Analyzer: Processing multiple text chunks");
-      const chunkAnalyses = [];
-      
-      // Process each chunk
-      for (let i = 0; i < chunks.length; i++) {
-        console.log(`Lease Analyzer: Analyzing chunk ${i+1} of ${chunks.length}`);
-        const chunkAnalysis = await analyzeSingleChunk(chunks[i], i, chunks.length, context);
-        chunkAnalyses.push(chunkAnalysis);
-      }
-      
-      // Combine analyses
-      return combineAnalyses(chunkAnalyses, context);
-    } else {
-      // Just one chunk, analyze it directly
-      console.log("Lease Analyzer: Processing single text chunk");
-      return await analyzeSingleChunk(chunks[0], 0, 1, context);
+    console.log("Lease Analyzer: Analyzing with OpenAI");
+    
+    // Include regex findings in the prompt for better accuracy
+    let userPrompt = `Analyze this lease document and extract key facts: \n\n${text}\n\n`;
+    
+    if (context.rentVals && context.rentVals.length > 0) {
+      userPrompt += `\nPotential rent values detected: ${context.rentVals.join(', ')}\n`;
     }
-  } catch (error) {
-    console.error("Error in OpenAI analysis:", error);
-    throw error;
-  }
-}
-
-/**
- * Analyze a single chunk of text with OpenAI
- */
-async function analyzeSingleChunk(text: string, chunkIndex: number, totalChunks: number, context: any): Promise<any> {
-  try {
-    const prompt = `
-You are an expert lease document analyzer. You're analyzing the following lease text (part ${chunkIndex + 1} of ${totalChunks}):
-
-${text}
-
-Extract the following information in a structured JSON format:
-1. Monthly rent
-2. Security deposit
-3. Lease term length (start and end dates)
-4. Notice required for termination
-5. Pet policy details
-6. Late rent penalties
-7. Key responsibilities of tenant and landlord
-8. Critical dates (move-in, move-out, rent due)
-9. Any red flags or concerning terms in the lease
-
-Additional context: ${JSON.stringify(context)}. If rent or deposit values have been detected by regex, prioritize these values but verify they make sense in context.
-
-If this information is not present in this chunk, indicate "not found in this section".
-`;
-
+    
+    if (context.depositVals && context.depositVals.length > 0) {
+      userPrompt += `\nPotential security deposit values detected: ${context.depositVals.join(', ')}\n`;
+    }
+    
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -764,12 +539,11 @@ If this information is not present in this chunk, indicate "not found in this se
         messages: [
           {
             role: "system",
-            content:
-              "You are an expert lease document analyzer that extracts structured information from lease documents. Provide your analysis in JSON format.",
+            content: systemPrompt,
           },
-          { role: "user", content: prompt },
+          { role: "user", content: userPrompt },
         ],
-        temperature: 0.3,
+        temperature: 0.2,
         response_format: { type: "json_object" }, // Ensure JSON response
       }),
     });
@@ -781,228 +555,17 @@ If this information is not present in this chunk, indicate "not found in this se
     }
 
     const data = await response.json();
-    const content = data.choices[0].message.content;
+    const analysis = JSON.parse(data.choices[0].message.content);
     
-    try {
-      // Parse JSON response directly since we're using response_format: { type: "json_object" }
-      return JSON.parse(content);
-    } catch (parseError) {
-      console.error("Error parsing OpenAI response as JSON:", parseError);
-      return { 
-        error: "Could not parse response", 
-        rawContent: content.substring(0, 500) + "..." // Include part of the raw response
-      };
-    }
+    console.log("Lease Analyzer: OpenAI analysis complete");
+    
+    // Add detected rent/deposit values for reference
+    analysis.detectedRentValues = context.rentVals || [];
+    analysis.detectedDepositValues = context.depositVals || [];
+    
+    return analysis;
   } catch (error) {
-    console.error(`Error analyzing chunk ${chunkIndex + 1}:`, error);
+    console.error("Error analyzing with OpenAI:", error);
     throw error;
   }
-}
-
-/**
- * Combine multiple chunk analyses into a single analysis
- */
-function combineAnalyses(chunkAnalyses: any[], context: any): any {
-  console.log("Lease Analyzer: Combining analyses from multiple chunks");
-  
-  // Create a final analysis request to OpenAI
-  return createFinalAnalysis(chunkAnalyses, context);
-}
-
-/**
- * Create a final analysis from multiple chunk analyses
- */
-async function createFinalAnalysis(chunkAnalyses: any[], context: any): Promise<any> {
-  try {
-    const prompt = `
-I'm providing you with analyses of different sections of a lease document. Each section was analyzed separately, and now I need you to combine them into a single coherent analysis.
-
-Here are the individual analyses:
-
-${JSON.stringify(chunkAnalyses)}
-
-Additional context: ${JSON.stringify(context)}. If rent or deposit values have been detected by regex, prioritize these values but verify they make sense in context.
-
-Create a comprehensive analysis of the entire lease with the following structure:
-1. A summary of the lease in plain language (1-2 paragraphs)
-2. Financial terms (rent, deposit, fees)
-3. Lease term details (start date, end date, notice period)
-4. Property details (address, unit, included amenities)
-5. Parties involved (landlord, tenant, property manager)
-6. Pet policy (allowed/prohibited, restrictions, fees)
-7. Responsibilities (tenant vs landlord)
-8. Critical dates (move-in, move-out, rent due dates)
-9. Red flags or concerning terms (any unusual or potentially problematic clauses)
-
-Format your response as a JSON object that matches this structure. If information is missing, indicate it as null or "Not specified in lease".
-`;
-
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: "You are an expert lease document analyzer that provides structured analysis of lease documents. Return your analysis as a valid JSON object.",
-          },
-          { role: "user", content: prompt },
-        ],
-        temperature: 0.3,
-        response_format: { type: "json_object" }, // Ensure JSON response
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      console.error("OpenAI API error on final analysis:", error);
-      throw new Error(`OpenAI API error: ${error.error?.message || "Unknown error"}`);
-    }
-
-    const data = await response.json();
-    const analysisContent = data.choices[0].message.content;
-    
-    try {
-      // Parse JSON from response (should be clean since we used response_format: { type: "json_object" })
-      const analysisJson = JSON.parse(analysisContent);
-      
-      // Enhance confidence if rent value matches regex findings
-      let confidenceScore = 0.9; // Default high confidence
-      
-      // Check if rent value matches regex findings
-      if (analysisJson.financialTerms?.monthlyRent && 
-          context.regexFindings?.rentVals?.includes(analysisJson.financialTerms.monthlyRent)) {
-        confidenceScore = 0.95; // Boost confidence score
-      }
-      
-      // Transform into our standard structure
-      return {
-        summary: analysisJson.summary || "No summary available",
-        confidence: confidenceScore,
-        financialTerms: analysisJson.financialTerms || {
-          monthlyRent: null,
-          securityDeposit: null,
-          lateFees: null,
-          otherFees: [],
-        },
-        leaseTerms: analysisJson.leaseTerms || {
-          startDate: null,
-          endDate: null,
-          leaseTerm: null,
-          renewalTerms: null,
-          noticeRequired: null,
-        },
-        propertyDetails: analysisJson.propertyDetails || {
-          address: null,
-          unitNumber: null,
-          includedAmenities: [],
-        },
-        parties: analysisJson.parties || {
-          landlord: null,
-          tenant: [],
-          propertyManager: null,
-        },
-        petPolicy: analysisJson.petPolicy || {
-          allowed: false,
-          restrictions: null,
-          petRent: null,
-          petDeposit: null,
-        },
-        responsibilities: analysisJson.responsibilities || {
-          tenant: [],
-          landlord: [],
-        },
-        criticalDates: analysisJson.criticalDates || {
-          moveIn: null,
-          moveOut: null,
-          rentDueDate: null,
-          lateFeeDate: null,
-        },
-        redFlags: analysisJson.redFlags || [],
-      };
-    } catch (error) {
-      console.error("Error parsing final analysis JSON:", error);
-      throw new Error("Failed to parse final analysis");
-    }
-  } catch (error) {
-    console.error("Error in final analysis:", error);
-    throw error;
-  }
-}
-
-/**
- * Split text into manageable chunks for processing
- */
-function splitTextIntoChunks(text: string, maxChunkSize: number): string[] {
-  const chunks: string[] = [];
-  let currentChunk = "";
-  
-  // Split by paragraphs to avoid cutting in the middle of sentences
-  const paragraphs = text.split(/\n\s*\n/);
-  
-  for (const paragraph of paragraphs) {
-    if (currentChunk.length + paragraph.length < maxChunkSize) {
-      currentChunk += (currentChunk ? "\n\n" : "") + paragraph;
-    } else {
-      if (currentChunk) {
-        chunks.push(currentChunk);
-      }
-      // If a single paragraph is longer than maxChunkSize, split it further
-      if (paragraph.length > maxChunkSize) {
-        const sentencesChunks = splitIntoSentenceChunks(paragraph, maxChunkSize);
-        chunks.push(...sentencesChunks.slice(0, -1));
-        currentChunk = sentencesChunks[sentencesChunks.length - 1] || "";
-      } else {
-        currentChunk = paragraph;
-      }
-    }
-  }
-  
-  if (currentChunk) {
-    chunks.push(currentChunk);
-  }
-  
-  return chunks;
-}
-
-/**
- * Split text into chunks based on sentences
- */
-function splitIntoSentenceChunks(text: string, maxChunkSize: number): string[] {
-  const chunks: string[] = [];
-  let currentChunk = "";
-  
-  // Rudimentary sentence splitting
-  const sentences = text.split(/(?<=[.!?])\s+/);
-  
-  for (const sentence of sentences) {
-    if (currentChunk.length + sentence.length < maxChunkSize) {
-      currentChunk += (currentChunk ? " " : "") + sentence;
-    } else {
-      if (currentChunk) {
-        chunks.push(currentChunk);
-      }
-      // If a single sentence is longer than maxChunkSize, split it by words
-      if (sentence.length > maxChunkSize) {
-        let remainingSentence = sentence;
-        while (remainingSentence.length > maxChunkSize) {
-          chunks.push(remainingSentence.substring(0, maxChunkSize));
-          remainingSentence = remainingSentence.substring(maxChunkSize);
-        }
-        currentChunk = remainingSentence;
-      } else {
-        currentChunk = sentence;
-      }
-    }
-  }
-  
-  if (currentChunk) {
-    chunks.push(currentChunk);
-  }
-  
-  return chunks;
 }
