@@ -1,93 +1,115 @@
 
-import React, { useState } from "react";
+import React, { useState } from 'react';
 import { FileDropZone } from "@/components/lease/FileDropZone";
 import { LeaseAnalysisDisplay } from "@/components/lease/LeaseAnalysisDisplay";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useToast } from "@/components/ui/use-toast";
 import { DebugInfo } from "@/components/negotiation/DebugInfo";
 
+/* Helper to validate the JSON coming back */
+interface Flag { level: 'high'|'medium'|'low'; clause: string; line: number }
 interface LeaseAnalysis {
   rent: number;
   deposit: number;
   termMonths: number;
-  flags: {
-    level: 'high' | 'medium' | 'low';
-    clause: string;
-    line: number;
-  }[];
+  flags: Flag[];
   summary: string;
+}
+
+function isLeaseAnalysis(data: any): data is LeaseAnalysis {
+  return (
+    data && typeof data === 'object' &&
+    'rent' in data && 'deposit' in data &&
+    'termMonths' in data && 'flags' in data && 'summary' in data
+  );
 }
 
 export default function LeaseAnalyzer() {
   const [file, setFile] = useState<File | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [analysis, setAnalysis] = useState<LeaseAnalysis | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [analysis, setAnalysis] = useState<LeaseAnalysis|null>(null);
+  const [error, setError] = useState<string|null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState<number>(0);
   const [debugInfo, setDebugInfo] = useState<any>({});
   const { toast } = useToast();
-  
-  // Function to handle file selection and analysis
-  const handleFileSelected = async (selectedFile: File) => {
+
+  async function handleFileSelected(selectedFile: File) {
     try {
       setFile(selectedFile);
       setIsLoading(true);
       setError(null);
+      setAnalysis(null);
       setProgress(10);
-      
-      // Convert file to base64
-      const fileBytes = await readFileAsArrayBuffer(selectedFile);
-      const base64File = arrayBufferToBase64(fileBytes);
-      
-      setProgress(30);
-      
+
       // Record request start time for debug info
       const requestStartTime = new Date().toISOString();
       setDebugInfo(prev => ({ ...prev, requestStartTime }));
-      
-      // Call the claude-lease-analyzer function directly
-      const { data, error: analyzeError } = await supabase.functions.invoke('claude-lease-analyzer', {
-        body: {
-          documentBytes: base64File,
-          documentType: selectedFile.type,
-          debug: true
-        }
+
+      // Convert file to base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(reader.error);
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(selectedFile);
       });
       
+      setProgress(30);
+      
+      const payload = {
+        documentBytes: base64.split(',')[1],
+        documentType: selectedFile.type,
+        debug: true
+      };
+
+      // Call the claude-lease-analyzer function directly
+      const response = await fetch('/functions/v1/claude-lease-analyzer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
       // Record request end time for debug info
       const requestEndTime = new Date().toISOString();
       setDebugInfo(prev => ({ 
         ...prev, 
         requestEndTime,
-        httpStatus: analyzeError ? 500 : 200,
-        rawResponse: data
+        httpStatus: response.status
       }));
-      
-      if (analyzeError) {
-        throw new Error(`Analysis failed: ${analyzeError.message}`);
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        setDebugInfo(prev => ({ ...prev, rawErrorResponse: errorBody }));
+        throw new Error(`API error ${response.status}: ${errorBody}`);
       }
-      
-      if (data.error) {
-        throw new Error(data.error);
-      }
+
+      const data = await response.json();
+      setDebugInfo(prev => ({ ...prev, rawResponse: data }));
       
       setProgress(100);
       
-      // Transform the data to match our LeaseAnalysis interface
-      const transformedAnalysis: LeaseAnalysis = {
-        rent: data.extractedData?.financial?.rent?.amount || 0,
-        deposit: data.extractedData?.financial?.securityDeposit || 0,
-        termMonths: data.extractedData?.term?.durationMonths || 12,
-        flags: data.unusualClauses?.map(clause => ({
-          level: clause.riskLevel || 'medium',
-          clause: clause.clause,
-          line: 0 // Claude doesn't provide line numbers
-        })) || [],
-        summary: data.summary || ""
-      };
+      if (isLeaseAnalysis(data)) {
+        setAnalysis(data);
+      } else {
+        // Try to transform the data to match our LeaseAnalysis interface
+        const transformedAnalysis: LeaseAnalysis = {
+          rent: data.extractedData?.financial?.rent?.amount || 0,
+          deposit: data.extractedData?.financial?.securityDeposit || 0,
+          termMonths: data.extractedData?.term?.durationMonths || 12,
+          flags: data.unusualClauses?.map((clause: any) => ({
+            level: clause.riskLevel || 'medium',
+            clause: clause.clause,
+            line: 0 // Claude doesn't provide line numbers
+          })) || [],
+          summary: data.summary || ""
+        };
+        
+        if (isLeaseAnalysis(transformedAnalysis)) {
+          setAnalysis(transformedAnalysis);
+        } else {
+          throw new Error('Unexpected response format from analyzer');
+        }
+      }
       
-      setAnalysis(transformedAnalysis);
       setIsLoading(false);
       
       toast({
@@ -107,30 +129,7 @@ export default function LeaseAnalyzer() {
         description: err instanceof Error ? err.message : "Failed to process your lease document"
       });
     }
-  };
-  
-  // Helper function to read file as ArrayBuffer
-  const readFileAsArrayBuffer = (file: File): Promise<ArrayBuffer> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as ArrayBuffer);
-      reader.onerror = reject;
-      reader.readAsArrayBuffer(file);
-    });
-  };
-  
-  // Helper function to convert ArrayBuffer to Base64
-  const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
-    let binary = '';
-    const bytes = new Uint8Array(buffer);
-    const len = bytes.byteLength;
-    
-    for (let i = 0; i < len; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    
-    return window.btoa(binary);
-  };
+  }
   
   // Check if we're in debug mode
   const isDebugMode = new URLSearchParams(window.location.search).get('debug') === 'true';
