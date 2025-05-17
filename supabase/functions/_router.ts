@@ -105,7 +105,7 @@ serve(async (req: Request) => {
           }
         );
       }
-    } else if (path === '/functions/v1/claude-lease-analyzer') {
+    } else if (path === '/api/lease-analyzer' || path.startsWith('/api/lease-analyzer') || path === '/functions/v1/claude-lease-analyzer') {
       console.log('Routing to claude-lease-analyzer function');
       
       // Parse request body safely

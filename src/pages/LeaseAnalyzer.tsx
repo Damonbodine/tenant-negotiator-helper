@@ -61,8 +61,8 @@ export default function LeaseAnalyzer() {
         debug: true
       };
 
-      // Call the claude-lease-analyzer function directly
-      const response = await fetch('/functions/v1/claude-lease-analyzer', {
+      // Call the claude-lease-analyzer function through the router
+      const response = await fetch('/api/lease-analyzer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
