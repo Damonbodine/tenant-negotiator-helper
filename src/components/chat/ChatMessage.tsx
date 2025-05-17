@@ -1,22 +1,18 @@
 
 import { Card } from "@/components/ui/card";
+import { ChatMessage as ChatMessageType } from "@/shared/types";
 import { CollapsibleMessage } from "./CollapsibleMessage";
 
-interface Message {
-  id: string;
-  type: "user" | "agent";
-  text: string;
-  timestamp: Date;
-  isAudio?: boolean;
-}
-
 interface ChatMessageProps {
-  message: Message;
+  message: ChatMessageType;
 }
 
 export function ChatMessage({ message }: ChatMessageProps) {
   return (
-    <div className={`flex ${message.type === "user" ? "justify-end" : "justify-start"}`}>
+    <div 
+      className={`flex ${message.type === "user" ? "justify-end" : "justify-start"}`}
+      role={message.type === "agent" ? "status" : undefined}
+    >
       <Card 
         className={`
           max-w-[80%] p-3

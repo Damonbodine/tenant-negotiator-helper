@@ -60,6 +60,36 @@ export type Database = {
         }
         Relationships: []
       }
+      leases: {
+        Row: {
+          analysis: Json | null
+          created_at: string
+          error: string | null
+          filename: string
+          id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          analysis?: Json | null
+          created_at?: string
+          error?: string | null
+          filename: string
+          id?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          analysis?: Json | null
+          created_at?: string
+          error?: string | null
+          filename?: string
+          id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       newsletter_subscriptions: {
         Row: {
           created_at: string
