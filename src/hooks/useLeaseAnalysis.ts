@@ -25,8 +25,8 @@ interface LeaseAnalysisResult {
   progress: number;
 }
 
-// Helper function to validate the analysis structure
-const isValidLeaseAnalysis = (data: Json | null): boolean => {
+// Type guard function to ensure data is a valid LeaseAnalysis
+function isLeaseAnalysis(data: any): data is LeaseAnalysis {
   return (
     typeof data === 'object' &&
     data !== null &&
@@ -35,9 +35,10 @@ const isValidLeaseAnalysis = (data: Json | null): boolean => {
     'deposit' in data &&
     'termMonths' in data &&
     'flags' in data &&
-    'summary' in data
+    'summary' in data &&
+    Array.isArray(data.flags)
   );
-};
+}
 
 export const useLeaseAnalysis = (leaseId: string | null): LeaseAnalysisResult => {
   const [status, setStatus] = useState<string | null>(null);
@@ -76,9 +77,8 @@ export const useLeaseAnalysis = (leaseId: string | null): LeaseAnalysisResult =>
         if (data.status === 'complete' && data.analysis) {
           setProgress(100);
           
-          if (isValidLeaseAnalysis(data.analysis)) {
-            // Safely cast to LeaseAnalysis type after validation
-            setAnalysis(data.analysis as LeaseAnalysis);
+          if (isLeaseAnalysis(data.analysis)) {
+            setAnalysis(data.analysis);
           } else {
             setError('Invalid analysis format received');
             console.error('Invalid analysis format:', data.analysis);
@@ -119,9 +119,8 @@ export const useLeaseAnalysis = (leaseId: string | null): LeaseAnalysisResult =>
           if (updated.status === 'complete' && updated.analysis) {
             setProgress(100);
             
-            if (isValidLeaseAnalysis(updated.analysis)) {
-              // Safely cast to LeaseAnalysis type after validation
-              setAnalysis(updated.analysis as LeaseAnalysis);
+            if (isLeaseAnalysis(updated.analysis)) {
+              setAnalysis(updated.analysis);
             } else {
               setError('Invalid analysis format received');
               console.error('Invalid analysis format:', updated.analysis);
