@@ -143,9 +143,22 @@ export default function LeaseAnalyzer() {
       
       if (data.status === 'complete' && data.analysis) {
         setProgress(100);
-        // Safely cast analysis data
-        if (typeof data.analysis === 'object') {
+        // Safely cast analysis data - we need to check if it has the required fields
+        if (
+          typeof data.analysis === 'object' && 
+          data.analysis !== null && 
+          !Array.isArray(data.analysis) &&
+          'rent' in data.analysis &&
+          'deposit' in data.analysis &&
+          'termMonths' in data.analysis &&
+          'flags' in data.analysis &&
+          'summary' in data.analysis
+        ) {
+          // Now we can safely cast it to LeaseAnalysis
           setAnalysis(data.analysis as LeaseAnalysis);
+        } else {
+          setError("Invalid analysis format received");
+          console.error("Invalid analysis format:", data.analysis);
         }
         setIsLoading(false);
         toast({
