@@ -1,3 +1,4 @@
+
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Suspense, lazy } from "react";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -22,6 +23,7 @@ const FAQ = lazy(() => import("@/pages/FAQ"));
 const PromptManager = lazy(() => import("@/shared/components/PromptManager"));
 const ScriptBuilder = lazy(() => import("@/pages/ScriptBuilder"));
 const DownPaymentPrograms = lazy(() => import("@/pages/DownPaymentPrograms"));
+const LeaseAnalyzer = lazy(() => import("@/pages/LeaseAnalyzer"));
 
 function AppRoutes() {
   return (
@@ -40,6 +42,7 @@ function AppRoutes() {
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/script-builder" element={<ScriptBuilder />} />
+        <Route path="/lease" element={<LeaseAnalyzer />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
