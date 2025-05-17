@@ -20,27 +20,13 @@ export default function LeaseAnalyzer() {
     try {
       setFile(selectedFile);
       
-      // Create a lease record in the database with a default user_id
-      // This bypasses the authentication requirement for now
-      const { data: leaseData, error: leaseError } = await supabase
-        .from('leases')
-        .insert({
-          filename: selectedFile.name,
-          user_id: '00000000-0000-0000-0000-000000000000', // Default user ID
-          status: 'pending'
-        })
-        .select()
-        .single();
+      // Generate a UUID on the client side instead of relying on database
+      const clientGeneratedId = crypto.randomUUID();
+      setLeaseId(clientGeneratedId);
       
-      if (leaseError) {
-        throw new Error(`Database error: ${leaseError.message}`);
-      }
-      
-      setLeaseId(leaseData.id);
-      
-      // Upload file to storage
+      // Upload file to storage with the client-generated ID
       const fileExt = selectedFile.name.split('.').pop()?.toLowerCase() || '';
-      const filePath = `${leaseData.id}.${fileExt}`;
+      const filePath = `${clientGeneratedId}.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage
         .from('leases')
@@ -59,12 +45,17 @@ export default function LeaseAnalyzer() {
         throw new Error("Failed to get file URL");
       }
       
-      // Call the lease-analyzer function
+      // Call the lease-analyzer function directly without database insertion
       const { error: analyzeError } = await supabase.functions.invoke('lease-analyzer', {
         body: {
-          leaseId: leaseData.id,
+          leaseId: clientGeneratedId,
           fileExt,
-          publicUrl: urlData.signedUrl
+          publicUrl: urlData.signedUrl,
+          // Passing clientData to be stored by the edge function
+          clientData: {
+            filename: selectedFile.name,
+            status: 'pending'
+          }
         }
       });
       
