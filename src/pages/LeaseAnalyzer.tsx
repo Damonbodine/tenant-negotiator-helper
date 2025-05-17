@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { FileDropZone } from "@/components/lease/FileDropZone";
 import { LeaseAnalysisDisplay } from "@/components/lease/LeaseAnalysisDisplay";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,8 +39,8 @@ export default function LeaseAnalyzer() {
       setAnalysis(null);
       
       // Check if user is authenticated
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user) {
         throw new Error("You must be logged in to analyze lease documents");
       }
       
@@ -49,6 +49,8 @@ export default function LeaseAnalyzer() {
         .from('leases')
         .insert({
           filename: selectedFile.name,
+          user_id: userData.user.id,
+          status: 'pending'
         })
         .select()
         .single();
@@ -141,7 +143,10 @@ export default function LeaseAnalyzer() {
       
       if (data.status === 'complete' && data.analysis) {
         setProgress(100);
-        setAnalysis(data.analysis);
+        // Safely cast analysis data
+        if (typeof data.analysis === 'object') {
+          setAnalysis(data.analysis as LeaseAnalysis);
+        }
         setIsLoading(false);
         toast({
           title: "Analysis complete",
