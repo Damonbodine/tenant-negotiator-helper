@@ -26,8 +26,9 @@ function isLeaseAnalysis(data: any): data is LeaseAnalysis {
 }
 
 // Create a Supabase client for direct function invocation
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Hardcode the values to guarantee they're available
+const supabaseUrl = "https://izzdyfrcxunfzlfgdjuv.supabase.co";
+const supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml6emR5ZnJjeHVuZnpsZmdkanV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMyMDIzMDgsImV4cCI6MjA1ODc3ODMwOH0.rLBqA9Ok3tKPx90Hgvf9bTx0rUjJWcMj2a-SRy_sA8M";
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function LeaseAnalyzer() {
