@@ -105,6 +105,59 @@ serve(async (req: Request) => {
           }
         );
       }
+    } else if (path === '/functions/v1/claude-lease-analyzer') {
+      console.log('Routing to claude-lease-analyzer function');
+      
+      // Parse request body safely
+      let requestBody;
+      try {
+        requestBody = await req.json();
+      } catch (e) {
+        console.error('Error parsing request body:', e);
+        return new Response(
+          JSON.stringify({ error: 'Invalid request body' }),
+          { 
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+      
+      try {
+        // Call the claude-lease-analyzer function
+        const { data, error } = await supabase.functions.invoke('claude-lease-analyzer', {
+          body: requestBody,
+        });
+
+        if (error) {
+          console.error('Error invoking claude-lease-analyzer:', error);
+          return new Response(
+            JSON.stringify({ error: error.message || 'Invocation error' }),
+            { 
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            }
+          );
+        }
+
+        console.log('Claude lease analyzer response received');
+        return new Response(
+          JSON.stringify(data),
+          { 
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      } catch (error) {
+        console.error('Error in claude-lease-analyzer invocation:', error);
+        return new Response(
+          JSON.stringify({ error: error.message || 'Function invocation error' }),
+          { 
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
     }
 
     // If no matching route is found
