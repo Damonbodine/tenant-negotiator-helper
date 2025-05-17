@@ -77,6 +77,7 @@ export const useLeaseAnalysis = (leaseId: string | null): LeaseAnalysisResult =>
           setProgress(100);
           
           if (isValidLeaseAnalysis(data.analysis)) {
+            // Safely cast to LeaseAnalysis type after validation
             setAnalysis(data.analysis as LeaseAnalysis);
           } else {
             setError('Invalid analysis format received');
@@ -119,6 +120,7 @@ export const useLeaseAnalysis = (leaseId: string | null): LeaseAnalysisResult =>
             setProgress(100);
             
             if (isValidLeaseAnalysis(updated.analysis)) {
+              // Safely cast to LeaseAnalysis type after validation
               setAnalysis(updated.analysis as LeaseAnalysis);
             } else {
               setError('Invalid analysis format received');
