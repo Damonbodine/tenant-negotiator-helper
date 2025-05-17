@@ -22,18 +22,18 @@ export function ChatMessage({ message }: ChatMessageProps) {
           max-w-[80%] p-3
           ${message.type === "user" 
             ? "bg-blue-500 text-white" 
-            : "bg-card border border-border"}
+            : "bg-card border border-border text-white"}
         `}
       >
         {message.type === "user" ? (
-          <p className="break-words">{message.text}</p>
+          <p className="break-words text-white">{message.text}</p>
         ) : (
           <CollapsibleMessage text={message.text} />
         )}
         <div 
           className={`
             text-xs mt-1 
-            ${message.type === "user" ? "text-blue-100" : "text-muted-foreground"}
+            ${message.type === "user" ? "text-blue-100" : "text-white/80"}
           `}
         >
           {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

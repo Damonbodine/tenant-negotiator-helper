@@ -30,11 +30,11 @@ export function CollapsibleMessage({ text, maxHeight = 400, className }: Collaps
       <div
         ref={messageRef}
         className={cn(
-          "prose prose-sm dark:prose-invert max-w-none",
+          "prose prose-sm dark:prose-invert max-w-none text-white",
           !isExpanded && needsCollapsing && "max-h-[400px] overflow-hidden"
         )}
       >
-        <ReactMarkdown className="break-words">
+        <ReactMarkdown className="break-words text-white">
           {text}
         </ReactMarkdown>
       </div>
@@ -49,7 +49,7 @@ export function CollapsibleMessage({ text, maxHeight = 400, className }: Collaps
             variant="ghost"
             size="sm"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 text-white hover:text-white hover:bg-white/10"
           >
             {isExpanded ? (
               <>

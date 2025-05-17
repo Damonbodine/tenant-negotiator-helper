@@ -112,16 +112,50 @@ export default {
         DEFAULT: {
           css: {
             maxWidth: '100%',
-            color: 'var(--tw-prose-body)',
+            color: 'white',
             a: {
-              color: 'var(--tw-prose-links)',
+              color: '#5CFFFF',
               '&:hover': {
                 textDecoration: 'underline',
               },
             },
+            strong: {
+              color: 'white',
+              fontWeight: '600',
+            },
+            h1: {
+              color: 'white',
+              fontSize: '1.5rem',
+              marginBottom: '1rem'
+            },
+            h2: {
+              color: 'white',
+              fontSize: '1.25rem',
+              marginTop: '1.5rem',
+              marginBottom: '0.75rem'
+            },
+            h3: {
+              color: 'white',
+              fontSize: '1.125rem',
+              marginTop: '1.25rem',
+              marginBottom: '0.5rem'
+            },
+            h4: {
+              color: 'white',
+            },
+            p: {
+              color: 'white',
+            },
+            li: {
+              color: 'white',
+            },
+            blockquote: {
+              color: 'white',
+              borderLeftColor: 'rgba(255, 255, 255, 0.2)',
+            },
             code: {
-              color: 'var(--tw-prose-code)',
-              background: 'var(--tw-prose-code-bg)',
+              color: 'white',
+              background: 'rgba(255, 255, 255, 0.1)',
               padding: '0.2em 0.4em',
               borderRadius: '0.25rem',
               fontFamily: 'monospace',
@@ -129,38 +163,32 @@ export default {
             'pre code': {
               backgroundColor: 'transparent',
               padding: '0',
+              color: 'white',
             },
             pre: {
-              backgroundColor: 'var(--tw-prose-pre-bg)',
+              backgroundColor: 'rgba(0, 0, 0, 0.3)',
               borderRadius: '0.375rem',
               padding: '1em',
               overflow: 'auto',
+              color: 'white',
             },
             'ul > li': {
               paddingLeft: '1.5em',
+              color: 'white',
             },
             'ul > li::before': {
               width: '0.5em',
               height: '0.5em',
               top: 'calc(0.875em - 0.0625em)',
               left: '0.25em',
+              backgroundColor: 'rgba(255, 255, 255, 0.5)',
             },
             'ol > li': {
               paddingLeft: '1.5em',
+              color: 'white',
             },
-            h1: {
-              fontSize: '1.5rem',
-              marginBottom: '1rem'
-            },
-            h2: {
-              fontSize: '1.25rem',
-              marginTop: '1.5rem',
-              marginBottom: '0.75rem'
-            },
-            h3: {
-              fontSize: '1.125rem',
-              marginTop: '1.25rem',
-              marginBottom: '0.5rem'
+            'ol > li::before': {
+              color: 'white',
             },
           },
         },
