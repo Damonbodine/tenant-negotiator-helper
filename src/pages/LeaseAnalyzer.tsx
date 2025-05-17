@@ -5,71 +5,102 @@ import { LeaseAnalysisDisplay } from "@/components/lease/LeaseAnalysisDisplay";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useLeaseAnalysis, LeaseAnalysis, Flag } from "@/hooks/useLeaseAnalysis";
+import { DebugInfo } from "@/components/negotiation/DebugInfo";
+
+interface LeaseAnalysis {
+  rent: number;
+  deposit: number;
+  termMonths: number;
+  flags: {
+    level: 'high' | 'medium' | 'low';
+    clause: string;
+    line: number;
+  }[];
+  summary: string;
+}
 
 export default function LeaseAnalyzer() {
   const [file, setFile] = useState<File | null>(null);
-  const [leaseId, setLeaseId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [analysis, setAnalysis] = useState<LeaseAnalysis | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<number>(0);
+  const [debugInfo, setDebugInfo] = useState<any>({});
   const { toast } = useToast();
   
-  // Use our new hook to handle lease analysis
-  const { status, analysis, error, isLoading, progress } = useLeaseAnalysis(leaseId);
-
-  // Handle file upload and analysis
+  // Function to handle file selection and analysis
   const handleFileSelected = async (selectedFile: File) => {
     try {
       setFile(selectedFile);
+      setIsLoading(true);
+      setError(null);
+      setProgress(10);
       
-      // Generate a UUID on the client side instead of relying on database
-      const clientGeneratedId = crypto.randomUUID();
-      setLeaseId(clientGeneratedId);
+      // Convert file to base64
+      const fileBytes = await readFileAsArrayBuffer(selectedFile);
+      const base64File = arrayBufferToBase64(fileBytes);
       
-      // Upload file to storage with the client-generated ID
-      const fileExt = selectedFile.name.split('.').pop()?.toLowerCase() || '';
-      const filePath = `${clientGeneratedId}.${fileExt}`;
+      setProgress(30);
       
-      const { error: uploadError } = await supabase.storage
-        .from('leases')
-        .upload(filePath, selectedFile);
+      // Record request start time for debug info
+      const requestStartTime = new Date().toISOString();
+      setDebugInfo(prev => ({ ...prev, requestStartTime }));
       
-      if (uploadError) {
-        throw new Error(`Upload error: ${uploadError.message}`);
-      }
-      
-      // Get signed URL for the file
-      const { data: urlData, error: urlError } = await supabase.storage
-        .from('leases')
-        .createSignedUrl(filePath, 60 * 15); // 15 minutes expiry
-      
-      if (urlError || !urlData) {
-        throw new Error("Failed to get file URL");
-      }
-      
-      // Call the lease-analyzer function directly without database insertion
-      const { error: analyzeError } = await supabase.functions.invoke('lease-analyzer', {
+      // Call the claude-lease-analyzer function directly
+      const { data, error: analyzeError } = await supabase.functions.invoke('claude-lease-analyzer', {
         body: {
-          leaseId: clientGeneratedId,
-          fileExt,
-          publicUrl: urlData.signedUrl,
-          // Passing clientData to be stored by the edge function
-          clientData: {
-            filename: selectedFile.name,
-            status: 'pending'
-          }
+          documentBytes: base64File,
+          documentType: selectedFile.type,
+          debug: true
         }
       });
+      
+      // Record request end time for debug info
+      const requestEndTime = new Date().toISOString();
+      setDebugInfo(prev => ({ 
+        ...prev, 
+        requestEndTime,
+        httpStatus: analyzeError ? 500 : 200,
+        rawResponse: data
+      }));
       
       if (analyzeError) {
         throw new Error(`Analysis failed: ${analyzeError.message}`);
       }
       
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      
+      setProgress(100);
+      
+      // Transform the data to match our LeaseAnalysis interface
+      const transformedAnalysis: LeaseAnalysis = {
+        rent: data.extractedData?.financial?.rent?.amount || 0,
+        deposit: data.extractedData?.financial?.securityDeposit || 0,
+        termMonths: data.extractedData?.term?.durationMonths || 12,
+        flags: data.unusualClauses?.map(clause => ({
+          level: clause.riskLevel || 'medium',
+          clause: clause.clause,
+          line: 0 // Claude doesn't provide line numbers
+        })) || [],
+        summary: data.summary || ""
+      };
+      
+      setAnalysis(transformedAnalysis);
+      setIsLoading(false);
+      
       toast({
-        title: "Analysis started",
-        description: "Your lease is being processed. Please wait for the results."
+        title: "Analysis complete",
+        description: "Your lease document has been analyzed."
       });
       
     } catch (err) {
       console.error("Error processing lease:", err);
+      setIsLoading(false);
+      setProgress(0);
+      setError(err instanceof Error ? err.message : "Failed to process your lease document");
+      
       toast({
         variant: "destructive",
         title: "Error",
@@ -77,6 +108,32 @@ export default function LeaseAnalyzer() {
       });
     }
   };
+  
+  // Helper function to read file as ArrayBuffer
+  const readFileAsArrayBuffer = (file: File): Promise<ArrayBuffer> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as ArrayBuffer);
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(file);
+    });
+  };
+  
+  // Helper function to convert ArrayBuffer to Base64
+  const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const len = bytes.byteLength;
+    
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    
+    return window.btoa(binary);
+  };
+  
+  // Check if we're in debug mode
+  const isDebugMode = new URLSearchParams(window.location.search).get('debug') === 'true';
   
   return (
     <div className="container max-w-5xl py-8 space-y-8">
@@ -86,6 +143,16 @@ export default function LeaseAnalyzer() {
           Upload your lease document to get an automated analysis of key terms and potential issues.
         </p>
       </div>
+      
+      {/* Debug info when debug mode is active */}
+      <DebugInfo 
+        showDebugInfo={isDebugMode}
+        httpStatus={debugInfo.httpStatus}
+        requestStartTime={debugInfo.requestStartTime}
+        requestEndTime={debugInfo.requestEndTime}
+        rawErrorResponse={debugInfo.rawErrorResponse}
+        additionalInfo={debugInfo.rawResponse}
+      />
       
       {!isLoading && !analysis && (
         <FileDropZone 
