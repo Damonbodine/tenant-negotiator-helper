@@ -26,7 +26,7 @@ interface LeaseAnalysisResult {
 }
 
 // Helper function to validate the analysis structure
-const isValidLeaseAnalysis = (data: Json | null): data is LeaseAnalysis => {
+const isValidLeaseAnalysis = (data: Json | null): boolean => {
   return (
     typeof data === 'object' &&
     data !== null &&
