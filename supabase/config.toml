@@ -73,5 +73,6 @@ redirect_uri = ""
 url = ""
 
 [functions]
-[functions.lease-analyzer]
+[functions.lease-doc-analyzer]
 verify_jwt = true
+

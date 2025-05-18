@@ -68,9 +68,9 @@ export default function LeaseAnalyzer() {
         debug: true
       };
 
-      // Use direct Supabase function invocation instead of fetch
-      console.log('Invoking claude-lease-analyzer function...');
-      const { data, error: fnError } = await supabase.functions.invoke('claude-lease-analyzer', {
+      // Use direct Supabase function invocation with the updated function name
+      console.log('Invoking lease-doc-analyzer function...');
+      const { data, error: fnError } = await supabase.functions.invoke('lease-doc-analyzer', {
         body: payload,
       });
 
@@ -104,7 +104,7 @@ export default function LeaseAnalyzer() {
           flags: data.unusualClauses?.map((clause: any) => ({
             level: clause.riskLevel || 'medium',
             clause: clause.clause,
-            line: 0 // Claude doesn't provide line numbers
+            line: 0 // Line numbers may not be available
           })) || [],
           summary: data.summary || ""
         };
