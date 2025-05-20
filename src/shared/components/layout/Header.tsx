@@ -13,27 +13,27 @@ export const Header = () => {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200">
+    <header className="bg-sidebar border-b border-sidebar-border">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center">
-          <span className="text-xl font-bold text-blue-600">Renters Mentor</span>
+          <span className="hover:text-sidebar-accent text-2xl font-bold leading-none transition-colors">Renters Mentor</span>
         </Link>
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-8">
-          <Link to="/resources" className="text-gray-600 hover:text-blue-600 transition-colors">Resources</Link>
-          <Link to="/script-builder" className="text-gray-600 hover:text-blue-600 transition-colors">Script Builder</Link>
-          <Link to="/lease" className="text-gray-600 hover:text-blue-600 transition-colors">Lease Analyzer</Link>
-          <Link to="/faq" className="text-gray-600 hover:text-blue-600 transition-colors">FAQ</Link>
-          <Link to="/contact" className="text-gray-600 hover:text-blue-600 transition-colors">Contact</Link>
-          
+          <Link to="/resources" className="hover:text-sidebar-accent transition-colors">Resources</Link>
+          <Link to="/script-builder" className="hover:text-sidebar-accent transition-colors">Script Builder</Link>
+          <Link to="/lease" className="hover:text-sidebar-accent transition-colors">Lease Analyzer</Link>
+          <Link to="/faq" className="hover:text-sidebar-accent transition-colors">FAQ</Link>
+          <Link to="/contact" className="hover:text-sidebar-accent transition-colors">Contact</Link>
+
           {user ? (
             <div className="flex items-center space-x-4">
               <Link to="/profile">
                 <Button variant="outline" size="sm">Profile</Button>
               </Link>
-              <Button variant="ghost" size="sm" onClick={signOut}>Sign Out</Button>
+              <Button variant="link" size="sm" onClick={signOut}>Sign Out</Button>
             </div>
           ) : (
             <Link to="/auth">
@@ -78,53 +78,53 @@ export const Header = () => {
       {isMobileMenuOpen && (
         <div className="md:hidden py-2 px-4 border-t border-gray-200">
           <div className="flex flex-col space-y-3">
-            <Link 
-              to="/resources" 
+            <Link
+              to="/resources"
               className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Resources
             </Link>
-            <Link 
-              to="/script-builder" 
+            <Link
+              to="/script-builder"
               className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Script Builder
             </Link>
-            <Link 
-              to="/lease" 
+            <Link
+              to="/lease"
               className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Lease Analyzer
             </Link>
-            <Link 
-              to="/faq" 
+            <Link
+              to="/faq"
               className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               FAQ
             </Link>
-            <Link 
-              to="/contact" 
+            <Link
+              to="/contact"
               className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Contact
             </Link>
-            
+
             {user ? (
               <>
-                <Link 
-                  to="/profile" 
+                <Link
+                  to="/profile"
                   className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Profile
                 </Link>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="secondary"
                   onClick={() => {
                     signOut();
                     setIsMobileMenuOpen(false);
@@ -134,8 +134,8 @@ export const Header = () => {
                 </Button>
               </>
             ) : (
-              <Link 
-                to="/auth" 
+              <Link
+                to="/auth"
                 className="px-3 py-2 bg-blue-600 text-white rounded-md text-center"
                 onClick={() => setIsMobileMenuOpen(false)}
               >

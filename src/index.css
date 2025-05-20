@@ -5,35 +5,80 @@
 
 @layer base {
   :root {
-    --background: 200 50% 5%;
+    /* --background: 200 50% 5%;
     --foreground: 0 0% 100%;
-    
+
     --card: 200 50% 7%;
     --card-foreground: 0 0% 100%;
-    
+
     --popover: 200 50% 7%;
     --popover-foreground: 0 0% 100%;
-    
+
     --primary: 180 100% 50%;
     --primary-foreground: 200 50% 5%;
-    
+
     --secondary: 200 50% 10%;
     --secondary-foreground: 0 0% 100%;
-    
+
     --muted: 200 50% 15%;
     --muted-foreground: 0 0% 80%;
-    
+
     --accent: 180 100% 50%;
     --accent-foreground: 200 50% 5%;
-    
+
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    
+
     --border: 180 100% 50%;
     --input: 200 50% 15%;
     --ring: 180 100% 50%;
-    
-    --radius: 0.5rem;
+
+    --radius: 0.5rem; */
+
+    --background: 0 0% 80%;
+    --foreground: 0 0% 12.16%;
+    --card: 0 0% 69.02%;
+    --card-foreground: 0 0% 12.16%;
+    --popover: 0 0% 69.02%;
+    --popover-foreground: 0 0% 12.16%;
+    --primary: 0 73.46% 41.37%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 82 38.96% 30.20%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 72.16%;
+    --muted-foreground: 0 0% 29.02%;
+    --accent: 207.27 44% 49.02%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 26.12 100% 50%;
+    --destructive-foreground: 0 0% 0%;
+    --border: 0 0% 31.37%;
+    --input: 0 0% 31.37%;
+    --ring: 0 73.46% 41.37%;
+    --chart-1: 0 73.46% 41.37%;
+    --chart-2: 82 38.96% 30.20%;
+    --chart-3: 207.27 44% 49.02%;
+    --chart-4: 26.12 100% 50%;
+    --chart-5: 15.71 17.50% 47.06%;
+    --sidebar: 0 0% 69.02%;
+    --sidebar-foreground: 0 0% 12.16%;
+    --sidebar-primary: 0 73.46% 41.37%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 207.27 44% 49.02%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 31.37%;
+    --sidebar-ring: 0 73.46% 41.37%;
+    --font-sans: "Oxanium", sans-serif;
+    --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+    --font-mono: "Source Code Pro", monospace;
+    --radius: 0px;
+    --shadow-2xs: 0px 2px 4px 0px hsl(0 0% 0% / 0.20);
+    --shadow-xs: 0px 2px 4px 0px hsl(0 0% 0% / 0.20);
+    --shadow-sm: 0px 2px 4px 0px hsl(0 0% 0% / 0.40), 0px 1px 2px -1px hsl(0 0% 0% / 0.40);
+    --shadow: 0px 2px 4px 0px hsl(0 0% 0% / 0.40), 0px 1px 2px -1px hsl(0 0% 0% / 0.40);
+    --shadow-md: 0px 2px 4px 0px hsl(0 0% 0% / 0.40), 0px 2px 4px -1px hsl(0 0% 0% / 0.40);
+    --shadow-lg: 0px 2px 4px 0px hsl(0 0% 0% / 0.40), 0px 4px 6px -1px hsl(0 0% 0% / 0.40);
+    --shadow-xl: 0px 2px 4px 0px hsl(0 0% 0% / 0.40), 0px 8px 10px -1px hsl(0 0% 0% / 0.40);
+    --shadow-2xl: 0px 2px 4px 0px hsl(0 0% 0% / 1.00);
   }
 }
 
@@ -41,21 +86,21 @@
   * {
     @apply border-border;
   }
-  
+
   html, body {
     @apply min-h-screen;
   }
-  
+
   body {
-    @apply bg-background text-foreground font-raleway tracking-wide;
+    @apply bg-background text-foreground font-sans tracking-wide;
     min-height: 100vh;
     width: 100%;
     margin: 0;
     padding: 0;
   }
-  
+
   h1, h2, h3, h4, h5, h6 {
-    @apply font-playfair tracking-tight;
+    @apply font-sans tracking-tight;
   }
 }
 
@@ -80,10 +125,6 @@
     @apply mx-auto my-8 bg-white max-w-2xl;
   }
 
-  .w3-display-container {
-    @apply relative;
-  }
-
   .w3-overlay {
     @apply fixed hidden w-full h-full top-0 left-0 right-0 bottom-0 bg-black/50 z-20;
   }
@@ -91,20 +132,20 @@
   .content-card {
     @apply bg-white shadow-xl rounded-lg;
   }
-  
+
   /* Resource templates with improved contrast */
   .resource-template {
     @apply bg-black text-white border border-gray-700 rounded-md overflow-hidden;
   }
-  
+
   .resource-template-header {
     @apply bg-gradient-to-r from-gray-900 to-black p-4 rounded-t-md;
   }
-  
+
   .resource-template-content {
     @apply p-4 font-mono text-sm whitespace-pre-wrap bg-black text-white;
   }
-  
+
   .resource-template-footer {
     @apply p-3 bg-gray-900 rounded-b-md text-gray-300;
   }
@@ -113,33 +154,33 @@
   .pro-tip {
     @apply bg-black text-white p-4 rounded-md border border-gray-700 my-4;
   }
-  
+
   .pro-tip-header {
     @apply text-cyan-400 font-bold mb-2 flex items-center gap-2;
   }
-  
+
   .pro-tip-content {
     @apply text-white;
   }
-  
+
   .checklist-item {
     @apply flex items-start gap-2 my-2;
   }
-  
+
   .checklist-icon {
     @apply mt-1 h-5 w-5 rounded border border-gray-700 flex items-center justify-center;
   }
-  
+
   /* Alphabetical list styling */
   .list-alpha {
     counter-reset: list-alpha;
   }
-  
+
   .list-alpha > li {
     counter-increment: list-alpha;
     position: relative;
   }
-  
+
   .list-alpha > li::before {
     content: counter(list-alpha, lower-alpha) ". ";
     position: absolute;

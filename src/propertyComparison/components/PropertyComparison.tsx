@@ -5,6 +5,7 @@ import { ComparisonResults } from "./ComparisonResults";
 import { PropertyComparisonResponse, PropertyDetails } from "@/shared/types/comparison";
 import { compareProperties } from "../services/comparisonService";
 import { toast } from "@/shared/hooks/use-toast";
+import { Link } from "react-router-dom";
 
 export default function PropertyComparison() {
   const [isLoading, setIsLoading] = useState(false);
@@ -28,11 +29,20 @@ export default function PropertyComparison() {
   };
 
   return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <main className="flex-1 container flex flex-col items-center justify-center py-12 mb-16 md:mb-0">
+    <div className="w-full max-w-4xl h-[calc(100vh-10rem)]">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-blue-600">Property Comparison</h2>
+                  <Link to="/" className="px-4 py-2 rounded-lg bg-blue-100 hover:bg-blue-200 transition-colors text-blue-600">
+                    Back to home
+                  </Link>
+                </div>
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold mb-4">Advanced Property Comparison</h1>
         <p className="text-muted-foreground">
-          Compare up to 4 rental properties side-by-side with detailed analysis and cost breakdowns. 
+          Compare up to 4 rental properties side-by-side with detailed analysis and cost breakdowns.
           Enter the property details below to get started.
         </p>
       </div>
@@ -42,14 +52,17 @@ export default function PropertyComparison() {
       ) : (
         <div className="space-y-6">
           <ComparisonResults comparison={comparisonResults} isLoading={isLoading} />
-          <button 
-            onClick={() => setComparisonResults(null)} 
+          <button
+            onClick={() => setComparisonResults(null)}
             className="text-blue-600 hover:text-blue-800 font-medium"
           >
             Compare Different Properties
           </button>
         </div>
       )}
+    </div>
+    </div>
+    </main>
     </div>
   );
 }
