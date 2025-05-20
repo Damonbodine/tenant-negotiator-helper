@@ -25,14 +25,14 @@ export default function Contact() {
     const body = encodeURIComponent(
       `Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`
     );
-    
+
     // Create and trigger mailto link
     const mailtoLink = document.createElement('a');
     mailtoLink.href = `mailto:ditchmyrent@gmail.com?subject=${subject}&body=${body}`;
     document.body.appendChild(mailtoLink);
     mailtoLink.click();
     document.body.removeChild(mailtoLink);
-    
+
     // Show success message
     toast({
       title: "Message sent!",
@@ -45,11 +45,9 @@ export default function Contact() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
       <main className="flex-1 container max-w-2xl py-12">
         <h1 className="text-3xl font-bold mb-6">Contact Us</h1>
-        
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <label htmlFor="name" className="text-sm font-medium">
@@ -64,7 +62,7 @@ export default function Contact() {
               disabled={isSubmitting}
             />
           </div>
-          
+
           <div className="space-y-2">
             <label htmlFor="email" className="text-sm font-medium">
               Email
@@ -79,7 +77,7 @@ export default function Contact() {
               disabled={isSubmitting}
             />
           </div>
-          
+
           <div className="space-y-2">
             <label htmlFor="message" className="text-sm font-medium">
               Message
@@ -94,16 +92,14 @@ export default function Contact() {
               disabled={isSubmitting}
             />
           </div>
-          
-          <Button 
-            type="submit" 
+
+          <Button
+            type="submit"
             disabled={isSubmitting}
           >
             {isSubmitting ? "Sending..." : "Send Message"}
           </Button>
         </form>
       </main>
-      <Footer />
-    </div>
   );
 }

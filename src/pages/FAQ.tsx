@@ -1,11 +1,11 @@
 
 import { Header } from "@/shared/components/layout/Header";
 import { Footer } from "@/shared/components/layout/Footer";
-import { 
-  Accordion, 
-  AccordionContent, 
-  AccordionItem, 
-  AccordionTrigger 
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger
 } from "@/components/ui/accordion";
 
 export default function FAQ() {
@@ -49,11 +49,9 @@ export default function FAQ() {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
       <main className="flex-1 container py-12">
         <h1 className="text-3xl font-bold mb-8">Frequently Asked Questions</h1>
-        
+
         <Accordion type="single" collapsible className="w-full max-w-3xl mx-auto">
           {faqItems.map((item, index) => (
             <AccordionItem key={index} value={`item-${index}`}>
@@ -67,7 +65,5 @@ export default function FAQ() {
           ))}
         </Accordion>
       </main>
-      <Footer />
-    </div>
   );
 }
