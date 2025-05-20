@@ -10,6 +10,7 @@ import { LoadingIndicator } from "@/chat/components/LoadingIndicator";
 import { useToast } from "@/shared/hooks/use-toast";
 import { chatService } from "@/shared/services/chatService";
 import ReactMarkdown from "react-markdown";
+import { Link } from "react-router-dom";
 
 const NegotiationChat = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -38,28 +39,28 @@ const NegotiationChat = () => {
 
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return;
-    
+
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       type: 'user',
       text: input,
       timestamp: new Date()
     };
-    
+
     setMessages(prev => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
-    
+
     try {
       const response = await chatService.sendMessageToGemini(input, messages);
-      
+
       const agentMessage: ChatMessage = {
         id: Date.now().toString(),
         type: 'agent',
         text: response,
         timestamp: new Date()
       };
-      
+
       setMessages(prev => [...prev, agentMessage]);
     } catch (error) {
       console.error("Error sending message:", error);
@@ -74,11 +75,20 @@ const NegotiationChat = () => {
   };
 
   return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <main className="flex-1 container flex flex-col items-center justify-center py-12 mb-16 md:mb-0">
+    <div className="w-full max-w-4xl h-[calc(100vh-10rem)]">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-blue-600">Negotiation Tips</h2>
+                  <Link to="/" className="px-4 py-2 rounded-lg bg-blue-100 hover:bg-blue-200 transition-colors text-blue-600">
+                    Back to home
+                  </Link>
+                </div>
     <div className="flex flex-col h-full border rounded-xl overflow-hidden shadow-md bg-white dark:bg-slate-800">
       <div className="p-3 border-b border-border bg-slate-50 dark:bg-slate-900">
         <h3 className="font-medium">Negotiation Coach</h3>
       </div>
-      
+
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4" aria-live="polite" role="log">
           {messages.length === 1 && (
@@ -96,17 +106,17 @@ const NegotiationChat = () => {
               ))}
             </div>
           )}
-          
+
           {messages.map((message) => (
-            <div 
-              key={message.id} 
+            <div
+              key={message.id}
               className={`flex ${message.type === "user" ? "justify-end" : "justify-start"}`}
             >
-              <Card 
+              <Card
                 className={`
                   max-w-[80%] p-3
-                  ${message.type === "user" 
-                    ? "bg-blue-500 text-white" 
+                  ${message.type === "user"
+                    ? "bg-blue-500 text-white"
                     : "bg-card border border-border text-white"}
                 `}
               >
@@ -119,9 +129,9 @@ const NegotiationChat = () => {
                     </ReactMarkdown>
                   </div>
                 )}
-                <div 
+                <div
                   className={`
-                    text-xs mt-1 
+                    text-xs mt-1
                     ${message.type === "user" ? "text-blue-100" : "text-white/80"}
                   `}
                 >
@@ -130,11 +140,11 @@ const NegotiationChat = () => {
               </Card>
             </div>
           ))}
-          
+
           {isLoading && <LoadingIndicator />}
         </div>
       </ScrollArea>
-      
+
       <div className="p-4 border-t border-border bg-slate-50 dark:bg-slate-900">
         <div className="flex items-end gap-2">
           <Textarea
@@ -150,9 +160,9 @@ const NegotiationChat = () => {
             }}
             aria-label="Message input"
           />
-          <Button 
-            onClick={handleSendMessage} 
-            size="icon" 
+          <Button
+            onClick={handleSendMessage}
+            size="icon"
             disabled={isLoading || !input.trim()}
             aria-label="Send message"
           >
@@ -160,6 +170,9 @@ const NegotiationChat = () => {
           </Button>
         </div>
       </div>
+    </div>
+    </div>
+    </main>
     </div>
   );
 };

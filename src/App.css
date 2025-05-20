@@ -20,7 +20,7 @@
   background: transparent;
 }
 
-.w3-opacity { 
+.w3-opacity {
   opacity: 0.60;
 }
 
@@ -80,16 +80,6 @@
   content: "";
   display: table;
   clear: both;
-}
-
-/* Enhance nav bar */
-.w3-top .w3-bar {
-  @apply bg-background/80 backdrop-blur-sm border-b border-cyan-400/20;
-}
-
-/* Project cards enhancement */
-.w3-display-container {
-  @apply transition-transform duration-300 hover:scale-105;
 }
 
 /* Add subtle animation to buttons */

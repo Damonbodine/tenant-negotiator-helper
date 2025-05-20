@@ -56,8 +56,8 @@ export function TestimonialCarousel() {
 
   return (
     <div className="mx-auto w-full mt-12 px-4 relative">
-      <h3 className="text-center text-xl font-semibold text-cyan-400 mb-6">What Our Users Are Saying</h3>
-      
+      <h3 className="text-center text-xl font-semibold mb-6">What Our Users Are Saying</h3>
+
       <div className="max-w-4xl mx-auto">
         <Carousel className="w-full" setApi={(api) => {
           if (api) {
@@ -72,21 +72,21 @@ export function TestimonialCarousel() {
           <CarouselContent>
             {testimonials.map((testimonial) => (
               <CarouselItem key={testimonial.id}>
-                <div className="bg-cyan-950/30 border border-cyan-400/20 rounded-xl p-6 h-full">
+                <div className="bg-card border rounded-xl p-6 h-full">
                   <div className="flex flex-col h-full">
-                    <div className="text-cyan-400/40 mb-4">
+                    <div className="text-card-foreground mb-4">
                       <QuoteIcon size={36} />
                     </div>
-                    <p className="text-white/90 mb-6 flex-1 text-lg italic">
+                    <p className="text-card-foreground mb-6 flex-1 text-lg italic">
                       "{testimonial.quote}"
                     </p>
                     <div className="flex items-center mt-auto">
-                      <div className="h-10 w-10 rounded-full bg-cyan-400/20 flex items-center justify-center text-cyan-400 font-bold">
+                      <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-bold border">
                         {testimonial.name.charAt(0)}
                       </div>
                       <div className="ml-3">
-                        <p className="font-semibold text-cyan-400">{testimonial.name}</p>
-                        <p className="text-sm text-white/60">{testimonial.location}</p>
+                        <p className="font-semibold">{testimonial.name}</p>
+                        <p className="text-sm">{testimonial.location}</p>
                       </div>
                     </div>
                   </div>
@@ -94,13 +94,13 @@ export function TestimonialCarousel() {
               </CarouselItem>
             ))}
           </CarouselContent>
-          
+
           <div className="flex justify-center mt-6">
             {testimonials.map((_, index) => (
               <button
                 key={index}
                 className={`h-2 w-2 mx-1 rounded-full ${
-                  activeIndex === index ? "bg-cyan-400" : "bg-cyan-400/20"
+                  activeIndex === index ? "bg-accent" : "bg-accent/20"
                 }`}
                 onClick={() => {
                   setActiveIndex(index);
@@ -109,7 +109,7 @@ export function TestimonialCarousel() {
               />
             ))}
           </div>
-          
+
           <CarouselPrevious className="absolute -left-4 top-1/2 -translate-y-1/2" />
           <CarouselNext className="absolute -right-4 top-1/2 -translate-y-1/2" />
         </Carousel>

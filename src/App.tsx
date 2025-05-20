@@ -24,6 +24,8 @@ const PromptManager = lazy(() => import("@/shared/components/PromptManager"));
 const ScriptBuilder = lazy(() => import("@/pages/ScriptBuilder"));
 const DownPaymentPrograms = lazy(() => import("@/pages/DownPaymentPrograms"));
 const LeaseAnalyzer = lazy(() => import("@/pages/LeaseAnalyzer"));
+const NegotiationChat = lazy(() => import("@/chat/components/NegotiationChat"));
+const PropertyComparison = lazy(() => import("@/propertyComparison/components/PropertyComparison"));
 
 function AppRoutes() {
   return (
@@ -43,6 +45,8 @@ function AppRoutes() {
         <Route path="/faq" element={<FAQ />} />
         <Route path="/script-builder" element={<ScriptBuilder />} />
         <Route path="/lease" element={<LeaseAnalyzer />} />
+        <Route path="/negotiation" element={<NegotiationChat />} />
+        <Route path="/comparison" element={<PropertyComparison />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
