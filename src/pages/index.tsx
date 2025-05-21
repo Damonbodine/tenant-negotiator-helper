@@ -58,7 +58,7 @@ const Index = () => {
 
               {!user && <div className="mb-8">
                   <Link to="/auth">
-                    <Button className="bg-cyan-400 text-cyan-950 hover:bg-cyan-500">
+                    <Button variant="secondary">
                       <LogIn className="mr-2 h-4 w-4" />
                       Sign In to Save Your Analysis
                     </Button>

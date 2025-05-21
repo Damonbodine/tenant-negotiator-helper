@@ -13,7 +13,7 @@ export const Header = () => {
   };
 
   return (
-    <header className="bg-sidebar border-b border-sidebar-border">
+    <header className="bg-card border-b border-sidebar-border">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center">
