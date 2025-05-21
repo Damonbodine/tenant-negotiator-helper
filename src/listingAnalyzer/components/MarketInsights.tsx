@@ -11,23 +11,22 @@ import { ChatMessage as ChatMessageComponent } from "@/chat/components/ChatMessa
 import { Alert, AlertTitle, AlertDescription } from "@/shared/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { analyzeListingUrl, analyzeAddress } from "@/listingAnalyzer/services/listingAnalyzerService";
-interface MarketInsightsProps {
-  initialAddress?: string;
-}
-const MarketInsights = ({
-  initialAddress = ""
-}: MarketInsightsProps) => {
+import { Link, useParams } from "react-router-dom";
+
+const MarketInsights = () => {
+  const params = useParams();
   const [messages, setMessages] = useState<ChatMessage[]>([{
     id: "welcome",
     type: "agent",
     text: "Hello! I can help you understand rental market trends and pricing. Enter a property address or paste a listing URL to get started.",
     timestamp: new Date()
   }]);
-  const [input, setInput] = useState(initialAddress);
+  const [input, setInput] = useState(params.address || "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  console.log("MarketInsights params:", params)
   useEffect(() => {
-    if (initialAddress) {
+    if (params.address) {
       handleSendMessage();
     }
   }, []);
@@ -72,11 +71,20 @@ const MarketInsights = ({
       setIsLoading(false);
     }
   };
-  return <div className="flex flex-col h-full border rounded-xl overflow-hidden shadow-md bg-white dark:bg-slate-800">
+  return <div className="min-h-screen flex flex-col bg-background">
+      <main className="flex-1 container flex flex-col items-center justify-center py-12 mb-16 md:mb-0">
+        <div className="w-full max-w-4xl h-[calc(100vh-10rem)]">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold text-blue-600">Market Insights</h2>
+                  <Link to="/" className="px-4 py-2 rounded-lg bg-blue-100 hover:bg-blue-200 transition-colors text-blue-600">
+                    Back to home
+                  </Link>
+                </div>
+        <div className="flex flex-col h-full border rounded-xl overflow-hidden shadow-md bg-white dark:bg-slate-800">
       <div className="p-3 border-b border-border bg-orange-100">
         <h3 className="font-medium text-black">Rental Price Analyzer</h3>
       </div>
-      
+
       <ScrollArea className="flex-1">
         <div aria-live="polite" role="log" className="p-4 space-y-4">
           {messages.length === 1 && <div className="space-y-3 mb-4">
@@ -99,7 +107,7 @@ const MarketInsights = ({
             </Alert>}
         </div>
       </ScrollArea>
-      
+
       <div className="p-4 border-t border-border bg-amber-100">
         <div className="flex items-end gap-2">
           <Textarea placeholder="Enter an address or paste a listing URL..." value={input} onChange={e => setInput(e.target.value)} className="min-h-[80px] resize-none" onKeyDown={e => {
@@ -113,6 +121,9 @@ const MarketInsights = ({
           </Button>
         </div>
       </div>
+    </div>
+    </div>
+    </main>
     </div>;
 };
 export default MarketInsights;

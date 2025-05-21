@@ -10,7 +10,6 @@ import { Toaster } from "@/components/ui/toaster";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("@/pages/index"));
-const Practice = lazy(() => import("@/pages/Practice"));
 const VoicePractice = lazy(() => import("@/pages/VoicePractice"));
 const Contact = lazy(() => import("@/pages/Contact"));
 const Auth = lazy(() => import("@/pages/Auth"));
@@ -26,6 +25,7 @@ const DownPaymentPrograms = lazy(() => import("@/pages/DownPaymentPrograms"));
 const LeaseAnalyzer = lazy(() => import("@/pages/LeaseAnalyzer"));
 const NegotiationChat = lazy(() => import("@/chat/components/NegotiationChat"));
 const PropertyComparison = lazy(() => import("@/propertyComparison/components/PropertyComparison"));
+const MarketInsights = lazy(() => import("@/listingAnalyzer/components/MarketInsights"));
 
 function AppRoutes() {
   return (
@@ -47,6 +47,7 @@ function AppRoutes() {
         <Route path="/lease" element={<LeaseAnalyzer />} />
         <Route path="/negotiation" element={<NegotiationChat />} />
         <Route path="/comparison" element={<PropertyComparison />} />
+        <Route path="/market/:address?" element={<MarketInsights />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
