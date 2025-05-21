@@ -15,7 +15,7 @@ export function CollapsibleMessage({ text, maxHeight = 400, className }: Collaps
   const [isExpanded, setIsExpanded] = useState(false);
   const [needsCollapsing, setNeedsCollapsing] = useState(false);
   const messageRef = React.useRef<HTMLDivElement>(null);
-  
+
   useEffect(() => {
     // Check if the content exceeds the max height
     if (messageRef.current && messageRef.current.scrollHeight > maxHeight) {
@@ -38,11 +38,11 @@ export function CollapsibleMessage({ text, maxHeight = 400, className }: Collaps
           {text}
         </ReactMarkdown>
       </div>
-      
+
       {needsCollapsing && (
         <div className={cn(
           "absolute bottom-0 left-0 right-0",
-          !isExpanded && "bg-gradient-to-t from-background to-transparent h-16 flex items-end justify-center pb-2",
+          !isExpanded && "bg-gradient-to-t from-primary to-transparent h-16 flex items-end justify-center pb-2",
           isExpanded && "relative mt-4 flex justify-center"
         )}>
           <Button

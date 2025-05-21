@@ -67,7 +67,7 @@ function App() {
     <ErrorBoundary>
       <AuthProvider>
         <Router>
-          <div className="flex flex-col min-h-screen">
+          <div className="flex flex-col">
             <Header />
             <div className="flex-1">
               <AppRoutes />
