@@ -1,15 +1,13 @@
 
-import { useState, lazy, Suspense, useEffect } from "react";
+import { useState, Suspense } from "react";
 import { FeatureCards } from "@/components/marketing/FeatureCards";
 import { TestimonialCarousel } from "@/components/marketing/TestimonialCarousel";
 import { Button } from "@/shared/ui/button";
 import { Loader2, Search, LogIn } from "lucide-react";
 import { Input } from "@/shared/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
-// Lazy-loaded components
-const MarketInsights = lazy(() => import("@/listingAnalyzer/components/MarketInsights"));
 
 // Types
 type JourneyType = "market" | "negotiation" | "comparison" | null;
@@ -17,41 +15,20 @@ const Index = () => {
   const {
     user
   } = useAuth();
-  const [activeJourney, setActiveJourney] = useState<JourneyType>(null);
   const [addressInput, setAddressInput] = useState("");
-  const [searchParams] = useSearchParams();
-
-  useEffect(() => {
-    // Check URL parameters for journey type
-    const journeyParam = searchParams.get("journey");
-    if (journeyParam && ["market", "negotiation", "comparison"].includes(journeyParam)) {
-      setActiveJourney(journeyParam as JourneyType);
-    }
-  }, [searchParams]);
+  const navigate = useNavigate();
 
   const handleAddressAnalyze = (e: React.FormEvent) => {
     e.preventDefault();
-    if (addressInput.trim()) {
-      setActiveJourney("market");
-    }
+
+    const encodedAddress = encodeURIComponent(addressInput);
+
+    navigate("/market/" + encodedAddress);
   };
 
   return <div className="min-h-screen flex flex-col bg-background">
       <main className="flex-1 container flex flex-col items-center justify-center py-12 mb-16 md:mb-0">
-        {activeJourney ? <Suspense fallback={<div className="w-full flex justify-center p-12">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-            </div>}>
-            {activeJourney === "market" && <div className="w-full max-w-4xl h-[calc(100vh-10rem)]">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold text-blue-600">Market Insights</h2>
-                  <button onClick={() => setActiveJourney(null)} className="px-4 py-2 rounded-lg bg-blue-100 hover:bg-blue-200 transition-colors text-blue-600">
-                    Back to home
-                  </button>
-                </div>
-
-                <MarketInsights initialAddress={addressInput} />
-              </div>}
-          </Suspense> : <div className="space-y-16 w-full max-w-4xl">
+          <div className="space-y-16 w-full max-w-4xl">
             <div className="text-center">
               <h2 className="text-5xl font-bold mb-6 gradient-heading">Stop Overpaying For Rent</h2>
               <p className="text-xl font-normal mb-8">Our AI helps you understand if you're paying too much, how to negotiate, spot red flags, and practice your negotiation skills. Never overpay for rent again</p>
@@ -77,9 +54,9 @@ const Index = () => {
               </form>
             </div>
 
-            <FeatureCards setActiveJourney={setActiveJourney} />
+            <FeatureCards />
             <TestimonialCarousel />
-          </div>}
+          </div>
       </main>
     </div>;
 };
