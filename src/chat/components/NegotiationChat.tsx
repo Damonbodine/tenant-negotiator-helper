@@ -75,17 +75,16 @@ const NegotiationChat = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <main className="flex-1 container flex flex-col items-center justify-center py-12 mb-16 md:mb-0">
-    <div className="w-full max-w-4xl h-[calc(100vh-10rem)]">
+      <main className="flex-1 container flex flex-col items-center justify-center py-12 mb-16">
+    <div className="w-full max-w-4xl h-[calc(100vh-21rem)]">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold text-blue-600">Negotiation Tips</h2>
-                  <Link to="/" className="px-4 py-2 rounded-lg bg-blue-100 hover:bg-blue-200 transition-colors text-blue-600">
+                   <h2 className="text-2xl font-bold">Negotiation Tips</h2>
+                  <Link to="/" className="px-4 py-2 rounded-lg text-muted-foreground border-muted-foreground border-[1px] hover:opacity-70 transition-opacity">
                     Back to home
                   </Link>
                 </div>
     <div className="flex flex-col h-full border rounded-xl overflow-hidden shadow-md bg-white dark:bg-slate-800">
-      <div className="p-3 border-b border-border bg-slate-50 dark:bg-slate-900">
+      <div className="p-3 border-b border-border bg-card">
         <h3 className="font-medium">Negotiation Coach</h3>
       </div>
 
@@ -116,12 +115,12 @@ const NegotiationChat = () => {
                 className={`
                   max-w-[80%] p-3
                   ${message.type === "user"
-                    ? "bg-blue-500 text-white"
-                    : "bg-card border border-border text-white"}
+                    ? "bg-secondary border text-secondary-foreground"
+                    : "bg-primary border text-primary-foreground"}
                 `}
               >
                 {message.type === "user" ? (
-                  <p className="break-words text-white">{message.text}</p>
+                  <p className="prose prose-sm dark:prose-invert max-w-none text-white">{message.text}</p>
                 ) : (
                   <div className="prose prose-sm dark:prose-invert max-w-none text-white">
                     <ReactMarkdown className="break-words text-white">
@@ -173,7 +172,6 @@ const NegotiationChat = () => {
     </div>
     </div>
     </main>
-    </div>
   );
 };
 

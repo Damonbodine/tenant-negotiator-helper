@@ -29,12 +29,11 @@ export default function PropertyComparison() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <main className="flex-1 container flex flex-col items-center justify-center py-12 mb-16 md:mb-0">
-    <div className="w-full max-w-4xl h-[calc(100vh-10rem)]">
+      <main className="flex-1 container flex flex-col items-center justify-center py-12 mb-16">
+    <div className="w-full max-w-4xl h-[calc(100vh-21rem)]">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold text-blue-600">Property Comparison</h2>
-                  <Link to="/" className="px-4 py-2 rounded-lg bg-blue-100 hover:bg-blue-200 transition-colors text-blue-600">
+                  <h2 className="text-2xl font-bold">Property Comparison</h2>
+                  <Link to="/" className="px-4 py-2 rounded-lg text-muted-foreground border-muted-foreground border-[1px] hover:opacity-70 transition-opacity">
                     Back to home
                   </Link>
                 </div>
@@ -63,6 +62,5 @@ export default function PropertyComparison() {
     </div>
     </div>
     </main>
-    </div>
   );
 }

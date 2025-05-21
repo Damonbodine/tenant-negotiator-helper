@@ -26,38 +26,40 @@ const Index = () => {
     navigate("/market/" + encodedAddress);
   };
 
-  return <div className="min-h-screen flex flex-col bg-background">
-      <main className="flex-1 container flex flex-col items-center justify-center py-12 mb-16 md:mb-0">
-          <div className="space-y-16 w-full max-w-4xl">
-            <div className="text-center">
-              <h2 className="text-5xl font-bold mb-6 gradient-heading">Stop Overpaying For Rent</h2>
-              <p className="text-xl font-normal mb-8">Our AI helps you understand if you're paying too much, how to negotiate, spot red flags, and practice your negotiation skills. Never overpay for rent again</p>
+  return <main className="flex flex-col items-center justify-center mb-16">
+            <div className="text-center relative w-full">
+              <img src="/hero-banner.jpg" alt="Hero Banner" className="absolute inset-0 object-cover w-full h-full opacity-60" />
+              <div className="relative w-full max-w-4xl mx-auto py-40 px-8 z-[1]">
+                <h2 className="text-5xl font-bold mb-6 gradient-heading">Stop Overpaying For Rent</h2>
+                <p className="text-xl font-normal mb-8">Our AI helps you understand if you're paying too much, how to negotiate, spot red flags, and practice your negotiation skills. Never overpay for rent again</p>
 
-              {!user && <div className="mb-8">
-                  <Link to="/auth">
-                    <Button variant="secondary">
-                      <LogIn className="mr-2 h-4 w-4" />
-                      Sign In to Save Your Analysis
+
+                {/* Quick address analysis form */}
+                <form onSubmit={handleAddressAnalyze} className="max-w-lg mx-auto">
+                  <div className="flex gap-2">
+                    <Input type="text" placeholder="Enter an address to analyze price..." className="flex-1 bg-input" value={addressInput} onChange={e => setAddressInput(e.target.value)} />
+                    <Button type="submit">
+                      <Search className="mr-2 h-4 w-4" />
+                      Analyze
                     </Button>
-                  </Link>
-                </div>}
+                  </div>
+                </form>
 
-              {/* Quick address analysis form */}
-              <form onSubmit={handleAddressAnalyze} className="max-w-lg mx-auto">
-                <div className="flex gap-2">
-                  <Input type="text" placeholder="Enter an address to analyze price..." className="flex-1" value={addressInput} onChange={e => setAddressInput(e.target.value)} />
-                  <Button type="submit">
-                    <Search className="mr-2 h-4 w-4" />
-                    Analyze
-                  </Button>
-                </div>
-              </form>
+                {!user && <div className="mt-8">
+                    <Link to="/auth">
+                      <Button variant="secondary">
+                        <LogIn className="mr-2 h-4 w-4" />
+                        Sign In to Save Your Analysis
+                      </Button>
+                    </Link>
+                  </div>}
+              </div>
             </div>
 
-            <FeatureCards />
-            <TestimonialCarousel />
-          </div>
-      </main>
-    </div>;
+            <div className="mt-16 space-y-16 w-full max-w-4xl">
+              <FeatureCards />
+              <TestimonialCarousel />
+            </div>
+        </main>;
 };
 export default Index;
