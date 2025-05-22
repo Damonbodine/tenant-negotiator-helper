@@ -16,11 +16,32 @@ serve(async (req) => {
   }
 
   try {
-    const { history = [], message, systemPrompt = "You are a renter-advocate assistant." } = await req.json();
+    const { 
+      history = [], 
+      message, 
+      systemPrompt = "You are a renter-advocate assistant.",
+      memories = [] 
+    } = await req.json();
 
     console.log('Processing chat message:', { message, historyLength: history.length });
     console.log('Using system prompt:', systemPrompt.substring(0, 100) + '...');
+    console.log('Memories provided:', memories.length);
     console.log('Requesting GPT-4.1 model from OpenAI');
+
+    // Construct the enhanced system prompt with memories if available
+    let enhancedSystemPrompt = systemPrompt;
+    if (memories && memories.length > 0) {
+      const memoryContext = `
+## Previous Conversation Context
+The user has interacted with you before. Here are summaries of your past conversations to help you provide more relevant responses:
+
+${memories.map((memory: string, index: number) => `Memory ${index + 1}: ${memory}`).join('\n\n')}
+
+Please use this context to provide more personalized responses, but do not explicitly mention these previous conversations unless the user brings them up first.
+`;
+      enhancedSystemPrompt = `${systemPrompt}\n\n${memoryContext}`;
+      console.log('Enhanced system prompt with memories');
+    }
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -31,7 +52,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: 'gpt-4.1',
         messages: [
-          { role: 'system', content: systemPrompt },
+          { role: 'system', content: enhancedSystemPrompt },
           ...history,
           { role: 'user', content: message }
         ],

@@ -1,8 +1,11 @@
+
 import { ChatMessage } from "@/shared/types";
 import { randomTip } from "@/shared/utils/negotiationTips";
 import { toast } from "@/shared/hooks/use-toast";
 import { analyzeListingWithSupabase } from "@/api/listing-analyzer";
 import { analyzeAddressWithSupabase } from "@/api/address-analyzer";
+import { supabase } from "@/integrations/supabase/client";
+import { getRecentMemories } from "@/shared/services/memoryService";
 
 interface ListingAnalysisResponse {
   error?: string;
@@ -26,6 +29,21 @@ interface AddressAnalysisResponse {
   sources?: string[];
   error?: string;
   message?: string;
+}
+
+// Helper to get memories for AI context
+async function getMemoryContextForAI(): Promise<string[]> {
+  try {
+    // Check if user is authenticated
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return [];
+    
+    // Get recent memories
+    return await getRecentMemories(session.user.id, 'market');
+  } catch (error) {
+    console.error("Error getting memories for AI context:", error);
+    return [];
+  }
 }
 
 export async function analyzeListingUrl(
@@ -112,7 +130,15 @@ export async function analyzeListingUrl(
         });
         
         console.log("Fetching detailed analysis for address:", data.address);
-        const detailedAnalysis = await analyzeAddressWithSupabase({ address: data.address });
+        
+        // Get memory context for AI
+        const memories = await getMemoryContextForAI();
+        console.log("Got memory context, memories count:", memories.length);
+        
+        const detailedAnalysis = await analyzeAddressWithSupabase({
+          address: data.address,
+          memories
+        });
         
         if (detailedAnalysis && detailedAnalysis.text && detailedAnalysis.text.length > 10) {
           addAgentMessage({
@@ -173,7 +199,14 @@ export async function analyzeAddress(
   try {
     console.log("Sending request to address-analyzer API with text:", text);
     
-    const data = await analyzeAddressWithSupabase({ address: text });
+    // Get memory context for AI
+    const memories = await getMemoryContextForAI();
+    console.log("Got memory context, memories count:", memories.length);
+    
+    const data = await analyzeAddressWithSupabase({ 
+      address: text,
+      memories
+    });
     
     console.log("Received address analysis data:", data);
     

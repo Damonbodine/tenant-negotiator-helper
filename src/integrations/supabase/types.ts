@@ -60,6 +60,36 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_memories: {
+        Row: {
+          feature_type: string
+          id: string
+          is_active: boolean
+          raw_chat_log: string
+          summary: string
+          timestamp: string
+          user_id: string
+        }
+        Insert: {
+          feature_type?: string
+          id?: string
+          is_active?: boolean
+          raw_chat_log: string
+          summary: string
+          timestamp?: string
+          user_id: string
+        }
+        Update: {
+          feature_type?: string
+          id?: string
+          is_active?: boolean
+          raw_chat_log?: string
+          summary?: string
+          timestamp?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       leases: {
         Row: {
           analysis: Json | null
