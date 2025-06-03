@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { ChatMessage } from './types';
 import { promptService } from './promptTemplates';
@@ -33,14 +32,30 @@ export const chatClient = {
         enhancedSystemPrompt += "\n\n## ACTIVATED CONTEXT MODULES:\n" + 
           activatedSubPrompts.map(sp => sp.content).join("\n\n");
       }
+
+      // Get current user for memory context
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id;
       
-      console.log('Calling chat-ai function with OpenAI GPT-4.1');
-      // Call the OpenAI API through our edge function
-      const { data, error } = await supabase.functions.invoke('chat-ai', {
+      console.log('Calling chat-ai-enhanced function with rental memory');
+      
+      // Convert history to expected format
+      const formattedHistory = history.map(msg => ({
+        role: msg.type === 'user' ? 'user' : 'assistant',
+        content: msg.text
+      }));
+
+      // Call the enhanced AI function through our edge function
+      const { data, error } = await supabase.functions.invoke('chat-ai-enhanced', {
         body: { 
           message, 
-          history,
-          systemPrompt: enhancedSystemPrompt
+          history: formattedHistory,
+          systemPrompt: enhancedSystemPrompt,
+          context: {
+            userId: userId,
+            chatType: 'general_advice',
+            propertyContext: null
+          }
         },
       });
 
@@ -59,6 +74,8 @@ export const chatClient = {
       // Log model information for verification
       if (data.model) {
         console.log(`Model used for this response: ${data.model}`);
+        console.log(`Memory storage: ${data.storedInMemory ? 'YES' : 'NO'}`);
+        console.log(`Memory context: ${data.hasMemory ? 'YES' : 'NO'}`);
       } else {
         console.warn('No model information returned from AI service');
       }

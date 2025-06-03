@@ -1,10 +1,16 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 export const marketService = {
   async getMarketInsights(query: string): Promise<string> {
     try {
-      const { data, error } = await supabase.functions.invoke('chat-ai', {
+      // Get current user for memory context
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id;
+
+      // Try to extract property context from the query
+      const propertyContext = extractPropertyContext(query);
+
+      const { data, error } = await supabase.functions.invoke('chat-ai-enhanced', {
         body: { 
           message: query,
           history: [],
@@ -18,7 +24,12 @@ Your task:
 - Focus on helping renters make informed decisions with actionable insights
 - Keep responses under 250 words
 
-Always prioritize accuracy and clarity in your market analysis.`
+Always prioritize accuracy and clarity in your market analysis.`,
+          context: {
+            userId: userId,
+            chatType: 'market_analysis',
+            propertyContext: propertyContext
+          }
         }
       });
 
@@ -35,6 +46,9 @@ Always prioritize accuracy and clarity in your market analysis.`
       // Log model information if available
       if (data.model) {
         console.log(`Market insights generated using model: ${data.model}`);
+        console.log(`Memory storage: ${data.storedInMemory ? 'YES' : 'NO'}`);
+        console.log(`Memory context: ${data.hasMemory ? 'YES' : 'NO'}`);
+        console.log(`Property context: ${propertyContext ? 'YES' : 'NO'}`);
       }
 
       return data?.text || "Market data not available at the moment.";
@@ -46,7 +60,14 @@ Always prioritize accuracy and clarity in your market analysis.`
 
   async getNegotiationAdvice(query: string): Promise<string> {
     try {
-      const { data, error } = await supabase.functions.invoke('chat-ai', {
+      // Get current user for memory context
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id;
+
+      // Try to extract property context from the query
+      const propertyContext = extractPropertyContext(query);
+
+      const { data, error } = await supabase.functions.invoke('chat-ai-enhanced', {
         body: { 
           message: query,
           history: [],
@@ -60,7 +81,12 @@ Your task:
 - Adapt advice based on current market conditions (hot vs. cool markets)
 - Keep responses under 300 words with clearly formatted sections
 
-Remember to balance assertiveness with professionalism in all negotiation advice.`
+Remember to balance assertiveness with professionalism in all negotiation advice.`,
+          context: {
+            userId: userId,
+            chatType: 'negotiation_help',
+            propertyContext: propertyContext
+          }
         }
       });
 
@@ -77,6 +103,9 @@ Remember to balance assertiveness with professionalism in all negotiation advice
       // Log model information if available
       if (data.model) {
         console.log(`Negotiation advice generated using model: ${data.model}`);
+        console.log(`Memory storage: ${data.storedInMemory ? 'YES' : 'NO'}`);
+        console.log(`Memory context: ${data.hasMemory ? 'YES' : 'NO'}`);
+        console.log(`Property context: ${propertyContext ? 'YES' : 'NO'}`);
       }
 
       return data?.text || "Negotiation advice not available at the moment.";
@@ -118,3 +147,43 @@ Remember to balance assertiveness with professionalism in all negotiation advice
     }
   }
 };
+
+// Helper function to extract property context from user queries
+function extractPropertyContext(query: string): any {
+  const context: any = {};
+  
+  // Extract rent amounts (both current and target)
+  const rentMatches = query.match(/\$?(\d{1,2}),?(\d{3})/g);
+  if (rentMatches && rentMatches.length >= 1) {
+    // Remove $ and commas, convert to cents
+    const amounts = rentMatches.map(match => parseInt(match.replace(/[$,]/g, '')) * 100);
+    context.rent = Math.max(...amounts); // Assume highest is current rent
+    if (amounts.length > 1) {
+      context.targetRent = Math.min(...amounts); // Assume lowest is target
+    }
+  }
+  
+  // Extract bedroom count
+  const bedroomMatch = query.match(/(\d+)\s*(?:br|bedroom|bed)/i);
+  if (bedroomMatch) {
+    context.bedrooms = parseInt(bedroomMatch[1]);
+  }
+  
+  // Extract address/location
+  const locationPatterns = [
+    /(?:at|on|in)\s+([^\,\.\?\!]+)/i,
+    /(\d+\s+[^,\.\?\!]+(?:st|street|ave|avenue|rd|road|blvd|boulevard|way|ln|lane))/i,
+    /(san francisco|sf|oakland|berkeley|[a-z]+\s+[a-z]+)/i
+  ];
+  
+  for (const pattern of locationPatterns) {
+    const match = query.match(pattern);
+    if (match && match[1]) {
+      context.address = match[1].trim();
+      break;
+    }
+  }
+  
+  // Only return context if we found something meaningful
+  return Object.keys(context).length > 0 ? context : null;
+}
