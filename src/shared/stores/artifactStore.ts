@@ -1,3 +1,15 @@
+/**
+ * Artifact Store - Central state management for visual artifacts
+ * 
+ * This store manages the artifact panel system that displays interactive components
+ * like affordability calculators, market analysis, etc. alongside chat conversations.
+ * 
+ * Key Features:
+ * - Smart triggering based on conversation content
+ * - Multiple layout modes (split, overlay, collapsed)  
+ * - Priority-based artifact ordering
+ * - Persistent panel preferences
+ */
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { VisualArtifact } from '@/shared/types/artifacts';
@@ -199,7 +211,21 @@ export const useArtifactStore = create<ArtifactStore>()(
           panelWidth: state.panelWidth,
           layoutMode: state.layoutMode,
           panelVisible: state.panelVisible
-        })
+        }),
+        // Add error handling for corrupted storage
+        onRehydrateStorage: () => {
+          return (_state, error) => {
+            if (error) {
+              console.error('Failed to rehydrate artifact store:', error);
+              // Reset to defaults if storage is corrupted
+              return {
+                panelWidth: 600,
+                layoutMode: 'split' as const,
+                panelVisible: false
+              };
+            }
+          };
+        }
       }
     ),
     { name: 'artifact-store' }
