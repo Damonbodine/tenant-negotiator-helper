@@ -4,6 +4,8 @@ import { agentService } from "@/shared/services/agentService";
 import { voiceClient } from "@/shared/services/voiceClient";
 import { analyzeListingUrl } from "@/listingAnalyzer/services/listingAnalyzerService";
 import { ChatType } from "@/chat/hooks/useAgentChat";
+import { detectAffordabilityTrigger, extractFinancialData } from "@/shared/services/chatClient";
+import { useArtifactStore } from "@/shared/stores/artifactStore";
 
 // --- Suggestions and triggers mapping ---
 const suggestionList = [
@@ -185,6 +187,25 @@ export async function processUserMessage(messageText: string, {
     };
 
     setMessages((prev: ChatMessage[]) => [...prev, finalAgentMessage]);
+
+    // AFFORDABILITY CALCULATOR TRIGGERING: Check if we should show affordability calculator
+    setMessages((prevMessages) => {
+      const fullHistory = [...prevMessages];
+      
+      if (detectAffordabilityTrigger(messageText, fullHistory)) {
+        console.log('🧮 Affordability trigger detected in message:', messageText);
+        
+        // Extract financial data from the conversation
+        const financialData = extractFinancialData(messageText, fullHistory);
+        console.log('💰 Extracted financial data:', financialData);
+        
+        // Trigger affordability calculator artifact
+        const { triggerAffordabilityCalculator } = useArtifactStore.getState();
+        triggerAffordabilityCalculator(financialData);
+      }
+      
+      return prevMessages; // Return unchanged
+    });
 
     // SUGGESTIONS: Analyze input + history and add suggestions for next steps
     // Create a history array with the current interaction
