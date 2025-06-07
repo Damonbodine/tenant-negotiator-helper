@@ -14,7 +14,7 @@ import { analyzeListingUrl, analyzeAddress } from "@/listingAnalyzer/services/li
 import { Link, useParams } from "react-router-dom";
 import { useMemory } from "@/shared/hooks/useMemory";
 import { supabase } from "@/integrations/supabase/client";
-import { Switch } from "@/shared/ui/switch";
+import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
 const MarketInsights = () => {
@@ -57,21 +57,52 @@ const MarketInsights = () => {
     };
   }, []);
 
+  // FIXED: Prevent infinite loop by handling initial address separately
   useEffect(() => {
-    if (params.address) {
-      handleSendMessage();
+    if (params.address && messages.length === 1) { // Only run on initial load
+      setInput(params.address);
+      // Auto-analyze the address from URL params
+      const analyzeInitialAddress = async () => {
+        const userMessage: ChatMessage = {
+          id: Date.now().toString(),
+          type: 'user',
+          text: params.address,
+          timestamp: new Date()
+        };
+        
+        setMessages(prev => [...prev, userMessage]);
+        setIsLoading(true);
+        setError(null);
+        
+        try {
+          const wasListingAnalyzed = await analyzeListingUrl(params.address, addAgentMessage);
+          if (!wasListingAnalyzed) {
+            await analyzeAddress(params.address, addAgentMessage);
+          }
+        } catch (error: any) {
+          console.error("Error analyzing initial address:", error);
+          setError(error.message || "Failed to analyze the address");
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      analyzeInitialAddress();
     }
-  }, []);
+  }, [params.address, messages.length]); // Include dependencies
 
+  // FIXED: Proper cleanup without state updates in cleanup function
   useEffect(() => {
-    // When the component unmounts or when messages change significantly,
-    // save the conversation if it's meaningful
     return () => {
-      if (messages.length > 1 && session?.user) {
-        saveMemory(messages);
+      // Save conversation on unmount if meaningful and user is authenticated
+      if (messages.length > 1 && session?.user && memoryEnabled) {
+        // Use setTimeout to avoid state updates during cleanup
+        setTimeout(() => {
+          saveMemory(messages);
+        }, 0);
       }
     };
-  }, []);
+  }, [messages, session?.user, memoryEnabled, saveMemory]);
 
   const quickActions = ["123 Main St, New York, NY", "Analyze 1-bed apartments in San Francisco", "Is $2,500 fair for a 2-bed in Chicago?"];
   
