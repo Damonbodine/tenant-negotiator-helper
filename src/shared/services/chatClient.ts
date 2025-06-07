@@ -169,7 +169,18 @@ function extractPropertyContext(message: string, history: ChatMessage[]): any {
   return Object.keys(context).length > 0 ? context : null;
 }
 
-// Helper function to detect affordability keywords for triggering calculator
+/**
+ * Affordability Trigger Detection
+ * 
+ * Analyzes conversation content to automatically trigger the affordability calculator
+ * when users discuss budget, income, or rent affordability topics.
+ * 
+ * Trigger Categories:
+ * - Budget keywords: "afford", "budget", "expensive", "cost"
+ * - Income references: "income", "salary", "make", "earn" 
+ * - Financial ratios: "30%", "debt-to-income"
+ * - Financial stress: "tight budget", "struggling", "can't afford"
+ */
 export function detectAffordabilityTrigger(message: string, history: ChatMessage[]): boolean {
   const fullText = [message, ...history.map(h => h.text)].join(' ').toLowerCase();
   
