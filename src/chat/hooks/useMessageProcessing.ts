@@ -188,28 +188,27 @@ export async function processUserMessage(messageText: string, {
 
     setMessages((prev: ChatMessage[]) => [...prev, finalAgentMessage]);
 
-    // AFFORDABILITY CALCULATOR TRIGGERING: Check if we should show affordability calculator
-    setMessages((prevMessages) => {
-      const fullHistory = [...prevMessages];
-      
-      if (detectAffordabilityTrigger(messageText, fullHistory)) {
-        console.log('🧮 Affordability trigger detected in message:', messageText);
-        
-        // Extract financial data from the conversation
-        const financialData = extractFinancialData(messageText, fullHistory);
-        console.log('💰 Extracted financial data:', financialData);
-        
-        // Trigger affordability calculator artifact
-        const { triggerAffordabilityCalculator } = useArtifactStore.getState();
-        triggerAffordabilityCalculator(financialData);
-      }
-      
-      return prevMessages; // Return unchanged
-    });
-
     // SUGGESTIONS: Analyze input + history and add suggestions for next steps
     // Create a history array with the current interaction
     const currentHistory = [userMessage, finalAgentMessage];
+
+    // AFFORDABILITY CALCULATOR TRIGGERING: Defer to prevent render loops
+    // Use setTimeout to break out of the current render cycle
+    setTimeout(() => {
+      const completeHistory = [...currentHistory];
+      
+      if (detectAffordabilityTrigger(messageText, completeHistory)) {
+        console.log('🧮 Affordability trigger detected in message:', messageText);
+        
+        // Extract financial data from the conversation
+        const financialData = extractFinancialData(messageText, completeHistory);
+        console.log('💰 Extracted financial data:', financialData);
+        
+        // Trigger affordability calculator artifact (deferred)
+        const { triggerAffordabilityCalculator } = useArtifactStore.getState();
+        triggerAffordabilityCalculator(financialData);
+      }
+    }, 100); // Small delay to break render cycle
     
     // Calculate dynamic suggestions
     const dynamicSuggestions = getDynamicSuggestions(

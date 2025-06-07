@@ -1,5 +1,5 @@
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { agentService } from "@/shared/services/agentService";
 import { voiceClient } from "@/shared/services/voiceClient";
 import { useAgentState } from "@/chat/hooks/useAgentState";
@@ -18,11 +18,16 @@ export function useAgentChat({ chatType = "general" }: UseAgentChatProps) {
   const state = useAgentState();
   const { errorState, resetError, handleError } = useErrorHandling();
   const { audioRef, mediaRecorderRef, audioChunksRef, handleVoiceChange, toggleMute } = useVoiceSettings();
+  const initializedRef = useRef(false);
 
+  // FIXED: Prevent infinite loop by using ref to track initialization
   useEffect(() => {
     audioRef.current = new Audio();
     
-    if (state.messages.length === 0) {
+    // Only initialize once per chatType change
+    if (!initializedRef.current || state.messages.length === 0) {
+      initializedRef.current = true;
+      
       let welcomeMessage = "";
       
       switch (chatType) {
@@ -37,8 +42,8 @@ export function useAgentChat({ chatType = "general" }: UseAgentChatProps) {
       }
       
       const initialMessage: ChatMessage = {
-        id: "welcome",
-        type: "agent", // Explicitly typed as "agent" to match ChatMessage type
+        id: `welcome-${chatType}`,
+        type: "agent",
         text: welcomeMessage,
         timestamp: new Date()
       };
@@ -55,7 +60,7 @@ export function useAgentChat({ chatType = "general" }: UseAgentChatProps) {
       
       checkApiKey();
     }
-  }, [state.messages.length, chatType]);
+  }, [chatType]); // FIXED: Only depend on chatType, not message length
 
   const loadVoices = async () => {
     try {
