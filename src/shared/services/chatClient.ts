@@ -168,3 +168,71 @@ function extractPropertyContext(message: string, history: ChatMessage[]): any {
   // Only return context if we found something meaningful
   return Object.keys(context).length > 0 ? context : null;
 }
+
+// Helper function to detect affordability keywords for triggering calculator
+export function detectAffordabilityTrigger(message: string, history: ChatMessage[]): boolean {
+  const fullText = [message, ...history.map(h => h.text)].join(' ').toLowerCase();
+  
+  const AFFORDABILITY_TRIGGERS = [
+    // Budget and affordability keywords
+    /\bafford\b|\bbudget\b|\bexpensive\b|\bcost\b|\btoo much\b|\boverpriced\b/i,
+    // Income and salary keywords  
+    /\bincome\b|\bsalary\b|\bmake\b|\bearn\b|\bpaycheck\b|\bfinancial situation\b/i,
+    // 30% rule and debt-to-income keywords
+    /30%|thirty percent|debt.to.income|housing costs|rent burden/i,
+    // Financial stress keywords
+    /tight budget|money problems|struggling|broke|can't afford|financial strain/i,
+    // Specific affordability phrases
+    /what can i afford|is this affordable|within my budget|can i afford/i
+  ];
+  
+  return AFFORDABILITY_TRIGGERS.some(pattern => pattern.test(fullText));
+}
+
+// Helper function to extract financial data for affordability calculator
+export function extractFinancialData(message: string, history: ChatMessage[]): { income?: number; rent?: number } {
+  const fullText = [message, ...history.map(h => h.text)].join(' ');
+  const result: { income?: number; rent?: number } = {};
+  
+  // Extract income amounts (look for income/salary mentions)
+  const incomePatterns = [
+    /(?:income|salary|make|earn)\s*(?:is|of)?\s*\$?(\d{1,3}),?(\d{3})/gi,
+    /\$?(\d{1,3}),?(\d{3})\s*(?:income|salary|per year|annually)/gi,
+    /(\d{1,3})k?\s*(?:income|salary|per year|annually)/gi
+  ];
+  
+  for (const pattern of incomePatterns) {
+    const matches = [...fullText.matchAll(pattern)];
+    if (matches.length > 0) {
+      const match = matches[0];
+      if (match[2]) {
+        // Format: $50,000 or 50,000
+        result.income = parseInt(match[1] + match[2]);
+      } else if (match[1]) {
+        // Format: 50k or 50
+        const num = parseInt(match[1]);
+        result.income = num > 1000 ? num : num * 1000; // Assume 50k if < 1000
+      }
+      break;
+    }
+  }
+  
+  // Extract rent amounts
+  const rentPatterns = [
+    /(?:rent|paying)\s*(?:is)?\s*\$?(\d{1,2}),?(\d{3})/gi,
+    /\$?(\d{1,2}),?(\d{3})\s*(?:rent|per month|monthly)/gi
+  ];
+  
+  for (const pattern of rentPatterns) {
+    const matches = [...fullText.matchAll(pattern)];
+    if (matches.length > 0) {
+      const match = matches[0];
+      if (match[2]) {
+        result.rent = parseInt(match[1] + match[2]);
+      }
+      break;
+    }
+  }
+  
+  return result;
+}
