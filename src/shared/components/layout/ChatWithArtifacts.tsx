@@ -19,16 +19,19 @@ export const ChatWithArtifacts: React.FC<ChatWithArtifactsProps> = memo(({
   
   const showPanel = visible && layoutMode !== 'collapsed';
   
+  // DEBUG: Force split mode for now to avoid overlay issues
+  const debugLayoutMode = 'split';
+  
   return (
     <div className={cn("flex h-full relative", className)}>
       {/* Chat Area */}
       <div 
         className={cn(
           "flex-1 min-w-0 transition-all duration-200",
-          showPanel && layoutMode === 'split' && "mr-1"
+          showPanel && debugLayoutMode === 'split' && "mr-1"
         )}
         style={{
-          marginRight: showPanel && layoutMode === 'split' ? width : 0
+          marginRight: showPanel && debugLayoutMode === 'split' ? width : 0
         }}
       >
         {children}
@@ -40,14 +43,14 @@ export const ChatWithArtifacts: React.FC<ChatWithArtifactsProps> = memo(({
           <ArtifactPanel 
             className={cn(
               "transition-all duration-200",
-              layoutMode === 'split' && "fixed right-0 top-0 h-full z-40"
+              debugLayoutMode === 'split' && "fixed right-0 top-0 h-full z-40"
             )}
           />
         </React.Suspense>
       )}
       
-      {/* Overlay backdrop for overlay mode */}
-      {visible && layoutMode === 'overlay' && (
+      {/* Overlay backdrop for overlay mode - DISABLED FOR DEBUG */}
+      {visible && debugLayoutMode === 'overlay' && (
         <div 
           className="fixed inset-0 bg-black/20 z-30"
           onClick={() => {

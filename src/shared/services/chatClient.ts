@@ -15,6 +15,10 @@ export const chatClient = {
 
   async sendMessageToGemini(message: string, history: ChatMessage[]): Promise<string> {
     try {
+      // 🚀 PERFORMANCE TRACKING: Monitor client-side timing
+      const clientStart = Date.now();
+      console.log("🚀 USING REGULAR CHAT CLIENT (NO CACHING)");
+      console.log("🚀 CLIENT PERFORMANCE: Starting request at", new Date().toISOString());
       console.log("Sending message to AI model:", message);
       console.log("With history:", history);
       
@@ -53,6 +57,10 @@ export const chatClient = {
       
       console.log(`Calling chat-ai-enhanced function with rental memory (Type: ${chatType})`);
       
+      // 🚀 PERFORMANCE: Track API call timing
+      const apiCallStart = Date.now();
+      console.log("🚀 API CALL: Starting edge function call...");
+      
       // Use enhanced chat function with memory capabilities
       const { data, error } = await supabase.functions.invoke('chat-ai-enhanced', {
         body: { 
@@ -66,6 +74,10 @@ export const chatClient = {
           }
         },
       });
+
+      const apiCallTime = Date.now() - apiCallStart;
+      console.log(`🚀 API CALL COMPLETE: ${apiCallTime}ms`);
+      console.log(`🎯 API Performance: ${apiCallTime < 2000 ? '✅ EXCELLENT' : apiCallTime < 5000 ? '⚠️ GOOD' : '❌ SLOW'}`);
 
       if (error) {
         console.error('Error calling AI API:', error);
@@ -86,9 +98,23 @@ export const chatClient = {
         console.log(`Memory context: ${data.hasMemory ? 'YES' : 'NO'}`);
         console.log(`Chat type detected: ${chatType}`);
         console.log(`Property context: ${propertyContext ? 'YES' : 'NO'}`);
+        
+        // 🚀 PREMIUM INTELLIGENCE STATUS
+        if (data.premiumIntelligence) {
+          console.log(`🚀 PREMIUM INTELLIGENCE: ${data.premiumIntelligence.enabled ? 'ENABLED' : 'DISABLED'}`);
+          console.log(`🚀 Server Response Time: ${data.premiumIntelligence.responseTime}ms`);
+          console.log(`🚀 Performance Grade: ${data.premiumIntelligence.performanceGrade.toUpperCase()}`);
+          console.log(`🚀 Parallel Operations: ${data.premiumIntelligence.parallelOperations}`);
+        } else {
+          console.warn('⚠️ Premium Intelligence not detected in response - using legacy system');
+        }
       } else {
         console.warn('No model information returned from AI service');
       }
+
+      const totalClientTime = Date.now() - clientStart;
+      console.log(`🚀 TOTAL CLIENT TIME: ${totalClientTime}ms (includes network + processing)`);
+      console.log(`🎯 Overall Performance: ${totalClientTime < 3000 ? '✅ EXCELLENT' : totalClientTime < 8000 ? '⚠️ GOOD' : '❌ SLOW'}`);
 
       return data.text;
     } catch (error) {

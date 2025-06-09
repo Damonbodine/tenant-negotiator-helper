@@ -29,14 +29,14 @@ export default function PropertyComparison() {
   };
 
   return (
-      <main className="flex-1 container flex flex-col items-center justify-center py-12 mb-16">
-    <div className="w-full max-w-4xl h-[calc(100vh-21rem)]">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold">Property Comparison</h2>
-                  <Link to="/" className="px-4 py-2 rounded-lg text-muted-foreground border-muted-foreground border-[1px] hover:opacity-70 transition-opacity">
-                    Back to home
-                  </Link>
-                </div>
+    <main className="container py-8">
+      <div className="w-full max-w-4xl mx-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold">Property Comparison</h2>
+          <Link to="/" className="px-4 py-2 rounded-lg text-muted-foreground border-muted-foreground border-[1px] hover:opacity-70 transition-opacity">
+            Back to home
+          </Link>
+        </div>
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold mb-4">Advanced Property Comparison</h1>

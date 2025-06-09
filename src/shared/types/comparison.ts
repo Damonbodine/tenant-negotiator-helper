@@ -8,6 +8,31 @@ export interface PropertyDetails {
   price: number;
   propertyType?: string;
   url?: string;
+  // Enhanced market analysis from unified service
+  marketAnalysis?: {
+    verdict: 'under-priced' | 'over-priced' | 'priced right' | 'unknown';
+    marketAverage?: number;
+    deltaPercent?: string;
+    rentcastAnalysis?: {
+      estimate: number;
+      confidence: number;
+      comparables: Array<{
+        address: string;
+        rent: number;
+        distance: number;
+        bedrooms: number;
+        bathrooms: number;
+      }>;
+      marketData?: {
+        averageRent: number;
+        medianRent: number;
+        pricePerSqft: number;
+      };
+      verdict: string;
+    };
+    scrapingMethod?: string;
+    unitId?: string;
+  };
 }
 
 export interface PropertyComparisonResponse {

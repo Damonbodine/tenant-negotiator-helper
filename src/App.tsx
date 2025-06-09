@@ -55,6 +55,7 @@ function AppRoutes() {
 }
 
 function LoadingScreen() {
+  console.log("🔄 LoadingScreen is showing - component is loading...");
   return (
     <div className="min-h-screen flex items-center justify-center">
       <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
@@ -67,9 +68,9 @@ function App() {
     <ErrorBoundary>
       <AuthProvider>
         <Router>
-          <div className="flex flex-col">
+          <div className="min-h-screen flex flex-col">
             <Header />
-            <div className="flex-1">
+            <div className="flex-1 pb-32">
               <AppRoutes />
             </div>
             <Footer />

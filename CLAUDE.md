@@ -31,9 +31,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Tenant Negotiation Helper** - A comprehensive rental negotiation platform with multiple tools:
 
 1. **Property Analysis Tools:**
+-Listing analyzer 
+these routes should be harmonized together to great a unified resource. 
    - Listing Analyzer (`/market`) - Analyze rental listings for negotiation insights
    - Property Comparison (`/comparison`) - Compare multiple properties side-by-side
+   both features s
    - Lease Analyzer (`/lease`) - Document analysis for lease terms
+
+   
 
 2. **Negotiation Tools:**
    - Voice Practice (`/practice/voice`) - AI voice chat for negotiation practice

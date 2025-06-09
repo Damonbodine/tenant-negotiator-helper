@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 export const marketService = {
   async getMarketInsights(query: string): Promise<string> {
     try {
+      console.log("🚀 Market Service: Using premium intelligence for faster analysis...");
+      
       // Get current user for memory context
       const { data: { user } } = await supabase.auth.getUser();
       const userId = user?.id;
@@ -10,6 +12,7 @@ export const marketService = {
       // Try to extract property context from the query
       const propertyContext = extractPropertyContext(query);
 
+      // PREMIUM INTELLIGENCE: Use enhanced function with parallel processing
       const { data, error } = await supabase.functions.invoke('chat-ai-enhanced', {
         body: { 
           message: query,
@@ -125,10 +128,59 @@ Remember to balance assertiveness with professionalism in all negotiation advice
     propertyType: string;
   }) {
     try {
-      console.log("Sending property details to rental-analysis function:", propertyDetails);
+      console.log("🚀 PREMIUM PROPERTY ANALYSIS: Using parallel intelligence...");
+      console.log("Property details:", propertyDetails);
       
-      const { data, error } = await supabase.functions.invoke('rental-analysis', {
-        body: { propertyDetails }
+      // Get current user for personalization
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id;
+
+      // Format property details into a comprehensive query
+      const propertyQuery = `Analyze this rental property for negotiation potential:
+
+**Property Details:**
+- Address: ${propertyDetails.address}, ${propertyDetails.zipCode}
+- Size: ${propertyDetails.bedrooms}BR/${propertyDetails.bathrooms}BA, ${propertyDetails.squareFootage} sqft
+- Type: ${propertyDetails.propertyType}
+- Listed Price: $${propertyDetails.price}/month
+
+Please provide:
+1. Market position analysis (above/below/at market)
+2. Negotiation probability and potential savings
+3. Specific leverage points for this property
+4. Recommended negotiation strategy
+5. Market timing considerations`;
+
+      // PREMIUM: Use chat-ai-enhanced with parallel processing instead of rental-analysis
+      const { data, error } = await supabase.functions.invoke('chat-ai-enhanced', {
+        body: { 
+          message: propertyQuery,
+          history: [],
+          systemPrompt: `You are a premium rental market analyst with access to comprehensive market data.
+
+**ANALYSIS REQUIREMENTS:**
+- Provide specific, actionable insights with confidence scores
+- Include exact dollar amounts and percentages when possible  
+- Reference comparable properties and market trends
+- Give clear negotiation recommendations with success probability
+- Format response with clear sections and bullet points
+- Keep analysis comprehensive but under 400 words
+
+**RESPONSE FORMAT:**
+Market Position: [above/below/at market with %]
+Negotiation Probability: [X% with reasoning]
+Potential Savings: $[amount] ([X]% reduction)
+Key Leverage Points: [3-4 specific points]
+Recommended Strategy: [specific approach]
+Timing: [best time to negotiate]`,
+          context: {
+            userId: userId,
+            chatType: 'property_analysis',
+            propertyContext: propertyDetails
+          },
+          enableToolCalling: true,
+          availableTools: ['get_rent_predictions', 'get_market_data', 'search_knowledge_base']
+        }
       });
 
       if (error) {

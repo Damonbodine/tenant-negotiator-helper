@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
 const RENTCAST_API_KEY = Deno.env.get('RENTCAST_API_KEY');
+const FIRECRAWL_API_KEY = Deno.env.get('FIRECRAWL_API_KEY');
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,6 +11,214 @@ const corsHeaders = {
 };
 
 const toTitle = (str: string) => str.replace(/([A-Za-z])(\w*)/g, (_, a, b) => a.toUpperCase() + b.toLowerCase());
+
+/**
+ * Firecrawl scraping strategies
+ */
+async function scrapeWithFirecrawl(url: string, options = {}): Promise<{ content: string; success: boolean; error?: string; structuredData?: any }> {
+  if (!FIRECRAWL_API_KEY) {
+    return { content: '', success: false, error: 'Firecrawl API key not configured' };
+  }
+
+  try {
+    console.log('🔥 Attempting Firecrawl scraping for:', url);
+    
+    // Enhanced options for better unit-specific extraction
+    const defaultOptions = {
+      formats: ['markdown', 'html', 'structured'],
+      onlyMainContent: true,
+      waitFor: 3000,
+      // Extract structured data for apartment listings
+      extractorOptions: {
+        mode: 'llm-extraction',
+        extractionPrompt: `Extract apartment listing data focusing on:
+        - Property address and location details
+        - Specific unit information (unit numbers, IDs)
+        - Rent prices for individual units
+        - Bedroom/bathroom counts for each unit
+        - Square footage for each unit
+        - Amenities and features
+        - Contact information
+        
+        Return as JSON with units array if multiple units exist.`,
+      },
+      includeTags: ['script[type="application/json"]', 'script[type="application/ld+json"]'],
+      ...options
+    };
+    
+    const firecrawlResponse = await fetch('https://api.firecrawl.dev/v1/scrape', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${FIRECRAWL_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        url: url,
+        ...defaultOptions
+      })
+    });
+
+    if (!firecrawlResponse.ok) {
+      const errorText = await firecrawlResponse.text();
+      console.error('🔥 Firecrawl API error:', firecrawlResponse.status, errorText);
+      return { 
+        content: '', 
+        success: false, 
+        error: `Firecrawl API error: ${firecrawlResponse.status}` 
+      };
+    }
+
+    const firecrawlData = await firecrawlResponse.json();
+    
+    if (!firecrawlData.success) {
+      console.error('🔥 Firecrawl scraping failed:', firecrawlData.error);
+      return { 
+        content: '', 
+        success: false, 
+        error: firecrawlData.error || 'Firecrawl scraping failed' 
+      };
+    }
+
+    // Try multiple content extraction methods for better compatibility
+    const content = firecrawlData.data?.markdown || 
+                   firecrawlData.data?.html || 
+                   firecrawlData.data?.text || 
+                   '';
+    const structuredData = firecrawlData.data?.extract || 
+                          firecrawlData.data?.structured ||
+                          firecrawlData.data?.llm_extraction;
+    
+    if (content.length < 500) {
+      console.warn('🔥 Firecrawl returned suspiciously short content:', content.length);
+      return { 
+        content, 
+        success: false, 
+        error: 'Content too short, likely blocked or empty page' 
+      };
+    }
+
+    console.log('🔥 Firecrawl scraping successful, content length:', content.length);
+    if (structuredData) {
+      console.log('🔥 Structured data extracted:', JSON.stringify(structuredData).substring(0, 200));
+    }
+    
+    return { content, success: true, structuredData };
+
+  } catch (error) {
+    console.error('🔥 Firecrawl scraping error:', error);
+    return { 
+      content: '', 
+      success: false, 
+      error: error.message || 'Firecrawl scraping failed' 
+    };
+  }
+}
+
+async function scrapeWithFirecrawlStealth(url: string): Promise<{ content: string; success: boolean; error?: string }> {
+  console.log('🥷 Attempting Firecrawl stealth mode for:', url);
+  
+  return scrapeWithFirecrawl(url, {
+    waitFor: 5000,
+    screenshot: false,
+    includeTags: ['div', 'span', 'p', 'h1', 'h2', 'h3'],
+    excludeTags: ['script', 'style', 'nav', 'footer', 'header'],
+    onlyMainContent: true
+  });
+}
+
+async function scrapeWithDirectFetch(url: string): Promise<{ content: string; success: boolean; error?: string }> {
+  console.log('🌐 Attempting direct fetch for:', url);
+  
+  const headers = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+    "sec-ch-ua": '"Not A(Brand";v="99", "Google Chrome";v="124", "Chromium";v="124"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"macOS"',
+    "Referer": "https://www.google.com/search?q=apartments",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
+    "Upgrade-Insecure-Requests": "1",
+    "sec-fetch-site": "cross-site",
+    "sec-fetch-mode": "navigate",
+    "sec-fetch-user": "?1",
+    "sec-fetch-dest": "document",
+  };
+
+  try {
+    const response = await fetch(url, { 
+      headers,
+      redirect: 'follow',
+    });
+
+    if (!response.ok) {
+      return { 
+        content: '', 
+        success: false, 
+        error: `HTTP ${response.status}: ${response.statusText}` 
+      };
+    }
+    
+    const content = await response.text();
+    
+    if (content.length < 1000) {
+      return { 
+        content, 
+        success: false, 
+        error: 'Content too short, likely blocked' 
+      };
+    }
+
+    console.log('🌐 Direct fetch successful, content length:', content.length);
+    return { content, success: true };
+
+  } catch (error) {
+    console.error('🌐 Direct fetch error:', error);
+    return { 
+      content: '', 
+      success: false, 
+      error: error.message || 'Direct fetch failed' 
+    };
+  }
+}
+
+/**
+ * Enhanced scraping with fallback chain
+ */
+async function scrapeUrlWithFallbacks(url: string): Promise<{ content: string; method: string; success: boolean; error?: string; structuredData?: any }> {
+  const strategies = [
+    { name: 'firecrawl', method: scrapeWithFirecrawl },
+    { name: 'firecrawl_stealth', method: scrapeWithFirecrawlStealth },
+    { name: 'direct_fetch', method: scrapeWithDirectFetch }
+  ];
+
+  for (const strategy of strategies) {
+    console.log(`🔄 Trying scraping strategy: ${strategy.name}`);
+    
+    const result = await strategy.method(url);
+    
+    if (result.success) {
+      console.log(`✅ Scraping successful with: ${strategy.name}`);
+      return {
+        content: result.content,
+        method: strategy.name,
+        success: true,
+        structuredData: result.structuredData
+      };
+    } else {
+      console.log(`❌ Strategy ${strategy.name} failed:`, result.error);
+    }
+  }
+
+  console.error('💥 All scraping strategies failed');
+  return {
+    content: '',
+    method: 'none',
+    success: false,
+    error: 'All scraping methods failed. The website may be blocking automated access.'
+  };
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -108,66 +317,15 @@ serve(async (req) => {
       }
     }
 
-    // Enhanced browser-like headers with more sophistication to avoid detection
-    const headers = {
-      "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-      "Accept-Language": "en-US,en;q=0.9",
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-      "sec-ch-ua": '"Not A(Brand";v="99", "Google Chrome";v="124", "Chromium";v="124"',
-      "sec-ch-ua-mobile": "?0",
-      "sec-ch-ua-platform": '"macOS"',
-      "Referer": "https://www.google.com/search?q=apartments+in+austin",
-      "Cache-Control": "no-cache",
-      "Pragma": "no-cache",
-      "Upgrade-Insecure-Requests": "1",
-      "sec-fetch-site": "cross-site",
-      "sec-fetch-mode": "navigate",
-      "sec-fetch-user": "?1",
-      "sec-fetch-dest": "document",
-    };
-
-    // Try different approaches for fetching HTML
-    let htmlResponse;
-    let html = '';
-    try {
-      console.log('Attempting to fetch HTML with enhanced headers...');
-      htmlResponse = await fetch(cleanUrl, { 
-        headers,
-        redirect: 'follow',
-      });
-
-      if (!htmlResponse.ok) {
-        console.error(`Failed to fetch with first method: ${htmlResponse.status} ${htmlResponse.statusText}`);
-        
-        // Alternative fetch approach
-        console.log('Trying alternative fetch approach...');
-        const alternativeHeaders = {
-          ...headers,
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0",
-        };
-
-        htmlResponse = await fetch(cleanUrl, {
-          headers: alternativeHeaders,
-          redirect: 'follow',
-        });
-      }
-      
-      if (!htmlResponse.ok) {
-        throw new Error(`Failed to fetch listing page: ${htmlResponse.status} ${htmlResponse.statusText}`);
-      }
-      
-      html = await htmlResponse.text();
-      console.log('HTML fetched successfully, length:', html.length);
-      
-      if (html.length < 1000) {
-        console.error('Received suspiciously short HTML, likely blocked');
-        throw new Error('Received suspiciously short HTML response');
-      }
-    } catch (error) {
-      console.error('Error fetching HTML:', error);
+    // Use enhanced scraping with Firecrawl fallback chain
+    console.log('🔄 Starting enhanced scraping with fallback chain...');
+    const scrapingResult = await scrapeUrlWithFallbacks(cleanUrl);
+    
+    if (!scrapingResult.success) {
+      console.error('All scraping methods failed:', scrapingResult.error);
       return new Response(
         JSON.stringify({ 
-          error: error.message || 'Failed to fetch listing page', 
+          error: scrapingResult.error || 'Failed to fetch listing page', 
           message: "We're having trouble accessing this website. Try using another real estate site like Apartments.com or Realtor.com" 
         }),
         { 
@@ -175,6 +333,14 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
+    }
+    
+    const html = scrapingResult.content;
+    const structuredData = scrapingResult.structuredData;
+    console.log(`✅ HTML fetched successfully using ${scrapingResult.method}, length:`, html.length);
+    
+    if (structuredData) {
+      console.log('🔍 Structured data extracted by Firecrawl:', JSON.stringify(structuredData).substring(0, 300));
     }
 
     // Check HTML for unit-specific data patterns
@@ -290,7 +456,7 @@ ONLY respond with a valid JSON object with these properties:
             },
             {
               role: 'user',
-              content: `Extract details SPECIFICALLY for unit ID ${unitId || 'not provided'}${unitNumber ? `, unit number ${unitNumber}` : ''}. ${unitFragment ? `The URL fragment is '#${unitFragment}'` : ''}\n\n${snippet}`
+              content: `Extract details SPECIFICALLY for unit ID ${unitId || 'not provided'}${unitNumber ? `, unit number ${unitNumber}` : ''}. ${unitFragment ? `The URL fragment is '#${unitFragment}'` : ''}${structuredData ? `\n\nSTRUCTURED DATA: ${JSON.stringify(structuredData)}` : ''}\n\nHTML CONTENT:\n${snippet}`
             }
           ]
         })
@@ -505,53 +671,158 @@ ONLY respond with a valid JSON object with these properties:
       );
     }
 
-    // Compare with RentCast if possible
+    // Enhanced RentCast analysis for comprehensive market insights
     let verdict = "unknown";
-    if (props.zipcode && props.beds && RENTCAST_API_KEY) {
+    let rentcastAnalysis = null;
+    
+    if (props.address && RENTCAST_API_KEY) {
       try {
-        console.log('Fetching RentCast data for comparison');
-        const rentcastResponse = await fetch(
-          `https://api.rentcast.io/v1/rentalComps?postalCode=${props.zipcode}&bedrooms=${props.beds}`,
-          { headers: { 'X-Api-Key': RENTCAST_API_KEY } }
-        );
+        console.log('🏠 Starting enhanced RentCast analysis...');
+        
+        // Prepare property details for RentCast
+        const propertyDetails = {
+          address: props.address,
+          zipCode: props.zipcode,
+          bedrooms: typeof props.beds === 'number' ? props.beds : parseInt(props.beds?.toString() || '0'),
+          bathrooms: typeof props.baths === 'number' ? props.baths : parseFloat(props.baths?.toString() || '0'),
+          squareFootage: typeof props.sqft === 'number' ? props.sqft : parseInt(props.sqft?.toString() || '0'),
+          propertyType: 'Apartment' // Default for most listings
+        };
 
-        if (!rentcastResponse.ok) {
-          console.error(`RentCast API error: ${rentcastResponse.status} ${rentcastResponse.statusText}`);
-          // Continue without RentCast data, but log the error
-          console.log('Continuing without RentCast market data');
-        } else {
-          const rc = await rentcastResponse.json();
-          console.log('RentCast response:', rc);
+        // Get RentCast rent estimate with comparables
+        const rentEstimateResponse = await fetch(`https://api.rentcast.io/v1/avm/rent/long-term?` + new URLSearchParams({
+          address: propertyDetails.address,
+          ...(propertyDetails.bedrooms && { bedrooms: propertyDetails.bedrooms.toString() }),
+          ...(propertyDetails.bathrooms && { bathrooms: propertyDetails.bathrooms.toString() }),
+          ...(propertyDetails.squareFootage && { squareFootage: propertyDetails.squareFootage.toString() }),
+          propertyType: propertyDetails.propertyType
+        }), {
+          headers: { 'X-Api-Key': RENTCAST_API_KEY }
+        });
+
+        if (rentEstimateResponse.ok) {
+          const rentData = await rentEstimateResponse.json();
+          console.log('✅ RentCast estimate received:', rentData);
           
-          const avg = rc?.medianRent;
+          const estimate = rentData.rent || rentData.estimate;
+          const comparables = rentData.comparables || [];
           
-          if (avg && props.rent) {
-            const delta = ((props.rent - avg) / avg) * 100;
-            verdict =
-              delta < -5 ? "under-priced" :
-              delta > 5 ? "over-priced" : "priced right";
-            props.marketAverage = avg;
+          if (estimate && props.rent) {
+            const delta = ((props.rent - estimate) / estimate) * 100;
+            verdict = delta < -5 ? "under-priced" : delta > 5 ? "over-priced" : "priced right";
+            
+            props.marketAverage = estimate;
             props.deltaPercent = delta.toFixed(1);
             
-            console.log('Market analysis complete:', { 
+            rentcastAnalysis = {
+              estimate,
+              confidence: rentData.confidence || 0.8,
+              comparables: comparables.slice(0, 5).map((comp: any) => ({
+                address: comp.address,
+                rent: comp.rent,
+                distance: comp.distance,
+                bedrooms: comp.bedrooms,
+                bathrooms: comp.bathrooms
+              })),
+              verdict
+            };
+            
+            console.log('🎯 Market analysis complete:', { 
               verdict,
-              marketAverage: avg,
-              deltaPercent: delta.toFixed(1)
+              marketAverage: estimate,
+              deltaPercent: delta.toFixed(1),
+              comparablesFound: comparables.length
             });
           }
+        } else {
+          console.warn('RentCast estimate API error:', rentEstimateResponse.status);
         }
+        
+        // Also get market data for broader context if we have zipcode
+        if (props.zipcode) {
+          try {
+            const marketResponse = await fetch(`https://api.rentcast.io/v1/markets/statistics?zipCode=${props.zipcode}`, {
+              headers: { 'X-Api-Key': RENTCAST_API_KEY }
+            });
+            
+            if (marketResponse.ok) {
+              const marketData = await marketResponse.json();
+              console.log('📊 Market data received for zip:', props.zipcode);
+              
+              if (rentcastAnalysis) {
+                rentcastAnalysis.marketData = {
+                  averageRent: marketData.averageRent,
+                  medianRent: marketData.medianRent,
+                  pricePerSqft: marketData.pricePerSquareFoot
+                };
+              }
+            }
+          } catch (marketError) {
+            console.warn('Market data not available:', marketError);
+          }
+        }
+        
       } catch (error) {
-        console.error('Error fetching RentCast data:', error);
-        // Continue without market data
+        console.error('Error in RentCast analysis:', error);
+        // Fallback to simple comparison if detailed analysis fails
+        if (props.zipcode && props.beds) {
+          try {
+            const fallbackResponse = await fetch(
+              `https://api.rentcast.io/v1/rentalComps?postalCode=${props.zipcode}&bedrooms=${props.beds}`,
+              { headers: { 'X-Api-Key': RENTCAST_API_KEY } }
+            );
+            
+            if (fallbackResponse.ok) {
+              const rc = await fallbackResponse.json();
+              const avg = rc?.medianRent;
+              
+              if (avg && props.rent) {
+                const delta = ((props.rent - avg) / avg) * 100;
+                verdict = delta < -5 ? "under-priced" : delta > 5 ? "over-priced" : "priced right";
+                props.marketAverage = avg;
+                props.deltaPercent = delta.toFixed(1);
+                console.log('📈 Fallback market analysis:', { verdict, marketAverage: avg });
+              }
+            }
+          } catch (fallbackError) {
+            console.error('Fallback RentCast analysis also failed:', fallbackError);
+          }
+        }
       }
     }
 
-    // Return the result with added source URL for reference
+    // Enhanced result validation and fallback suggestions
+    const missingFields: string[] = [];
+    if (!props.address) missingFields.push('address');
+    if (!props.rent) missingFields.push('rent');
+    if (!props.beds) missingFields.push('bedrooms');
+    if (!props.baths) missingFields.push('bathrooms');
+    if (!props.sqft) missingFields.push('square footage');
+    
+    let extractionQuality = 'complete';
+    let userPrompt: string | undefined = undefined;
+    
+    if (missingFields.length > 0) {
+      if (missingFields.length >= 3) {
+        extractionQuality = 'failed';
+        userPrompt = `I couldn't extract property details from this listing. Please provide: ${missingFields.join(', ')}`;
+      } else {
+        extractionQuality = 'partial';
+        userPrompt = `I found some details but need: ${missingFields.join(', ')}. Please provide the missing information.`;
+      }
+    }
+    
+    // Return the result with enhanced data including RentCast analysis
     const result = { 
       ...props, 
       verdict,
       sourceUrl: cleanUrl,
       unitId: unitId || undefined,
+      scrapingMethod: scrapingResult.method,
+      rentcastAnalysis,
+      extractionQuality,
+      missingFields,
+      userPrompt,
       message: props.address ? undefined : "We couldn't extract complete details from this listing. Some data may be missing."
     };
     console.log('Final analysis result:', result);

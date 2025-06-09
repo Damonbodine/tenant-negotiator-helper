@@ -15,6 +15,7 @@ export const chatClient = {
 
   async sendMessageToGemini(message: string, history: ChatMessage[]): Promise<string> {
     try {
+      console.log("🚨 WRONG CLIENT: Using OLD utils/chatClient.ts - should be shared/services/chatClient.ts!");
       console.log("Sending message to AI model:", message);
       console.log("With history:", history);
       

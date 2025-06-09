@@ -2,6 +2,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { ChatMessage } from '@/shared/types';
 import { promptService } from '@/shared/services/promptTemplates';
 import RentalMemoryService from '@/services/rentalMemoryService';
+import { parallelIntelligence } from '@/shared/services/parallelIntelligenceService';
+import { intelligentContext } from '@/shared/services/intelligentContextService';
 
 /**
  * Enhanced Chat Client
@@ -19,6 +21,8 @@ let activePromptTemplateId = 'rental-agent';
 class EnhancedChatClient {
   private rentalMemoryService: RentalMemoryService;
   private contextCache: Map<string, any> = new Map();
+  private usePremiumIntelligence: boolean = true;
+  private cacheEnabled: boolean = false; // DISABLED FOR DEBUGGING
 
   constructor() {
     this.rentalMemoryService = new RentalMemoryService(supabase);
@@ -40,12 +44,101 @@ class EnhancedChatClient {
 
   /**
    * EXACT SAME SIGNATURE as original sendMessageToGemini
-   * Enhanced with better context awareness
+   * Now powered by PREMIUM INTELLIGENCE for sub-2 second responses
    */
   async sendMessageToGemini(message: string, history: ChatMessage[]): Promise<string> {
+    const startTime = Date.now();
+    
+    try {
+      console.log("🚀 USING ENHANCED CHAT CLIENT (CACHING DISABLED)");
+      console.log("🚀 Premium Enhanced Chat: Processing with parallel intelligence...");
+      
+      // Get user session for personalization
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+
+      // PREMIUM INTELLIGENCE: Use parallel processing for lightning-fast responses
+      if (this.usePremiumIntelligence && userId) {
+        console.log("⚡ Using Premium Parallel Intelligence");
+        
+        // Initialize intelligent context for user
+        await intelligentContext.buildUserContext(userId);
+        
+        // Build comprehensive intelligence request
+        const intelligenceRequest = {
+          userQuery: message,
+          context: {
+            location: await this.extractLocationFromContext(message, history),
+            propertyDetails: await this.extractPropertyDetailsFromContext(message, history),
+            userHistory: history.slice(-5), // Last 5 messages for context
+            negotiationGoals: this.extractNegotiationGoals(message)
+          },
+          priorityLevel: 'comprehensive' as const
+        };
+
+        // Execute parallel intelligence analysis
+        const intelligenceResponse = await parallelIntelligence.getComprehensiveIntelligence(intelligenceRequest);
+        
+        const responseTime = Date.now() - startTime;
+        console.log(`✨ Premium Intelligence completed in ${responseTime}ms`);
+
+        // Format premium response
+        let premiumResponse = `${intelligenceResponse.primaryInsight.content}`;
+        
+        if (intelligenceResponse.actionableSteps.length > 0) {
+          premiumResponse += `\n\n**Next Steps:**\n`;
+          intelligenceResponse.actionableSteps.forEach((step, index) => {
+            premiumResponse += `${index + 1}. ${step}\n`;
+          });
+        }
+
+        if (intelligenceResponse.riskAssessment.level !== 'low') {
+          premiumResponse += `\n\n**Risk Assessment:** ${intelligenceResponse.riskAssessment.level} risk - ${intelligenceResponse.riskAssessment.factors.join(', ')}`;
+        }
+
+        if (intelligenceResponse.nextRecommendations.length > 0) {
+          premiumResponse += `\n\n**Recommendations:**\n`;
+          intelligenceResponse.nextRecommendations.slice(0, 3).forEach((rec, index) => {
+            premiumResponse += `• ${rec}\n`;
+          });
+        }
+
+        premiumResponse += `\n\n*Analysis completed in ${responseTime}ms with ${intelligenceResponse.primaryInsight.confidence}% confidence*`;
+
+        // Learn from this interaction for future improvements
+        if (userId) {
+          intelligentContext.learnFromInteraction(userId, {
+            type: 'strategy_followed',
+            details: { 
+              query: message, 
+              responseTime, 
+              confidence: intelligenceResponse.primaryInsight.confidence 
+            },
+            outcome: 'neutral',
+            timestamp: new Date()
+          });
+        }
+
+        return premiumResponse;
+      }
+
+      // FALLBACK: Use enhanced chat for non-premium users or when premium fails
+      console.log("📱 Using Enhanced Chat (fallback mode)");
+      return await this.sendEnhancedMessage(message, history);
+      
+    } catch (error) {
+      console.error('❌ Premium chat error, falling back to enhanced chat:', error);
+      // Graceful degradation to enhanced chat
+      return await this.sendEnhancedMessage(message, history);
+    }
+  }
+
+  /**
+   * Enhanced chat fallback method (original functionality preserved)
+   */
+  private async sendEnhancedMessage(message: string, history: ChatMessage[]): Promise<string> {
     try {
       console.log("Enhanced chat: Sending message to AI model:", message);
-      console.log("Enhanced chat: With history:", history);
       
       const templates = promptService.getPromptTemplates() || [];
       const activeTemplate = templates.find(t => t.id === activePromptTemplateId) || {
@@ -65,13 +158,13 @@ class EnhancedChatClient {
           activatedSubPrompts.map(sp => sp.content).join("\n\n");
       }
 
-      // ENHANCEMENT: Add user context if available
+      // Add user context if available
       const userContext = await this.getUserContext();
       if (userContext) {
         enhancedSystemPrompt += "\n\n## USER CONTEXT:\n" + userContext;
       }
 
-      // ENHANCEMENT: Add property context if relevant
+      // Add property context if relevant
       const propertyContext = await this.getRelevantPropertyContext(message, history);
       if (propertyContext) {
         enhancedSystemPrompt += "\n\n## RELEVANT PROPERTIES:\n" + propertyContext;
@@ -82,12 +175,16 @@ class EnhancedChatClient {
         content: msg.text
       }));
       
-      console.log('Enhanced chat: Calling chat-ai function with OpenAI GPT-4.1');
-      const { data, error } = await supabase.functions.invoke('chat-ai', {
+      console.log('Enhanced chat: Calling chat-ai-enhanced function');
+      const { data, error } = await supabase.functions.invoke('chat-ai-enhanced', {
         body: { 
           message, 
           history: formattedHistory,
-          systemPrompt: enhancedSystemPrompt
+          systemPrompt: enhancedSystemPrompt,
+          context: {
+            userId: (await supabase.auth.getSession()).data.session?.user?.id,
+            chatType: 'general'
+          }
         },
       });
 
@@ -96,18 +193,9 @@ class EnhancedChatClient {
         throw new Error('Failed to get response from AI service');
       }
 
-      console.log("Enhanced chat: Response from AI model:", data);
-      
       if (!data || !data.text) {
         console.error('Enhanced chat: Invalid response from AI API:', data);
         throw new Error('Received an invalid response from the AI service');
-      }
-
-      // Log model information for verification
-      if (data.model) {
-        console.log(`Enhanced chat: Model used for this response: ${data.model}`);
-      } else {
-        console.warn('Enhanced chat: No model information returned from AI service');
       }
 
       return data.text;
@@ -117,7 +205,71 @@ class EnhancedChatClient {
     }
   }
 
-  // PRIVATE ENHANCEMENT METHODS
+  // PREMIUM INTELLIGENCE HELPER METHODS
+
+  private async extractLocationFromContext(message: string, history: ChatMessage[]): Promise<string | undefined> {
+    // Extract location from current message or recent history
+    const allText = [message, ...history.slice(-3).map(h => h.text)].join(' ');
+    
+    const locationPatterns = [
+      /\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)*),\s*([A-Z]{2})\b/, // City, State
+      /\b([A-Z][a-z]+)\s*,?\s*([A-Z]{2})\b/, // City State
+      /\b(austin|dallas|houston|san antonio|chicago|new york|los angeles|miami|atlanta|denver|seattle|boston|philadelphia|phoenix|detroit|buffalo|rochester|syracuse|albany|orlando|tampa|nashville|charlotte|richmond)\b/gi
+    ];
+    
+    for (const pattern of locationPatterns) {
+      const match = allText.match(pattern);
+      if (match) {
+        return match[0];
+      }
+    }
+    
+    return undefined;
+  }
+
+  private async extractPropertyDetailsFromContext(message: string, history: ChatMessage[]): Promise<any | undefined> {
+    const allText = [message, ...history.slice(-3).map(h => h.text)].join(' ');
+    
+    const rentMatch = allText.match(/\$[\\d,]+(?:\\.\\d{2})?/);
+    const bedroomMatch = allText.match(/(\\d+)\\s*(?:bed|br|bedroom)/i);
+    const bathroomMatch = allText.match(/(\\d+(?:\\.\\d)?)\\s*(?:bath|ba|bathroom)/i);
+    const addressMatch = allText.match(/\\d+\\s+[A-Za-z\\s]+(?:st|street|ave|avenue|dr|drive|rd|road|blvd|boulevard|way|lane|ln|ct|court|pl|place)\\b/i);
+    const sqftMatch = allText.match(/(\\d+)\\s*(?:sq\\.?\\s?ft|sqft|square\\s+feet)/i);
+    
+    if (rentMatch || bedroomMatch || bathroomMatch || addressMatch || sqftMatch) {
+      return {
+        rent: rentMatch ? parseInt(rentMatch[0].replace(/[^0-9]/g, '')) : undefined,
+        bedrooms: bedroomMatch ? parseInt(bedroomMatch[1]) : undefined,
+        bathrooms: bathroomMatch ? parseFloat(bathroomMatch[1]) : undefined,
+        address: addressMatch ? addressMatch[0] : undefined,
+        sqft: sqftMatch ? parseInt(sqftMatch[1]) : undefined
+      };
+    }
+    
+    return undefined;
+  }
+
+  private extractNegotiationGoals(message: string): string[] {
+    const goals: string[] = [];
+    const lowerMessage = message.toLowerCase();
+    
+    if (lowerMessage.includes('reduce') || lowerMessage.includes('lower') || lowerMessage.includes('down')) {
+      goals.push('rent_reduction');
+    }
+    if (lowerMessage.includes('lease') || lowerMessage.includes('renew')) {
+      goals.push('lease_negotiation');
+    }
+    if (lowerMessage.includes('deposit') || lowerMessage.includes('fee')) {
+      goals.push('fee_reduction');
+    }
+    if (lowerMessage.includes('amenities') || lowerMessage.includes('included')) {
+      goals.push('amenity_inclusion');
+    }
+    
+    return goals;
+  }
+
+  // PRIVATE ENHANCEMENT METHODS (original functionality)
 
   private async getUserContext(): Promise<string | null> {
     try {
@@ -126,8 +278,8 @@ class EnhancedChatClient {
 
       const cacheKey = `user-context-${session.user.id}`;
       
-      // Check cache first (valid for 5 minutes)
-      if (this.contextCache.has(cacheKey)) {
+      // Check cache first (valid for 5 minutes) - DISABLED FOR DEBUGGING
+      if (this.cacheEnabled && this.contextCache.has(cacheKey)) {
         const cached = this.contextCache.get(cacheKey);
         if (Date.now() - cached.timestamp < 5 * 60 * 1000) {
           return cached.context;
@@ -143,11 +295,13 @@ class EnhancedChatClient {
 
       const contextString = this.formatUserContext(userContext);
       
-      // Cache the result
-      this.contextCache.set(cacheKey, {
-        context: contextString,
-        timestamp: Date.now()
-      });
+      // Cache the result - DISABLED FOR DEBUGGING
+      if (this.cacheEnabled) {
+        this.contextCache.set(cacheKey, {
+          context: contextString,
+          timestamp: Date.now()
+        });
+      }
 
       return contextString;
     } catch (error) {

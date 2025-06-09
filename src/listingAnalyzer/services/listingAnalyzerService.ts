@@ -5,6 +5,8 @@ import { analyzeListingWithSupabase } from "@/api/listing-analyzer";
 import { analyzeAddressWithSupabase } from "@/api/address-analyzer";
 import { supabase } from "@/integrations/supabase/client";
 import { getRecentMemories } from "@/shared/services/memoryService";
+import { parallelIntelligence } from "@/shared/services/parallelIntelligenceService";
+import { intelligentContext } from "@/shared/services/intelligentContextService";
 
 interface ListingAnalysisResponse {
   error?: string;

@@ -172,8 +172,8 @@ const MarketInsights = () => {
     };
   }, [messages, session]);
 
-  return <main className="flex flex-col items-center justify-center py-12 mb-16">
-    <div className="w-full max-w-4xl h-[calc(100vh-21rem)]">
+  return <main className="container py-8">
+    <div className="w-full max-w-4xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">Market Insights</h2>
         <Link to="/" className="px-4 py-2 rounded-lg text-muted-foreground border-muted-foreground border-[1px] hover:opacity-70 transition-opacity">
