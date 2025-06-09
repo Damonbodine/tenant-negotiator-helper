@@ -22,3 +22,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+analyze-rag-data.js
+fix-rls-policy.js
