@@ -67,21 +67,124 @@ export interface PropertyComparisonData {
 }
 
 export interface NegotiationRoadmapData {
-  currentRent: number;
-  targetRent: number;
-  strategy: string;
-  steps: Array<{
-    step: number;
-    action: string;
-    status: 'completed' | 'in_progress' | 'pending';
-    details?: string;
-  }>;
-  templates: {
-    email?: string;
-    phoneScript?: string;
-    followUp?: string;
+  // Strategy Overview
+  strategy: {
+    type: 'assertive_collaborative' | 'strategic_patience' | 'relationship_building' | 'collaborative_approach' | 'leverage_focused';
+    name: string;
+    description: string;
+    reasoning: string;
   };
-  timeline: string;
+  
+  // Success Metrics
+  successProbability: {
+    overall: number; // 0-100
+    breakdown: {
+      marketConditions: number;
+      relationshipStrength: number;
+      timingOptimality: number;
+      strategyAlignment: number;
+    };
+    confidenceInterval: { min: number; max: number };
+  };
+  
+  // Leverage Analysis
+  leverageScore: {
+    total: number; // 0-10
+    factors: {
+      market: number;
+      financial: number;
+      relationship: number;
+      timing: number;
+    };
+    strengths: string[];
+    weaknesses: string[];
+  };
+  
+  // Timeline & Phases
+  timeline: {
+    estimatedDuration: string;
+    phases: Array<{
+      id: number;
+      name: string;
+      duration: string;
+      status: 'pending' | 'active' | 'completed';
+      description: string;
+    }>;
+  };
+  
+  // Detailed Steps
+  steps: Array<{
+    id: number;
+    phase: number;
+    title: string;
+    description: string;
+    status: 'pending' | 'active' | 'completed' | 'skipped';
+    difficulty: 'easy' | 'medium' | 'hard';
+    estimatedTime: string;
+    
+    // Action Items
+    actionItems: Array<{
+      type: 'research' | 'document' | 'communicate' | 'wait' | 'analyze';
+      description: string;
+      template?: string;
+      automated: boolean;
+      priority: 'high' | 'medium' | 'low';
+    }>;
+    
+    // Success Criteria
+    successMetrics: string[];
+    tips: string[];
+    riskFactors: string[];
+    
+    // Communication
+    templates?: {
+      email?: string;
+      phoneScript?: string;
+      followUp?: string;
+    };
+  }>;
+  
+  // Real-time Guidance
+  currentRecommendations: string[];
+  warningFlags: string[];
+  opportunityAlerts: string[];
+  nextBestActions: string[];
+  
+  // Market Context
+  marketContext: {
+    currentRent: number;
+    targetRent: number;
+    marketPosition: 'below' | 'at' | 'above' | 'significantly_above';
+    comparableRange: { min: number; max: number; median: number };
+    negotiationRoom: number; // percentage
+  };
+
+  // Enhanced Market Intelligence (from RAG)
+  marketIntelligence?: {
+    comparableProperties: Array<{
+      address?: string;
+      rent: number;
+      size?: string;
+      type?: string;
+      distance?: string;
+    }>;
+    marketTrends: {
+      avgRent?: number;
+      medianRent?: number;
+      rentGrowth?: string;
+      vacancyRate?: string;
+      marketCondition?: string;
+    };
+    evidencePoints: string[];
+    locationInsights?: string;
+  };
+  
+  // Adaptation Triggers
+  adaptationTriggers: Array<{
+    condition: string;
+    suggestedAdjustment: string;
+    impact: 'minor' | 'moderate' | 'major';
+  }>;
 }
 
 export interface MarketHeatmapData {

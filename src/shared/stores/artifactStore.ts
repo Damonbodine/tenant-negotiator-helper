@@ -40,6 +40,7 @@ interface ArtifactStore {
   
   // Smart triggering
   triggerAffordabilityCalculator: (financialData?: { income?: number; rent?: number }) => void;
+  triggerNegotiationRoadmap: (roadmapData?: Partial<import('@/shared/types/artifacts').NegotiationRoadmapData>) => void;
 }
 
 export const useArtifactStore = create<ArtifactStore>()(
@@ -202,6 +203,33 @@ export const useArtifactStore = create<ArtifactStore>()(
           
           console.log('🧮 Triggering affordability calculator with data:', financialData);
           addArtifact(calculatorArtifact);
+        },
+        
+        // Smart triggering for negotiation roadmap
+        triggerNegotiationRoadmap: (roadmapData = {}) => {
+          const { artifacts, addArtifact } = get();
+          
+          // Check if negotiation roadmap already exists
+          const existingRoadmap = artifacts.find(a => a.type === 'negotiation-roadmap');
+          if (existingRoadmap) {
+            console.log('Negotiation roadmap already exists, skipping trigger');
+            return;
+          }
+          
+          // Create new negotiation roadmap artifact
+          const roadmapArtifact: VisualArtifact = {
+            id: `roadmap-${Date.now()}`,
+            type: 'negotiation-roadmap',
+            title: 'Negotiation Roadmap',
+            description: 'Your personalized step-by-step negotiation strategy',
+            priority: 'high',
+            interactive: true,
+            timestamp: new Date(),
+            data: roadmapData
+          };
+          
+          console.log('🗺️ Triggering negotiation roadmap with data:', roadmapData);
+          addArtifact(roadmapArtifact);
         }
       }),
       {

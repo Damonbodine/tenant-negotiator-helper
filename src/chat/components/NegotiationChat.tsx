@@ -12,6 +12,7 @@ import { chatService } from "@/shared/services/chatService";
 import { detectAffordabilityTrigger, extractFinancialData } from "@/shared/services/chatClient";
 import { ChatWithArtifacts } from "@/shared/components/layout/ChatWithArtifacts";
 import { useArtifactStore } from "@/shared/stores/artifactStore";
+import { negotiationTrigger } from "@/shared/services/negotiationTriggerService";
 import { VisualArtifact, MarketPositionIndicatorData, AffordabilityCalculatorData } from "@/shared/types/artifacts";
 import ReactMarkdown from "react-markdown";
 import { Link } from "react-router-dom";
@@ -51,6 +52,7 @@ const NegotiationChat = () => {
         const agentText = lastMessage.text;
         const fullConversation = messages.slice(-4); // Last 2 exchanges
         
+        // Check for affordability calculator triggers
         if (detectAffordabilityTrigger(userText, fullConversation) || 
             detectAffordabilityTrigger(agentText, fullConversation)) {
           
@@ -63,6 +65,30 @@ const NegotiationChat = () => {
           // Trigger affordability calculator
           triggerAffordabilityCalculator(financialData);
         }
+        
+        // Check for negotiation roadmap triggers
+        if (negotiationTrigger.shouldTriggerRoadmap(userText) || 
+            negotiationTrigger.shouldTriggerRoadmap(agentText)) {
+          
+          console.log('🗺️ Post-response negotiation roadmap trigger detected');
+          
+          // Trigger roadmap generation (async, don't await to avoid blocking)
+          negotiationTrigger.processPotentialTrigger(userText + ' ' + agentText)
+            .then(result => {
+              if (result.needsMoreInfo && result.followUpMessage) {
+                console.log('❓ Need more context, will show follow-up message');
+                // Add the follow-up message to the chat
+                const followUpMsg = {
+                  id: (Date.now() + Math.random()).toString(),
+                  type: 'agent' as const,
+                  text: result.followUpMessage,
+                  timestamp: new Date()
+                };
+                setMessages(prev => [...prev, followUpMsg]);
+              }
+            })
+            .catch(error => console.error('❌ Roadmap trigger error:', error));
+        }
       }, 1000); // 1 second delay to ensure DOM is stable
       
       // Cleanup timer on unmount or dependency change
@@ -71,6 +97,8 @@ const NegotiationChat = () => {
   }, [messages.length, messages, triggerAffordabilityCalculator]); // Only trigger when message count changes
 
   const quickActions = [
+    "Help me negotiate my $2500/month rent down by $200",  // Direct roadmap trigger
+    "I need a negotiation strategy for my rent",           // Direct roadmap trigger
     "Lower my rent",
     "Add a roommate", 
     "Negotiate lease terms",

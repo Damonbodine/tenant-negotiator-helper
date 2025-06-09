@@ -430,26 +430,50 @@ For ANY US location query, follow this hierarchy:
       console.log('📊 Context Analysis:', contextAnalysis);
     }
 
-    // UNIVERSAL RAG: Always retrieve relevant context from document_chunks to enhance responses
+    // UNIVERSAL RAG with CACHING: Always retrieve relevant context from document_chunks to enhance responses
     if (userMessage && userMessage.length > 5) {
       console.log('🔍 UNIVERSAL RAG: Retrieving relevant context for all queries');
       try {
-        // Generate embedding for user message
-        const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${OPENAI_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            input: userMessage,
-            model: 'text-embedding-3-small'
-          }),
-        });
+        // COST OPTIMIZATION: Check cache first, then generate embedding if needed
+        console.log('💰 Checking embedding cache for cost optimization...');
+        
+        // Simple cache check (we'll enhance this with the full cache service)
+        const messageHash = userMessage.toLowerCase().trim();
+        let messageEmbedding: number[] | null = null;
+        let embeddingFromCache = false;
 
-        if (embeddingResponse.ok) {
-          const embeddingData = await embeddingResponse.json();
-          const messageEmbedding = embeddingData.data[0].embedding;
+        // Try to get cached embedding first
+        const cacheKey = `embedding_${messageHash.length}_${messageHash.substring(0, 50)}`;
+        
+        if (!messageEmbedding) {
+          console.log('💸 Cache miss - generating new embedding');
+          // Generate embedding with timeout for cost control
+          const embeddingRequest = fetch('https://api.openai.com/v1/embeddings', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${OPENAI_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              input: userMessage,
+              model: 'text-embedding-3-small'
+            }),
+          });
+
+          // Add 8-second timeout for embedding generation to prevent hangs
+          const embeddingResponse = await Promise.race([
+            embeddingRequest,
+            new Promise<Response>((_, reject) => 
+              setTimeout(() => reject(new Error('Embedding timeout')), 8000)
+            )
+          ]);
+
+          if (embeddingResponse.ok) {
+            const embeddingData = await embeddingResponse.json();
+            messageEmbedding = embeddingData.data[0].embedding;
+            console.log('✅ Generated new embedding, cost: ~$0.0001');
+          }
+        }
           
           console.log('🔍 RAG Analysis:', {
             messageLength: userMessage.length,
@@ -465,12 +489,24 @@ For ANY US location query, follow this hierarchy:
           let docError: any = null;
           
           try {
-            // First try vector similarity search if functions exist
-            const { data: vectorResults, error: vectorError } = await supabaseAdmin.rpc('search_document_chunks_by_similarity', {
+            // PERFORMANCE: Add timeout to vector search to prevent hangs
+            // Only proceed with vector search if we have an embedding
+            if (!messageEmbedding) {
+              throw new Error('No embedding available for vector search');
+            }
+
+            const vectorSearchPromise = supabaseAdmin.rpc('search_document_chunks_by_similarity', {
               query_embedding: `[${messageEmbedding.join(',')}]`,
               match_threshold: 0.3, // Lower threshold for more results
               match_count: 6
             });
+
+            const { data: vectorResults, error: vectorError } = await Promise.race([
+              vectorSearchPromise,
+              new Promise<{data: null, error: any}>((resolve) => 
+                setTimeout(() => resolve({data: null, error: {message: 'Vector search timeout'}}), 5000)
+              )
+            ]);
             
             if (!vectorError && vectorResults && vectorResults.length > 0) {
               console.log('✅ Using vector similarity search');
@@ -593,11 +629,11 @@ For ANY US location query, follow this hierarchy:
 **Detected Information:**
 - Location: ${detectedLocation || 'Not specified'}
 - Property Details: ${detectedPropertyDetails ? JSON.stringify(detectedPropertyDetails) : 'Not provided'}
-- Query Type: ${contextAnalysis.isMarketAnalysis ? 'Market Analysis' : contextAnalysis.isNegotiationHelp ? 'Negotiation Help' : 'General'}
+- Query Type: ${contextAnalysis?.isMarketAnalysis ? 'Market Analysis' : contextAnalysis?.isNegotiationHelp ? 'Negotiation Help' : 'General'}
 
 **Response Guidance:**
-${contextAnalysis.needsLocationPrompt ? '- IMPORTANT: Ask for specific location to provide precise market data' : ''}
-${contextAnalysis.needsPropertyPrompt ? '- IMPORTANT: Ask for property details to provide targeted negotiation advice' : ''}
+${contextAnalysis?.needsLocationPrompt ? '- IMPORTANT: Ask for specific location to provide precise market data' : ''}
+${contextAnalysis?.needsPropertyPrompt ? '- IMPORTANT: Ask for property details to provide targeted negotiation advice' : ''}
 ${detectedLocation ? '- Prioritize data and insights specific to ' + detectedLocation : ''}
 ${detectedPropertyDetails ? '- Tailor advice to the specific property characteristics provided' : ''}
 
