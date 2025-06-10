@@ -128,4 +128,51 @@ these routes should be harmonized together to great a unified resource.
 - Conversation context includes relevant property relationships
 - AI responses leverage property history and user preferences
 
+## CRITICAL SECURITY REQUIREMENTS
+
+### Pre-Commit Security Checks
+**MANDATORY: Before ANY git commit, push, or file creation, Claude MUST:**
+
+1. **Scan for API Keys & Secrets:**
+   - Search for patterns: `sk-proj-`, `eyJ[A-Za-z0-9+/=]+`, `service_role`, hardcoded URLs
+   - Check for Supabase keys, OpenAI keys, authentication tokens
+   - Verify no hardcoded credentials in any files
+
+2. **Security Audit Command:**
+   ```bash
+   # Run this before EVERY commit:
+   grep -r "sk-proj-\|eyJ.*\.\|service_role\|hardcoded.*key" . --include="*.js" --include="*.ts" --include="*.md" --exclude-dir=node_modules
+   ```
+
+3. **Required Actions if Secrets Found:**
+   - IMMEDIATELY stop the commit process
+   - Replace hardcoded secrets with environment variables
+   - Add files with secrets to .gitignore if they're development-only
+   - Only proceed after ALL secrets are removed
+
+4. **Environment Variable Pattern:**
+   ```typescript
+   // ✅ CORRECT - Use environment variables
+   const API_KEY = process.env.OPENAI_API_KEY || 'placeholder';
+   const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder';
+   
+   // ❌ FORBIDDEN - Never hardcode
+   const API_KEY = 'sk-proj-abc123...';
+   const SUPABASE_KEY = 'eyJhbGciOiJIUzI1...';
+   ```
+
+5. **Development vs Production Files:**
+   - Scripts in `/scripts/` directory: Add to .gitignore if they contain secrets
+   - Test files (`test-*.js`): Add to .gitignore if they contain secrets  
+   - Core application files: NEVER contain hardcoded secrets
+
+### Git Commit Workflow
+1. ✅ Complete all code changes
+2. ✅ Run security audit command above
+3. ✅ Verify NO secrets found
+4. ✅ Replace any secrets with environment variables
+5. ✅ Only then run `git add` and `git commit`
+
+**NEVER commit without completing this security checklist.**
+
 
