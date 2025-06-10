@@ -22,5 +22,91 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-analyze-rag-data.js
-fix-rls-policy.js
+
+# Development and Testing Files
+test-*.js
+debug-*.js
+analyze-*.js
+populate-*.js
+fix-*.js
+
+# One-time Setup Scripts
+manual-migration-script.sql
+setup-rag-functions.sql
+
+# Data Files
+Predictiondata/
+market_insights.json
+negotiation_tips.json
+
+# Planning and Documentation (non-essential)
+*_PLAN.md
+*_ANALYSIS.md
+*_ASSESSMENT.md
+*_IMPROVEMENTS.md
+*_COMPLETE.md
+TEST_*.md
+ENHANCED_*.md
+ARTIFACT_*.md
+NEGOTIATION_*.md
+UNIFIED_*.md
+VISUAL_*.md
+SESSION_*.md
+RENTAL_*.md
+enhanced-negotiation-plan.md
+LOCAL_TESTING_GUIDE.md
+MARKET_RESEARCH_QUESTION_TEST_ANALYSIS.md
+
+# Development Scripts (most are one-time setup)
+scripts/check-*.js
+scripts/test-*.js
+scripts/load-*.js
+scripts/ingest-*.js
+scripts/populate-*.js
+scripts/generate-*.js
+scripts/setup-*.js
+scripts/create-*.js
+scripts/enhance-*.js
+scripts/enhanced-location-rag.sql
+
+# Environment Variables
+.env
+.env.local
+.env.production
+
+# Supabase Temporary Files
+supabase/.temp/
+
+# IDE and OS Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Build Artifacts
+dist/
+build/
+out/
+.next/
+
+# Logs
+logs/
+*.log
+
+# Dependencies Lock Files (keep package-lock.json for npm)
+yarn.lock
+pnpm-lock.yaml
+bun.lockb
+
+# Test Coverage
+coverage/
+.nyc_output/
+
+# Temporary Files
+tmp/
+temp/
+*.tmp
+*.temp
