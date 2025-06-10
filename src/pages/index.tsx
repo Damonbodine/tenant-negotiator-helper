@@ -23,7 +23,8 @@ const Index = () => {
 
     const encodedAddress = encodeURIComponent(addressInput);
 
-    navigate("/market/" + encodedAddress);
+    // Navigate to property analysis with address as query param
+    navigate("/property-analysis?address=" + encodedAddress + "&tab=single");
   };
 
   return <main className="flex flex-col items-center justify-center mb-16">

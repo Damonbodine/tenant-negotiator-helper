@@ -9,7 +9,7 @@ import { createClient } from '@supabase/supabase-js';
 // Try both keys to see which one works
 const SUPABASE_URL = 'https://izzdyfrcxunfzlfgdjuv.supabase.co';
 const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml6emR5ZnJjeHVuZnpsZmdkanV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMyMDIzMDgsImV4cCI6MjA1ODc3ODMwOH0.rLBqA9Ok3tKPx90Hgvf9bTx0rUjJWcMj2a-SRy_sA8M';
-const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml6emR5ZnJjeHVuZnpsZmdkanV2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MzIwMjMwOCwiZXhwIjoyMDU4Nzc4MzA4fQ.h5Oy_qEZz6c-Y9AeSMHUgLBT-CQhwNvzCdh6lmMoVhk';
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'your-service-role-key';
 
 async function testConnection(keyName, key) {
   console.log(`\n🔧 Testing ${keyName}...`);

@@ -17,7 +17,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
-const MarketInsights = () => {
+interface MarketInsightsProps {
+  embedded?: boolean;
+  initialAddress?: string;
+}
+
+const MarketInsights = ({ embedded = false, initialAddress }: MarketInsightsProps) => {
   const params = useParams();
   const [messages, setMessages] = useState<ChatMessage[]>([{
     id: "welcome",
@@ -25,7 +30,7 @@ const MarketInsights = () => {
     text: "Hello! I can help you understand rental market trends and pricing. Enter a property address or paste a listing URL to get started.",
     timestamp: new Date()
   }]);
-  const [input, setInput] = useState(params.address || "");
+  const [input, setInput] = useState(initialAddress || params.address || "");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [session, setSession] = useState<any>(null);
@@ -59,14 +64,15 @@ const MarketInsights = () => {
 
   // FIXED: Prevent infinite loop by handling initial address separately
   useEffect(() => {
-    if (params.address && messages.length === 1) { // Only run on initial load
-      setInput(params.address);
-      // Auto-analyze the address from URL params
+    const addressToAnalyze = initialAddress || params.address;
+    if (addressToAnalyze && messages.length === 1) { // Only run on initial load
+      setInput(addressToAnalyze);
+      // Auto-analyze the address from URL params or props
       const analyzeInitialAddress = async () => {
         const userMessage: ChatMessage = {
           id: Date.now().toString(),
           type: 'user',
-          text: params.address,
+          text: addressToAnalyze,
           timestamp: new Date()
         };
         
@@ -75,9 +81,9 @@ const MarketInsights = () => {
         setError(null);
         
         try {
-          const wasListingAnalyzed = await analyzeListingUrl(params.address, addAgentMessage);
+          const wasListingAnalyzed = await analyzeListingUrl(addressToAnalyze, addAgentMessage);
           if (!wasListingAnalyzed) {
-            await analyzeAddress(params.address, addAgentMessage);
+            await analyzeAddress(addressToAnalyze, addAgentMessage);
           }
         } catch (error: any) {
           console.error("Error analyzing initial address:", error);
@@ -89,7 +95,7 @@ const MarketInsights = () => {
       
       analyzeInitialAddress();
     }
-  }, [params.address, messages.length]); // Include dependencies
+  }, [params.address, initialAddress, messages.length]); // Include dependencies
 
   // FIXED: Proper cleanup without state updates in cleanup function
   useEffect(() => {
@@ -172,14 +178,19 @@ const MarketInsights = () => {
     };
   }, [messages, session]);
 
-  return <main className="container py-8">
-    <div className="w-full max-w-4xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Market Insights</h2>
-        <Link to="/" className="px-4 py-2 rounded-lg text-muted-foreground border-muted-foreground border-[1px] hover:opacity-70 transition-opacity">
-          Back to home
-        </Link>
-      </div>
+  const containerClass = embedded ? "" : "container py-8";
+  const wrapperClass = embedded ? "w-full" : "w-full max-w-4xl mx-auto";
+
+  return <main className={containerClass}>
+    <div className={wrapperClass}>
+      {!embedded && (
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold">Market Insights</h2>
+          <Link to="/" className="px-4 py-2 rounded-lg text-muted-foreground border-muted-foreground border-[1px] hover:opacity-70 transition-opacity">
+            Back to home
+          </Link>
+        </div>
+      )}
       <div className="flex flex-col h-full border rounded-xl overflow-hidden shadow-md bg-white dark:bg-slate-800">
         <div className="p-3 border-b border-border bg-card">
           <div className="flex justify-between items-center">

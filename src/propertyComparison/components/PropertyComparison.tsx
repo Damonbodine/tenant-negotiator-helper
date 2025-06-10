@@ -7,7 +7,11 @@ import { compareProperties } from "../services/comparisonService";
 import { toast } from "@/shared/hooks/use-toast";
 import { Link } from "react-router-dom";
 
-export default function PropertyComparison() {
+interface PropertyComparisonProps {
+  embedded?: boolean;
+}
+
+export default function PropertyComparison({ embedded = false }: PropertyComparisonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [comparisonResults, setComparisonResults] = useState<PropertyComparisonResponse | null>(null);
 
@@ -28,23 +32,30 @@ export default function PropertyComparison() {
     }
   };
 
+  const containerClass = embedded ? "" : "container py-8";
+  const wrapperClass = embedded ? "w-full" : "w-full max-w-4xl mx-auto";
+
   return (
-    <main className="container py-8">
-      <div className="w-full max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">Property Comparison</h2>
-          <Link to="/" className="px-4 py-2 rounded-lg text-muted-foreground border-muted-foreground border-[1px] hover:opacity-70 transition-opacity">
-            Back to home
-          </Link>
-        </div>
+    <main className={containerClass}>
+      <div className={wrapperClass}>
+        {!embedded && (
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold">Property Comparison</h2>
+            <Link to="/" className="px-4 py-2 rounded-lg text-muted-foreground border-muted-foreground border-[1px] hover:opacity-70 transition-opacity">
+              Back to home
+            </Link>
+          </div>
+        )}
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold mb-4">Advanced Property Comparison</h1>
-        <p className="text-muted-foreground">
-          Compare up to 4 rental properties side-by-side with detailed analysis and cost breakdowns.
-          Enter the property details below to get started.
-        </p>
-      </div>
+      {!embedded && (
+        <div>
+          <h1 className="text-3xl font-bold mb-4">Advanced Property Comparison</h1>
+          <p className="text-muted-foreground">
+            Compare up to 4 rental properties side-by-side with detailed analysis and cost breakdowns.
+            Enter the property details below to get started.
+          </p>
+        </div>
+      )}
 
       {!comparisonResults ? (
         <PropertyInputForm onSubmit={handleSubmit} isLoading={isLoading} />

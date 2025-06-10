@@ -4,16 +4,10 @@ import { PieChart, MessageSquare, Headphones, BookOpen, FileEdit } from "lucide-
 
 export function FeatureCards() {
   return <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
-      <Link to="/market" className="journey-bubble flex flex-col items-center justify-center p-6 bg-card border rounded-xl h-52 w-full mx-auto transition-all hover:shadow-lg hover:scale-105 duration-300">
+      <Link to="/property-analysis" className="journey-bubble flex flex-col items-center justify-center p-6 bg-card border rounded-xl h-52 w-full mx-auto transition-all hover:shadow-lg hover:scale-105 duration-300">
         <PieChart className="h-10 w-10 text-card-foreground mb-3" />
-        <div className="text-card-foreground text-xl font-bold mb-2">Price Analysis</div>
-        <p className="text-muted-foreground text-center text-sm">Get insights on rental prices and market trends</p>
-      </Link>
-
-      <Link to="/comparison" className="journey-bubble flex flex-col items-center justify-center p-6 bg-card border rounded-xl h-52 w-full mx-auto transition-all hover:shadow-lg hover:scale-105 duration-300">
-        <PieChart className="h-10 w-10 text-card-foreground mb-3" />
-        <div className="text-card-foreground text-xl font-bold mb-2">Compare Properties</div>
-        <p className="text-muted-foreground text-center text-sm">Compare up to 4 properties side-by-side to find the best value</p>
+        <div className="text-card-foreground text-xl font-bold mb-2">Property Analysis</div>
+        <p className="text-muted-foreground text-center text-sm">Analyze individual properties or compare multiple rentals side-by-side</p>
       </Link>
 
       <Link to="/negotiation"  className="journey-bubble flex flex-col items-center justify-center p-6 bg-card border rounded-xl h-52 w-full mx-auto transition-all hover:shadow-lg hover:scale-105 duration-300">
