@@ -1,5 +1,5 @@
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAgentChat, ChatType } from "@/hooks/useAgentChat";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ApiKeyInput } from "@/components/ApiKeyInput";
@@ -15,12 +15,25 @@ import { handleListingUrl } from "@/utils/handleListingUrl";
 import { SuggestedQuestions } from "./chat/SuggestedQuestions";
 import { randomTip } from "@/utils/negotiationTips";
 import { ChatMessage as ChatMessageType } from "@/utils/types";
+import { useConversationHistory } from "@/hooks/useConversationHistory";
 
 interface AgentChatProps {
   chatType?: ChatType;
+  showConversationHistory?: boolean;
+  currentConversationId?: string;
+  onSelectConversation?: (conversationId: string) => void;
+  onNewConversation?: () => void;
 }
 
-export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
+export const AgentChat = ({ 
+  chatType = "general",
+  showConversationHistory = false,
+  currentConversationId,
+  onSelectConversation,
+  onNewConversation
+}: AgentChatProps) => {
+  const [localConversationId, setLocalConversationId] = useState<string | null>(currentConversationId || null);
+  
   const {
     messages,
     setMessages,
@@ -41,6 +54,29 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
     suggestions
   } = useAgentChat({ chatType });
 
+  const {
+    currentConversation,
+    startNewConversation,
+    loadConversation,
+    addMessageToConversation,
+    clearCurrentConversation
+  } = useConversationHistory();
+
+  // Load conversation when currentConversationId changes
+  useEffect(() => {
+    if (currentConversationId && currentConversationId !== localConversationId) {
+      loadConversationData(currentConversationId);
+    }
+  }, [currentConversationId]);
+
+  // Load conversation when currentConversation changes from hook
+  useEffect(() => {
+    if (currentConversation) {
+      setMessages(currentConversation.messages);
+      setLocalConversationId(currentConversation.conversationId);
+    }
+  }, [currentConversation]);
+
   useEffect(() => {
     if (isMuted || messages.length === 0) return;
 
@@ -49,6 +85,29 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
       speak(lastMsg.text).catch(console.error);
     }
   }, [messages, isMuted]);
+
+  const loadConversationData = async (conversationId: string) => {
+    const conversation = await loadConversation(conversationId);
+    if (conversation) {
+      setMessages(conversation.messages);
+      setLocalConversationId(conversationId);
+    }
+  };
+
+  const handleSelectConversation = async (conversationId: string) => {
+    await loadConversationData(conversationId);
+    onSelectConversation?.(conversationId);
+  };
+
+  const handleNewConversation = async () => {
+    const conversationId = await startNewConversation(chatType);
+    if (conversationId) {
+      clearCurrentConversation();
+      setLocalConversationId(conversationId);
+      setMessages([]); // Clear messages for fresh start
+      onNewConversation?.();
+    }
+  };
 
   const addAgentMessage = (msg: ChatMessageType) => setMessages(prev => [...prev, msg]);
 
@@ -69,6 +128,12 @@ export const AgentChat = ({ chatType = "general" }: AgentChatProps) => {
         timestamp: new Date()
       };
       setMessages(prev => [...prev, tipMessage]);
+      
+      // Save messages to conversation if we have one
+      if (localConversationId) {
+        await addMessageToConversation(localConversationId, currentInput, 'user');
+        await addMessageToConversation(localConversationId, tipMessage.text, 'assistant');
+      }
       return;
     }
   };

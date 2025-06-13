@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/shared/hooks/use-toast";
-import { Loader2, ArrowLeft, ArrowRight, Check, Save } from "lucide-react";
+import { Loader2, ArrowLeft, ArrowRight, Check, Save, Mail, Copy, Send } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { Textarea } from "@/shared/ui/textarea";
@@ -35,7 +35,8 @@ enum ScriptBuilderStep {
   Goals = 0,
   Details = 1,
   Script = 2,
-  Practice = 3,
+  Email = 3,
+  Practice = 4,
 }
 
 // Define the script structure returned by the AI
@@ -56,14 +57,26 @@ interface ScriptResponse {
     suggestions: string[];
   };
 }
+
+// Define the email template structure
+interface EmailTemplate {
+  subject: string;
+  greeting: string;
+  body: string;
+  closing: string;
+  signature: string;
+  fullEmail: string;
+}
 const ScriptBuilder = () => {
   const {
     toast
   } = useToast();
   const [currentStep, setCurrentStep] = useState<ScriptBuilderStep>(ScriptBuilderStep.Goals);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGeneratingEmail, setIsGeneratingEmail] = useState(false);
   const [generatedScript, setGeneratedScript] = useState<ScriptResponse | null>(null);
   const [editedScript, setEditedScript] = useState<ScriptResponse | null>(null);
+  const [generatedEmail, setGeneratedEmail] = useState<EmailTemplate | null>(null);
   const [savedScripts, setSavedScripts] = useState<{
     id: string;
     name: string;
@@ -176,6 +189,65 @@ const ScriptBuilder = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const generateEmailTemplate = async () => {
+    if (!editedScript) return;
+    
+    setIsGeneratingEmail(true);
+    try {
+      console.log("Generating email template from script:", editedScript);
+      
+      const { data: response, error } = await supabase.functions.invoke('script-generator', {
+        body: {
+          mode: 'email_template',
+          script: editedScript,
+          formData: form.getValues()
+        }
+      });
+
+      if (error) {
+        console.error("Error generating email template:", error);
+        throw new Error(error.message);
+      }
+
+      console.log("Generated email template:", response);
+      setGeneratedEmail(response);
+      nextStep();
+      
+      toast({
+        title: "Email template generated",
+        description: "Your professional email template is ready!"
+      });
+    } catch (error) {
+      console.error("Error generating email template:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate email template. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingEmail(false);
+    }
+  };
+
+  const copyEmailToClipboard = async () => {
+    if (!generatedEmail?.fullEmail) return;
+    
+    try {
+      await navigator.clipboard.writeText(generatedEmail.fullEmail);
+      toast({
+        title: "Email copied",
+        description: "The email template has been copied to your clipboard!"
+      });
+    } catch (error) {
+      console.error("Failed to copy email:", error);
+      toast({
+        title: "Copy failed",
+        description: "Failed to copy email. Please select and copy manually.",
+        variant: "destructive"
+      });
     }
   };
   const saveScript = () => {
@@ -517,8 +589,133 @@ const ScriptBuilder = () => {
               <Button variant="outline" onClick={prevStep}>
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back to Details
               </Button>
+              <Button onClick={generateEmailTemplate} disabled={isGeneratingEmail}>
+                {isGeneratingEmail ? <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating Email
+                </> : <>
+                  <Mail className="mr-2 h-4 w-4" /> Generate Email Template
+                </>}
+              </Button>
+            </CardFooter>
+          </Card>;
+      case ScriptBuilderStep.Email:
+        return <Card className="w-full max-w-4xl mx-auto">
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Mail className="h-5 w-5 text-blue-600" />
+                    Your Professional Email Template
+                  </CardTitle>
+                  <CardDescription>
+                    Ready-to-send email based on your negotiation script
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button onClick={copyEmailToClipboard} variant="outline">
+                    <Copy className="mr-2 h-4 w-4" /> Copy Email
+                  </Button>
+                  <Button onClick={() => window.open(`mailto:?subject=${encodeURIComponent(generatedEmail?.subject || '')}&body=${encodeURIComponent(generatedEmail?.fullEmail || '')}`)}>
+                    <Send className="mr-2 h-4 w-4" /> Open in Email App
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {generatedEmail && <div className="space-y-6">
+                  <Tabs defaultValue="email" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="email">Email Template</TabsTrigger>
+                      <TabsTrigger value="components">Edit Components</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="email" className="space-y-4">
+                      <Card className="bg-gray-50">
+                        <CardHeader className="pb-3">
+                          <div className="text-sm text-gray-500">Preview:</div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4 font-mono text-sm bg-white p-4 rounded border">
+                            <div><strong>Subject:</strong> {generatedEmail.subject}</div>
+                            <div className="border-t pt-4 whitespace-pre-wrap">{generatedEmail.fullEmail}</div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </TabsContent>
+                    
+                    <TabsContent value="components" className="space-y-4">
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="font-bold text-lg mb-2">Subject Line</h3>
+                          <Input 
+                            value={generatedEmail.subject} 
+                            onChange={e => setGeneratedEmail({
+                              ...generatedEmail,
+                              subject: e.target.value,
+                              fullEmail: `${generatedEmail.greeting}\n\n${generatedEmail.body}\n\n${generatedEmail.closing}\n\n${generatedEmail.signature}`
+                            })} 
+                          />
+                        </div>
+                        
+                        <div>
+                          <h3 className="font-bold text-lg mb-2">Greeting</h3>
+                          <Input 
+                            value={generatedEmail.greeting} 
+                            onChange={e => setGeneratedEmail({
+                              ...generatedEmail,
+                              greeting: e.target.value,
+                              fullEmail: `${e.target.value}\n\n${generatedEmail.body}\n\n${generatedEmail.closing}\n\n${generatedEmail.signature}`
+                            })} 
+                          />
+                        </div>
+                        
+                        <div>
+                          <h3 className="font-bold text-lg mb-2">Email Body</h3>
+                          <Textarea 
+                            className="min-h-[200px]" 
+                            value={generatedEmail.body} 
+                            onChange={e => setGeneratedEmail({
+                              ...generatedEmail,
+                              body: e.target.value,
+                              fullEmail: `${generatedEmail.greeting}\n\n${e.target.value}\n\n${generatedEmail.closing}\n\n${generatedEmail.signature}`
+                            })} 
+                          />
+                        </div>
+                        
+                        <div>
+                          <h3 className="font-bold text-lg mb-2">Closing</h3>
+                          <Input 
+                            value={generatedEmail.closing} 
+                            onChange={e => setGeneratedEmail({
+                              ...generatedEmail,
+                              closing: e.target.value,
+                              fullEmail: `${generatedEmail.greeting}\n\n${generatedEmail.body}\n\n${e.target.value}\n\n${generatedEmail.signature}`
+                            })} 
+                          />
+                        </div>
+                        
+                        <div>
+                          <h3 className="font-bold text-lg mb-2">Signature</h3>
+                          <Input 
+                            value={generatedEmail.signature} 
+                            onChange={e => setGeneratedEmail({
+                              ...generatedEmail,
+                              signature: e.target.value,
+                              fullEmail: `${generatedEmail.greeting}\n\n${generatedEmail.body}\n\n${generatedEmail.closing}\n\n${e.target.value}`
+                            })} 
+                          />
+                        </div>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </div>}
+            </CardContent>
+            <CardFooter className="flex justify-between">
+              <Button variant="outline" onClick={prevStep}>
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back to Script
+              </Button>
               <Button onClick={() => setCurrentStep(ScriptBuilderStep.Practice)}>
-                Practice Script <ArrowRight className="ml-2 h-4 w-4" />
+                Continue to Practice <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </CardFooter>
           </Card>;
@@ -588,17 +785,21 @@ const ScriptBuilder = () => {
   };
   return <div className="container max-w-4xl py-12">
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold mb-2">Negotiation Script Builder</h1>
+        <div className="flex items-center justify-center gap-3 mb-4">
+          <Mail className="h-8 w-8 text-blue-600" />
+          <h1 className="text-3xl font-bold mb-0">Email Script Builder</h1>
+        </div>
         <p className="text-lg text-muted-foreground">
-          Create a personalized script to help you negotiate with confidence
+          Create personalized email templates to negotiate with your landlord professionally
         </p>
       </div>
       
       <div className="flex justify-center mb-8">
-        <ul className="steps steps-horizontal w-full max-w-2xl">
+        <ul className="steps steps-horizontal w-full max-w-3xl">
           <li className={`step ${currentStep >= ScriptBuilderStep.Goals ? "step-primary" : ""}`}>Goals</li>
           <li className={`step ${currentStep >= ScriptBuilderStep.Details ? "step-primary" : ""}`}>Details</li>
           <li className={`step ${currentStep >= ScriptBuilderStep.Script ? "step-primary" : ""}`}>Script</li>
+          <li className={`step ${currentStep >= ScriptBuilderStep.Email ? "step-primary" : ""}`}>Email</li>
           <li className={`step ${currentStep >= ScriptBuilderStep.Practice ? "step-primary" : ""}`}>Practice</li>
         </ul>
       </div>

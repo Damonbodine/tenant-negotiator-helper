@@ -16,7 +16,6 @@ export type ArtifactType =
   | 'negotiation-roadmap'
   | 'market-heatmap'
   | 'affordability-calculator'
-  | 'lease-analyzer'
   | 'script-generator'
   | 'market-position-indicator'
   | 'neighborhood-insights';

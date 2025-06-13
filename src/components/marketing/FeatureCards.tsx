@@ -4,6 +4,7 @@ import { PieChart, MessageSquare, Headphones, BookOpen, FileEdit } from "lucide-
 
 export function FeatureCards() {
   return <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+
       <Link to="/property-analysis" className="journey-bubble flex flex-col items-center justify-center p-6 bg-card border rounded-xl h-52 w-full mx-auto transition-all hover:shadow-lg hover:scale-105 duration-300">
         <PieChart className="h-10 w-10 text-card-foreground mb-3" />
         <div className="text-card-foreground text-xl font-bold mb-2">Property Analysis</div>

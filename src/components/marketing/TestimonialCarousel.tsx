@@ -27,7 +27,7 @@ const testimonials = [
     id: 3,
     name: "Marcus Rivera",
     location: "Chicago, IL",
-    quote: "I avoided $1,500 in unnecessary amenity fees by using the lease analyzer tool. It pointed out fees that weren't standard for my area.",
+    quote: "The property analysis tools helped me avoid $1,500 in unnecessary amenity fees. I discovered comparable properties for much less in my area.",
   },
   {
     id: 4,

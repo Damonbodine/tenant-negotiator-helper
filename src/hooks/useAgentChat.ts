@@ -85,7 +85,7 @@ export function useAgentChat({ chatType = "general" }: UseAgentChatProps) {
     }
   };
 
-  const handleSend = async () => {
+  const handleSend = async (conversationId?: string) => {
     const input = state.input;
     state.setLastUserInput(input);
     await processUserMessage(input, {
@@ -93,7 +93,8 @@ export function useAgentChat({ chatType = "general" }: UseAgentChatProps) {
       audioRef,
       handleError,
       selectedVoice: state.selectedVoice,
-      chatType
+      chatType,
+      conversationId
     });
   };
 

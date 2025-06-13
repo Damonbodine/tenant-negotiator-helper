@@ -23,56 +23,32 @@ dist-ssr
 *.sln
 *.sw?
 
-# Development and Testing Files
+# Development Files (now organized in dev/ folder)
+dev/
+*.mp3
+*.sql
 test-*.js
 debug-*.js
 analyze-*.js
 populate-*.js
-fix-*.js
-
-# One-time Setup Scripts
-manual-migration-script.sql
-setup-rag-functions.sql
 
 # Data Files
 Predictiondata/
 market_insights.json
 negotiation_tips.json
 
-# Planning and Documentation (non-essential)
-*_PLAN.md
-*_ANALYSIS.md
-*_ASSESSMENT.md
-*_IMPROVEMENTS.md
-*_COMPLETE.md
-TEST_*.md
-ENHANCED_*.md
-ARTIFACT_*.md
-NEGOTIATION_*.md
-UNIFIED_*.md
-VISUAL_*.md
-SESSION_*.md
-RENTAL_*.md
-enhanced-negotiation-plan.md
-LOCAL_TESTING_GUIDE.md
-MARKET_RESEARCH_QUESTION_TEST_ANALYSIS.md
-
-# Development Scripts (most are one-time setup)
-scripts/check-*.js
-scripts/test-*.js
-scripts/load-*.js
-scripts/ingest-*.js
-scripts/populate-*.js
-scripts/generate-*.js
-scripts/setup-*.js
-scripts/create-*.js
-scripts/enhance-*.js
-scripts/enhanced-location-rag.sql
+# Temporary files that may be created during development
+temp-*.js
+temp-*.sql
+test-output.json
+debug-output.json
 
 # Environment Variables
 .env
 .env.local
 .env.production
+supabase/.env
+supabase/.env.local
 
 # Supabase Temporary Files
 supabase/.temp/
@@ -91,6 +67,16 @@ dist/
 build/
 out/
 .next/
+
+# Google Cloud Service Account Keys
+*.json
+!package*.json
+!tsconfig*.json
+!*config*.json
+
+# Development scripts with secrets
+start-supabase-dev.sh
+*-with-secrets.*
 
 # Logs
 logs/

@@ -10,6 +10,9 @@ export function useMemory(featureType = 'market') {
   const [memories, setMemories] = useState<string[]>([]);
   const [memoryEnabled, setMemoryEnabled] = useState<boolean>(true);
   const [isLoadingMemories, setIsLoadingMemories] = useState<boolean>(false);
+  
+  // Keep track of the timeout for cleanup
+  let timeoutId: NodeJS.Timeout | null = null;
 
   // Get the current user and their memories
   useEffect(() => {
@@ -39,6 +42,11 @@ export function useMemory(featureType = 'market') {
 
     return () => {
       subscription.unsubscribe();
+      // Clear any pending timeouts to prevent memory leaks
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
     };
   }, [featureType]);
 
@@ -57,30 +65,56 @@ export function useMemory(featureType = 'market') {
     }
   };
 
-  // Save current chat as a memory
-  const saveMemory = async (messages: ChatMessage[]) => {
-    if (!userId || !memoryEnabled || messages.length === 0) return;
-
-    try {
-      // Only save if we have at least one user message and one agent message
-      const hasUserMessage = messages.some(m => m.type === 'user');
-      const hasAgentMessage = messages.some(m => m.type === 'agent');
+  // Debounced save to prevent excessive API calls
+  const saveMemoryDebounced = (() => {
+    let lastSaveTime = 0;
+    const MIN_SAVE_INTERVAL = 30000; // 30 seconds minimum between saves
+    
+    return async (messages: ChatMessage[]) => {
+      if (!userId || !memoryEnabled || messages.length === 0) return;
       
-      if (!hasUserMessage || !hasAgentMessage) {
-        console.log('Not saving memory: conversation is too short');
+      // Clear existing timeout
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      
+      // Check if enough time has passed since last save
+      const now = Date.now();
+      const timeSinceLastSave = now - lastSaveTime;
+      
+      if (timeSinceLastSave < MIN_SAVE_INTERVAL) {
+        console.log(`Memory save throttled: ${Math.round((MIN_SAVE_INTERVAL - timeSinceLastSave) / 1000)}s remaining`);
         return;
       }
       
-      const success = await saveChatMemory(userId, messages, featureType);
-      if (success) {
-        console.log('Chat memory saved successfully');
-        // Reload memories to include the new one
-        loadMemories(userId);
-      }
-    } catch (error) {
-      console.error('Error saving chat memory:', error);
-    }
-  };
+      // Debounce the save by 2 seconds
+      timeoutId = setTimeout(async () => {
+        try {
+          // Only save if we have at least one user message and one agent message
+          const hasUserMessage = messages.some(m => m.type === 'user');
+          const hasAgentMessage = messages.some(m => m.type === 'agent');
+          
+          if (!hasUserMessage || !hasAgentMessage) {
+            console.log('Not saving memory: conversation is too short');
+            return;
+          }
+          
+          lastSaveTime = Date.now();
+          const success = await saveChatMemory(userId, messages, featureType);
+          if (success) {
+            console.log('Chat memory saved successfully');
+            // Reload memories to include the new one
+            loadMemories(userId);
+          }
+        } catch (error) {
+          console.error('Error saving chat memory:', error);
+        }
+      }, 2000);
+    };
+  })();
+
+  // Save current chat as a memory
+  const saveMemory = saveMemoryDebounced;
 
   // Opt out of memory
   const optOutOfMemory = async () => {

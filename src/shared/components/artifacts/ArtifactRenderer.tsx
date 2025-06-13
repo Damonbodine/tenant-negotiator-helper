@@ -34,12 +34,6 @@ const AffordabilityCalculator = lazy(() =>
     return { default: () => <div>Failed to load component</div> };
   })
 );
-const LeaseAnalyzer = lazy(() => 
-  import('./types/LeaseAnalyzer').catch(() => {
-    console.error('Failed to load LeaseAnalyzer component');
-    return { default: () => <div>Failed to load component</div> };
-  })
-);
 const ScriptGenerator = lazy(() => 
   import('./types/ScriptGenerator').catch(() => {
     console.error('Failed to load ScriptGenerator component');
@@ -65,7 +59,6 @@ const ARTIFACT_COMPONENTS = {
   'negotiation-roadmap': NegotiationRoadmap,
   'market-heatmap': MarketHeatmap,
   'affordability-calculator': AffordabilityCalculator,
-  'lease-analyzer': LeaseAnalyzer,
   'script-generator': ScriptGenerator,
   'market-position-indicator': MarketPositionIndicator,
   'neighborhood-insights': NeighborhoodInsights,

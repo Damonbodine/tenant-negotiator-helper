@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { getRecentMemories } from "@/shared/services/memoryService";
 import { parallelIntelligence } from "@/shared/services/parallelIntelligenceService";
 import { intelligentContext } from "@/shared/services/intelligentContextService";
+import { unifiedPropertyService } from "@/services/unifiedPropertyService";
+import { apiRateLimiter } from "@/shared/services/apiRateLimiter";
 
 interface ListingAnalysisResponse {
   error?: string;
@@ -56,6 +58,57 @@ async function getMemoryContextForAI(): Promise<string[]> {
     console.warn("Memory retrieval failed (non-blocking):", error);
     // Always return empty array on error - don't break the listing analyzer
     return [];
+  }
+}
+
+// Helper to save analyzed property to database
+async function saveAnalyzedProperty(propertyData: ListingAnalysisResponse): Promise<void> {
+  try {
+    // Check if user is authenticated
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      console.log("No authenticated user - skipping property save");
+      return;
+    }
+
+    // Only save if we have enough property data
+    if (!propertyData.address || !propertyData.rent) {
+      console.log("Insufficient property data - skipping save");
+      return;
+    }
+
+    console.log("Saving analyzed property to database:", propertyData.address);
+
+    const unifiedPropertyData = {
+      address: propertyData.address,
+      propertyName: propertyData.propertyName || '',
+      rent: propertyData.rent || 0,
+      beds: propertyData.beds || 0,
+      baths: propertyData.baths || 0,
+      sqft: propertyData.sqft || 0,
+      zipcode: propertyData.zipcode || '',
+      sourceUrl: propertyData.sourceUrl,
+      verdict: (propertyData.verdict as 'under-priced' | 'over-priced' | 'priced right' | 'unknown') || 'unknown',
+      marketAverage: propertyData.marketAverage,
+      deltaPercent: propertyData.deltaPercent
+    };
+
+    await unifiedPropertyService.analyzePropertyDetails(unifiedPropertyData, {
+      saveToMemory: true,
+      userId: session.user.id
+    });
+
+    console.log("Property saved successfully");
+    
+    // Show success toast
+    toast({
+      title: "Property saved",
+      description: "This property has been saved to your analyzed properties.",
+      variant: "default"
+    });
+  } catch (error) {
+    console.error("Failed to save analyzed property:", error);
+    // Don't show error toast as this shouldn't interrupt the user flow
   }
 }
 
@@ -129,6 +182,20 @@ export async function analyzeListingUrl(
   text: string,
   addAgentMessage: (m: ChatMessage) => void
 ) {
+  // 🛡️ RATE LIMITING: Check if call is allowed to prevent excessive charges
+  if (!apiRateLimiter.canMakeCall('listing-analyzer')) {
+    const stats = apiRateLimiter.getUsageStats();
+    const waitTime = stats.nextAllowedCall ? Math.ceil(stats.nextAllowedCall / 1000) : 'unknown';
+    
+    addAgentMessage({
+      id: Date.now().toString(),
+      type: 'agent',
+      text: `⏱️ Rate limited: Please wait ${waitTime} seconds before analyzing another property. (${stats.callsLastMinute} calls in last minute)`,
+      timestamp: new Date()
+    });
+    return false;
+  }
+
   const urlRegex = /(https?:\/\/(www\.)?(zillow|redfin|apartments|trulia|realtor|hotpads|facebook)\.com\/[^\s]+)/i;
   const match = text.match(urlRegex);
   
@@ -167,6 +234,8 @@ export async function analyzeListingUrl(
     console.log("🔐 User ID:", session?.user?.id || 'none');
     
     console.log("📡 Calling analyzeListingWithSupabase...");
+    // Record the API call for rate limiting
+    apiRateLimiter.recordCall('listing-analyzer');
     const data = await analyzeListingWithSupabase(url);
     
     console.log("✅ Received listing analysis data:", data);
@@ -181,6 +250,9 @@ export async function analyzeListingUrl(
 
     let analysisText = "";
     if (data.address) {
+      // Save the analyzed property to database first
+      await saveAnalyzedProperty(data);
+      
       const addressLine = data.propertyName && !data.address.includes(data.propertyName) 
         ? `**${data.propertyName}** (${data.address})`
         : `**${data.address}**`;
@@ -302,6 +374,20 @@ export async function analyzeAddress(
   text: string,
   addAgentMessage: (m: ChatMessage) => void
 ) {
+  // 🛡️ RATE LIMITING: Check if call is allowed to prevent excessive charges
+  if (!apiRateLimiter.canMakeCall('address-analyzer')) {
+    const stats = apiRateLimiter.getUsageStats();
+    const waitTime = stats.nextAllowedCall ? Math.ceil(stats.nextAllowedCall / 1000) : 'unknown';
+    
+    addAgentMessage({
+      id: Date.now().toString(),
+      type: 'agent',
+      text: `⏱️ Rate limited: Please wait ${waitTime} seconds before analyzing another address. (${stats.callsLastMinute} calls in last minute)`,
+      timestamp: new Date()
+    });
+    return false;
+  }
+
   addAgentMessage({
     id: crypto.randomUUID(),
     type: "agent",
@@ -317,6 +403,8 @@ export async function analyzeAddress(
     const memories = await getMemoryContextForAI();
     console.log("Got memory context, memories count:", memories.length);
     
+    // Record the API call for rate limiting
+    apiRateLimiter.recordCall('address-analyzer');
     const data = await analyzeAddressWithSupabase({ 
       address: text,
       memories

@@ -23,8 +23,7 @@ export const Header = () => {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-8">
           <Link to="/resources" className="hover:text-sidebar-accent transition-colors">Resources</Link>
-          <Link to="/script-builder" className="hover:text-sidebar-accent transition-colors">Script Builder</Link>
-          <Link to="/lease" className="hover:text-sidebar-accent transition-colors">Lease Analyzer</Link>
+          <Link to="/script-builder" className="hover:text-sidebar-accent transition-colors">Email Script Builder</Link>
           <Link to="/faq" className="hover:text-sidebar-accent transition-colors">FAQ</Link>
           <Link to="/contact" className="hover:text-sidebar-accent transition-colors">Contact</Link>
 
@@ -90,14 +89,7 @@ export const Header = () => {
               className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              Script Builder
-            </Link>
-            <Link
-              to="/lease"
-              className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-md"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              Lease Analyzer
+              Email Script Builder
             </Link>
             <Link
               to="/faq"

@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Link, useSearchParams } from "react-router-dom";
-import { Home, BarChart3, Calculator } from "lucide-react";
+import { Home, BarChart3, Calculator, BookmarkIcon } from "lucide-react";
 import MarketInsights from "@/listingAnalyzer/components/MarketInsights";
 import PropertyComparison from "@/propertyComparison/components/PropertyComparison";
+import SavedProperties from "@/components/property/SavedProperties";
 
 const PropertyAnalysis = () => {
   const [searchParams] = useSearchParams();
@@ -14,7 +15,7 @@ const PropertyAnalysis = () => {
   useEffect(() => {
     // Update tab if URL param changes
     const tab = searchParams.get("tab");
-    if (tab && (tab === "single" || tab === "compare")) {
+    if (tab && (tab === "single" || tab === "compare" || tab === "saved")) {
       setActiveTab(tab);
     }
   }, [searchParams]);
@@ -39,7 +40,7 @@ const PropertyAnalysis = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-8">
+          <TabsList className="grid w-full grid-cols-3 mb-8">
             <TabsTrigger value="single" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Single Property Analysis
@@ -47,6 +48,10 @@ const PropertyAnalysis = () => {
             <TabsTrigger value="compare" className="flex items-center gap-2">
               <Calculator className="h-4 w-4" />
               Compare Properties
+            </TabsTrigger>
+            <TabsTrigger value="saved" className="flex items-center gap-2">
+              <BookmarkIcon className="h-4 w-4" />
+              Saved Properties
             </TabsTrigger>
           </TabsList>
 
@@ -81,6 +86,10 @@ const PropertyAnalysis = () => {
                 <PropertyComparison embedded={true} />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="saved" className="space-y-4">
+            <SavedProperties embedded={true} />
           </TabsContent>
         </Tabs>
       </div>

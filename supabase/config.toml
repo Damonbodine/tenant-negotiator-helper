@@ -72,6 +72,7 @@ redirect_uri = ""
 url = ""
 
 [functions]
-[functions.lease-doc-analyzer]
-verify_jwt = true
+
+[functions.openai-tts]
+verify_jwt = false
 

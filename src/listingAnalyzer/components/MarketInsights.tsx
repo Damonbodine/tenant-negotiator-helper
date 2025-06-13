@@ -4,7 +4,7 @@ import { ChatMessage } from "@/shared/types";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { Textarea } from "@/shared/ui/textarea";
 import { Button } from "@/shared/ui/button";
-import { Send, Search, Trash2 } from "lucide-react";
+import { Send, Search, Trash2, Save } from "lucide-react";
 import { toast } from "@/shared/hooks/use-toast";
 import { LoadingIndicator } from "@/chat/components/LoadingIndicator";
 import { ChatMessage as ChatMessageComponent } from "@/chat/components/ChatMessage";
@@ -97,22 +97,27 @@ const MarketInsights = ({ embedded = false, initialAddress }: MarketInsightsProp
     }
   }, [params.address, initialAddress, messages.length]); // Include dependencies
 
-  // FIXED: Proper cleanup without state updates in cleanup function
-  useEffect(() => {
-    return () => {
-      // Save conversation on unmount if meaningful and user is authenticated
-      if (messages.length > 1 && session?.user && memoryEnabled) {
-        // Use setTimeout to avoid state updates during cleanup
-        setTimeout(() => {
-          saveMemory(messages);
-        }, 0);
-      }
-    };
-  }, [messages, session?.user, memoryEnabled, saveMemory]);
+  // REMOVED: This was causing excessive API calls - memory should only save on unmount or manual trigger
 
   const quickActions = ["123 Main St, New York, NY", "Analyze 1-bed apartments in San Francisco", "Is $2,500 fair for a 2-bed in Chicago?"];
   
   const addAgentMessage = (msg: ChatMessage) => setMessages(prev => [...prev, msg]);
+  
+  const handleManualSave = async () => {
+    if (messages.length > 2 && session?.user && memoryEnabled) {
+      await saveMemory(messages);
+      toast({
+        title: "Conversation saved",
+        description: "Your conversation has been saved to memory.",
+      });
+    } else {
+      toast({
+        title: "Nothing to save",
+        description: "Start a conversation to save it to memory.",
+        variant: "secondary",
+      });
+    }
+  };
   
   const handleQuickAction = (actionText: string) => {
     setInput(actionText);
@@ -158,11 +163,11 @@ const MarketInsights = ({ embedded = false, initialAddress }: MarketInsightsProp
     }
   };
 
-  // Save memory when user leaves the page or component unmounts
+  // Save memory ONLY when component unmounts - not on every message change
   useEffect(() => {
     // Save on unmount if there's a meaningful conversation
     const handleBeforeUnload = () => {
-      if (messages.length > 1 && session?.user) {
+      if (messages.length > 2 && session?.user && memoryEnabled) {
         saveMemory(messages);
       }
     };
@@ -171,12 +176,12 @@ const MarketInsights = ({ embedded = false, initialAddress }: MarketInsightsProp
     
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      // Save when component unmounts
-      if (messages.length > 1 && session?.user) {
+      // Save when component unmounts - but only if conversation is meaningful
+      if (messages.length > 2 && session?.user && memoryEnabled) {
         saveMemory(messages);
       }
     };
-  }, [messages, session]);
+  }, []); // Empty dependency array - only run on mount/unmount
 
   const containerClass = embedded ? "" : "container py-8";
   const wrapperClass = embedded ? "w-full" : "w-full max-w-4xl mx-auto";

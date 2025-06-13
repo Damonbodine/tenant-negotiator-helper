@@ -3,9 +3,9 @@ export const ElevenLabsWidget = () => {
   const widgetContainerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     // Load widget script if not already present
-    if (!document.querySelector('script[src="https://elevenlabs.io/convai-widget/index.js"]')) {
+    if (!document.querySelector('script[src="https://unpkg.com/@elevenlabs/convai-widget-embed"]')) {
       const script = document.createElement('script');
-      script.src = "https://elevenlabs.io/convai-widget/index.js";
+      script.src = "https://unpkg.com/@elevenlabs/convai-widget-embed";
       script.async = true;
       script.type = "text/javascript";
       document.body.appendChild(script);
@@ -39,6 +39,6 @@ export const ElevenLabsWidget = () => {
     };
   }, []);
   return <div ref={widgetContainerRef} className="elevenlabs-widget-container min-h-[400px] flex justify-center mx-0 my-0 px-[102px]">
-      <elevenlabs-convai agent-id="VT5HhuEwB5po9ZHZGcOk"></elevenlabs-convai>
+      <elevenlabs-convai agent-id="4uRI9hKr0Mhg7DbwaLDD"></elevenlabs-convai>
     </div>;
 };

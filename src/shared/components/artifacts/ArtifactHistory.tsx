@@ -22,7 +22,6 @@ const ARTIFACT_ICONS = {
   'negotiation-roadmap': MessageSquare,
   'market-heatmap': Map,
   'affordability-calculator': Calculator,
-  'lease-analyzer': FileText,
   'script-generator': MessageSquare,
   'market-position-indicator': TrendingUp,
   'neighborhood-insights': MapPin,

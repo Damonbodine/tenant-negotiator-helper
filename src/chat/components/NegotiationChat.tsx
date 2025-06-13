@@ -16,22 +16,27 @@ import { useArtifactStore } from "@/shared/stores/artifactStore";
 import { VisualArtifact, MarketPositionIndicatorData, AffordabilityCalculatorData } from "@/shared/types/artifacts";
 import ReactMarkdown from "react-markdown";
 import { Link } from "react-router-dom";
+import { useConversationHistory } from "@/hooks/useConversationHistory";
+import { supabase } from "@/integrations/supabase/client";
 
 const NegotiationChat = () => {
   console.log("🔍 ORIGINAL NegotiationChat component is mounting...");
   
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: "welcome",
-      type: "agent",
-      text: "Welcome! I'm your negotiation coach. What rental situation would you like advice on?",
-      timestamp: new Date()
-    }
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { toast } = useToast();
   const { addArtifact } = useArtifactStore();
+  
+  const {
+    currentConversation,
+    startNewConversation,
+    loadConversation,
+    addMessageToConversation,
+    clearCurrentConversation
+  } = useConversationHistory();
 
   // Simplified: No complex triggering - users click tools directly
 
@@ -254,6 +259,66 @@ const NegotiationChat = () => {
     }
   };
 
+  // Check authentication status on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session?.user);
+    };
+    
+    checkAuth();
+    
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsAuthenticated(!!session?.user);
+    });
+    
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Load conversation when component mounts or conversation changes
+  useEffect(() => {
+    if (currentConversation) {
+      setMessages(currentConversation.messages);
+      setCurrentConversationId(currentConversation.conversationId);
+    } else if (messages.length === 0) {
+      // Start with welcome message if no conversation loaded
+      const welcomeMessage: ChatMessage = {
+        id: "welcome",
+        type: "agent",
+        text: "Welcome! I'm your negotiation coach. What rental situation would you like advice on?",
+        timestamp: new Date()
+      };
+      setMessages([welcomeMessage]);
+    }
+  }, [currentConversation]);
+
+  // Handle conversation selection
+  const handleSelectConversation = async (conversationId: string) => {
+    const conversation = await loadConversation(conversationId);
+    if (conversation) {
+      setMessages(conversation.messages);
+      setCurrentConversationId(conversationId);
+    }
+  };
+
+  // Handle new conversation
+  const handleNewConversation = async () => {
+    const conversationId = await startNewConversation('negotiation_help');
+    if (conversationId) {
+      clearCurrentConversation();
+      setCurrentConversationId(conversationId);
+      // Reset to welcome message
+      const welcomeMessage: ChatMessage = {
+        id: "welcome",
+        type: "agent",
+        text: "Welcome! I'm your negotiation coach. What rental situation would you like advice on?",
+        timestamp: new Date()
+      };
+      setMessages([welcomeMessage]);
+    }
+  };
+
   // Handle quick question clicks
   const handleQuickAction = (text: string) => {
     setInput(text);
@@ -264,10 +329,11 @@ const NegotiationChat = () => {
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return;
 
+    const messageText = input;
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       type: 'user',
-      text: input,
+      text: messageText,
       timestamp: new Date()
     };
 
@@ -276,7 +342,34 @@ const NegotiationChat = () => {
     setIsLoading(true);
 
     try {
-      const response = await chatService.sendMessageToGemini(input, messages);
+      // Only try to create/save conversation if user is authenticated
+      let conversationId = currentConversationId;
+      
+      // Check if user is authenticated before attempting conversation operations
+      const { data: { session } } = await supabase.auth.getSession();
+      const isAuthenticated = !!session?.user;
+      
+      if (isAuthenticated && !conversationId) {
+        try {
+          conversationId = await startNewConversation('negotiation_help');
+          setCurrentConversationId(conversationId);
+        } catch (error) {
+          console.warn("Could not create conversation (user may not be authenticated):", error);
+          // Continue without conversation persistence
+        }
+      }
+
+      // Save user message to conversation if authenticated and conversation exists
+      if (isAuthenticated && conversationId) {
+        try {
+          await addMessageToConversation(conversationId, messageText, 'user');
+        } catch (error) {
+          console.warn("Could not save user message to conversation:", error);
+          // Continue without saving
+        }
+      }
+
+      const response = await chatService.sendMessageToGemini(messageText, messages);
 
       const agentMessage: ChatMessage = {
         id: Date.now().toString(),
@@ -286,6 +379,16 @@ const NegotiationChat = () => {
       };
 
       setMessages(prev => [...prev, agentMessage]);
+
+      // Save agent response to conversation if authenticated and conversation exists
+      if (isAuthenticated && conversationId) {
+        try {
+          await addMessageToConversation(conversationId, response, 'assistant');
+        } catch (error) {
+          console.warn("Could not save agent response to conversation:", error);
+          // Continue without saving
+        }
+      }
     } catch (error) {
       console.error("Error sending message:", error);
       toast({
@@ -299,7 +402,12 @@ const NegotiationChat = () => {
   };
 
   return (
-    <ChatWithArtifacts>
+    <ChatWithArtifacts
+      showConversationHistory={isAuthenticated}
+      currentConversationId={currentConversationId || undefined}
+      onSelectConversation={handleSelectConversation}
+      onNewConversation={handleNewConversation}
+    >
       <main className="container py-8">
         <div className="w-full max-w-4xl mx-auto">
           <div className="flex justify-between items-center mb-6">

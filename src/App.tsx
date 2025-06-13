@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import { Footer } from "@/shared/components/layout/Footer";
 import { ErrorBoundary } from "@/shared/ui/ErrorBoundary";
 import { Header } from "@/shared/components/layout/Header";
+import { PersistentHistoryLayout } from "@/shared/components/layout/PersistentHistoryLayout";
 import { Toaster } from "@/components/ui/toaster";
 
 // Lazy load pages for better performance
@@ -22,7 +23,6 @@ const FAQ = lazy(() => import("@/pages/FAQ"));
 const PromptManager = lazy(() => import("@/shared/components/PromptManager"));
 const ScriptBuilder = lazy(() => import("@/pages/ScriptBuilder"));
 const DownPaymentPrograms = lazy(() => import("@/pages/DownPaymentPrograms"));
-const LeaseAnalyzer = lazy(() => import("@/pages/LeaseAnalyzer"));
 const NegotiationChat = lazy(() => import("@/chat/components/NegotiationChat"));
 const PropertyComparison = lazy(() => import("@/propertyComparison/components/PropertyComparison"));
 const MarketInsights = lazy(() => import("@/listingAnalyzer/components/MarketInsights"));
@@ -45,7 +45,6 @@ function AppRoutes() {
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/script-builder" element={<ScriptBuilder />} />
-        <Route path="/lease" element={<LeaseAnalyzer />} />
         <Route path="/negotiation" element={<NegotiationChat />} />
         <Route path="/property-analysis" element={<PropertyAnalysis />} />
         {/* Legacy routes - redirect to unified property analysis */}
@@ -74,7 +73,9 @@ function App() {
           <div className="min-h-screen flex flex-col">
             <Header />
             <div className="flex-1 pb-32">
-              <AppRoutes />
+              <PersistentHistoryLayout>
+                <AppRoutes />
+              </PersistentHistoryLayout>
             </div>
             <Footer />
           </div>

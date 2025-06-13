@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ChatMessage } from '@/shared/types';
 import { promptService } from '@/shared/services/promptTemplates';
+import { apiRateLimiter } from '@/shared/services/apiRateLimiter';
 
 let activePromptTemplateId = 'default';
 
@@ -15,12 +16,22 @@ export const chatClient = {
 
   async sendMessageToGemini(message: string, history: ChatMessage[]): Promise<string> {
     try {
+      // 🛡️ RATE LIMITING: Check if call is allowed to prevent excessive charges
+      if (!apiRateLimiter.canMakeCall('chat-ai-enhanced')) {
+        const stats = apiRateLimiter.getUsageStats();
+        const waitTime = stats.nextAllowedCall ? Math.ceil(stats.nextAllowedCall / 1000) : 'unknown';
+        throw new Error(`Rate limited: Too many API calls. Please wait ${waitTime} seconds. Calls in last minute: ${stats.callsLastMinute}`);
+      }
+
       // 🚀 PERFORMANCE TRACKING: Monitor client-side timing
       const clientStart = Date.now();
-      console.log("🚀 USING REGULAR CHAT CLIENT (NO CACHING)");
+      console.log("🚀 USING ENHANCED CHAT CLIENT WITH AUTH DETECTION");
       console.log("🚀 CLIENT PERFORMANCE: Starting request at", new Date().toISOString());
       console.log("Sending message to AI model:", message);
       console.log("With history:", history);
+      
+      // Record the API call
+      apiRateLimiter.recordCall('chat-ai-enhanced');
       
       const templates = promptService.getPromptTemplates() || [];
       const activeTemplate = templates.find(t => t.id === activePromptTemplateId) || {
@@ -55,25 +66,43 @@ export const chatClient = {
       // Try to extract property context from the message and history
       const propertyContext = extractPropertyContext(message, history);
       
-      console.log(`Calling chat-ai-enhanced function with rental memory (Type: ${chatType})`);
-      
       // 🚀 PERFORMANCE: Track API call timing
       const apiCallStart = Date.now();
       console.log("🚀 API CALL: Starting edge function call...");
       
-      // Use enhanced chat function with memory capabilities
-      const { data, error } = await supabase.functions.invoke('chat-ai-enhanced', {
-        body: { 
-          message, 
-          history: formattedHistory,
-          systemPrompt: enhancedSystemPrompt,
-          context: {
-            userId: userId,
-            chatType: chatType,
-            propertyContext: propertyContext
-          }
-        },
-      });
+      let data, error;
+      
+      // Use enhanced chat for authenticated users, basic chat for unauthenticated
+      if (userId) {
+        console.log(`Calling chat-ai-enhanced function with rental memory (Type: ${chatType})`);
+        
+        const response = await supabase.functions.invoke('chat-ai-enhanced', {
+          body: { 
+            message, 
+            history: formattedHistory,
+            systemPrompt: enhancedSystemPrompt,
+            context: {
+              userId: userId,
+              chatType: chatType,
+              propertyContext: propertyContext
+            }
+          },
+        });
+        data = response.data;
+        error = response.error;
+      } else {
+        console.log('Calling basic chat-ai function (unauthenticated user)');
+        
+        const response = await supabase.functions.invoke('chat-ai', {
+          body: { 
+            message, 
+            history: formattedHistory,
+            systemPrompt: enhancedSystemPrompt
+          },
+        });
+        data = response.data;
+        error = response.error;
+      }
 
       const apiCallTime = Date.now() - apiCallStart;
       console.log(`🚀 API CALL COMPLETE: ${apiCallTime}ms`);

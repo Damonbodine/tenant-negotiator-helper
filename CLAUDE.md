@@ -32,7 +32,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 1. **Property Analysis Tools:**
 -Listing analyzer 
-these routes should be harmonized together to great a unified resource. 
+these routes should be harmonized together to great a unified resource. a
    - Listing Analyzer (`/market`) - Analyze rental listings for negotiation insights
    - Property Comparison (`/comparison`) - Compare multiple properties side-by-side
    both features s

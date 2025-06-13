@@ -29,8 +29,22 @@ serve(async (req: Request) => {
       );
     }
 
-    const { goals, propertyDetails, marketInfo, additionalContext } = requestData;
+    const { goals, propertyDetails, marketInfo, additionalContext, mode, script, formData } = requestData;
 
+    // Handle email template generation mode
+    if (mode === 'email_template') {
+      if (!script) {
+        return new Response(
+          JSON.stringify({ error: 'Script is required for email template generation' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Generating email template from script');
+      return await generateEmailTemplate(script, formData, openAIApiKey);
+    }
+
+    // Original script generation logic
     if (!goals) {
       return new Response(
         JSON.stringify({ error: 'Negotiation goals are required' }),
@@ -170,3 +184,125 @@ serve(async (req: Request) => {
     );
   }
 });
+
+// Function to generate email template from script
+async function generateEmailTemplate(script: any, formData: any, openAIApiKey: string) {
+  console.log('Generating email template with OpenAI');
+  
+  // If no OpenAI API key, return a simulated email template
+  if (!openAIApiKey) {
+    console.warn("No OpenAI API key found. Returning simulated email template.");
+    
+    return new Response(
+      JSON.stringify({
+        subject: "Request for Lease Renewal Discussion",
+        greeting: "Dear Property Manager,",
+        body: `I hope this email finds you well. I am writing to discuss my upcoming lease renewal and explore the possibility of adjusting the rental terms.
+
+I have thoroughly enjoyed living at this property and would like to continue as your tenant. Based on my research of comparable properties in the area, I believe there may be room for discussion regarding the rental rate.
+
+${script.mainPoints.map((point: any, i: number) => `${i + 1}. ${point.point}`).join('\n')}
+
+I am committed to being a responsible tenant and would appreciate the opportunity to discuss these points with you. I believe we can reach an agreement that works well for both parties.`,
+        closing: "Thank you for your time and consideration. I look forward to hearing from you soon.",
+        signature: "Best regards,\n[Your Name]\n[Your Phone Number]\n[Your Email]",
+        fullEmail: `Dear Property Manager,
+
+I hope this email finds you well. I am writing to discuss my upcoming lease renewal and explore the possibility of adjusting the rental terms.
+
+I have thoroughly enjoyed living at this property and would like to continue as your tenant. Based on my research of comparable properties in the area, I believe there may be room for discussion regarding the rental rate.
+
+${script.mainPoints.map((point: any, i: number) => `${i + 1}. ${point.point}`).join('\n')}
+
+I am committed to being a responsible tenant and would appreciate the opportunity to discuss these points with you. I believe we can reach an agreement that works well for both parties.
+
+Thank you for your time and consideration. I look forward to hearing from you soon.
+
+Best regards,
+[Your Name]
+[Your Phone Number]
+[Your Email]`
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Prepare the prompt for OpenAI
+  const systemPrompt = `You are an expert in professional business communication and rental negotiations. 
+  Convert the provided negotiation script into a professional, well-structured email template.
+  
+  Format your response as a JSON object with the following structure:
+  {
+    "subject": "Professional subject line for the email",
+    "greeting": "Appropriate greeting (e.g., Dear Property Manager,)",
+    "body": "Main email content based on the script points",
+    "closing": "Professional closing statement",
+    "signature": "Email signature placeholder",
+    "fullEmail": "Complete formatted email ready to send"
+  }
+  
+  Guidelines:
+  - Keep the tone professional but friendly
+  - Structure the email logically with clear paragraphs
+  - Include the main negotiation points from the script
+  - Make it sound like a reasonable request, not a demand
+  - Include appropriate business email etiquette
+  - Make the subject line clear and professional`;
+
+  try {
+    const openAIResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${openAIApiKey}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `
+            Please convert this negotiation script into a professional email template:
+            
+            Goals: ${formData?.goals || 'Not provided'}
+            Property Type: ${formData?.propertyType || 'Not provided'}
+            Current Rent: ${formData?.currentRent || 'Not provided'}
+            Target Rent: ${formData?.targetRent || 'Not provided'}
+            
+            Script Content:
+            Introduction: ${script.introduction}
+            
+            Main Points:
+            ${script.mainPoints.map((point: any, i: number) => `${i + 1}. ${point.point} - ${point.reasoning}`).join('\n')}
+            
+            Closing: ${script.closing}
+            
+            Please create a professional email that incorporates these elements naturally.
+          `}
+        ],
+        temperature: 0.7,
+        response_format: { type: "json_object" }
+      })
+    });
+
+    if (!openAIResponse.ok) {
+      const errorData = await openAIResponse.text();
+      console.error("OpenAI API error:", errorData);
+      throw new Error('Failed to generate email template');
+    }
+
+    const openAIData = await openAIResponse.json();
+    const emailTemplate = JSON.parse(openAIData.choices[0].message.content);
+    
+    return new Response(
+      JSON.stringify(emailTemplate),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+    
+  } catch (error) {
+    console.error("Error generating email template:", error);
+    return new Response(
+      JSON.stringify({ error: 'Failed to generate email template', details: error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+}
