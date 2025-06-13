@@ -40,7 +40,7 @@ const PropertyAnalysis = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-8">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="single" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Single Property Analysis
@@ -55,7 +55,7 @@ const PropertyAnalysis = () => {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="single" className="space-y-4">
+          <TabsContent value="single" className="space-y-4 mt-2">
             <Card>
               <CardHeader>
                 <CardTitle>Analyze a Property</CardTitle>
@@ -73,7 +73,7 @@ const PropertyAnalysis = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="compare" className="space-y-4">
+          <TabsContent value="compare" className="space-y-4 mt-2">
             <Card>
               <CardHeader>
                 <CardTitle>Compare Multiple Properties</CardTitle>
@@ -88,7 +88,7 @@ const PropertyAnalysis = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="saved" className="space-y-4">
+          <TabsContent value="saved" className="space-y-4 mt-2">
             <SavedProperties embedded={true} />
           </TabsContent>
         </Tabs>

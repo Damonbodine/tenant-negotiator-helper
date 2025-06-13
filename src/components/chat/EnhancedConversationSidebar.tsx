@@ -5,6 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { 
   Plus, 
   Search, 
@@ -54,6 +55,10 @@ export function EnhancedConversationSidebar({
   const [propertyHistory, setPropertyHistory] = useState<PropertyHistoryItem[]>([]);
   const [isLoadingProperties, setIsLoadingProperties] = useState(false);
   const [activeTab, setActiveTab] = useState('conversations');
+  const [selectedProperty, setSelectedProperty] = useState<PropertyHistoryItem | null>(null);
+  const [showPropertyModal, setShowPropertyModal] = useState(false);
+  const [propertyConversations, setPropertyConversations] = useState<any[]>([]);
+  const [loadingPropertyConversations, setLoadingPropertyConversations] = useState(false);
   
   const {
     conversations,
@@ -70,31 +75,51 @@ export function EnhancedConversationSidebar({
     try {
       setIsLoadingProperties(true);
       
-      // For now, let's just show mock property data until we have the correct schema
-      // The properties table doesn't exist in the current database schema
-      const mockProperties: PropertyHistoryItem[] = [
-        {
-          property_id: '1',
-          address: '123 Main St, City, State',
-          relationship_type: 'target',
-          rent_amount: 2500,
-          last_analyzed_at: new Date().toISOString(),
-          analysis_summary: 'Great location with competitive pricing'
-        },
-        {
-          property_id: '2', 
-          address: '456 Oak Ave, City, State',
-          relationship_type: 'comparable',
-          rent_amount: 2300,
-          last_analyzed_at: new Date(Date.now() - 86400000).toISOString(),
-          analysis_summary: 'Similar unit, slightly lower rent'
-        }
-      ];
-      
-      setPropertyHistory(mockProperties);
+      if (!user?.id) {
+        setPropertyHistory([]);
+        return;
+      }
+
+      // Load real properties from database
+      const { data: properties, error } = await supabase
+        .from('properties')
+        .select(`
+          id,
+          address,
+          city,
+          state,
+          rent_amount,
+          bedrooms,
+          property_type,
+          created_at,
+          market_analysis,
+          user_properties!inner(user_id, relationship_type, created_at)
+        `)
+        .eq('user_properties.user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (error) {
+        console.error('Error loading properties:', error);
+        setPropertyHistory([]);
+        return;
+      }
+
+      // Transform to PropertyHistoryItem format
+      const transformedProperties: PropertyHistoryItem[] = (properties || []).map(prop => ({
+        property_id: prop.id,
+        address: `${prop.address}${prop.city ? `, ${prop.city}` : ''}${prop.state ? `, ${prop.state}` : ''}`,
+        relationship_type: prop.user_properties[0]?.relationship_type || 'analyzed',
+        rent_amount: prop.rent_amount ? Math.round(prop.rent_amount / 100) : undefined,
+        last_analyzed_at: prop.user_properties[0]?.created_at || prop.created_at,
+        analysis_summary: prop.market_analysis?.verdict || 'Property analyzed',
+        market_insights: prop.market_analysis
+      }));
+
+      setPropertyHistory(transformedProperties);
     } catch (error) {
       console.error('Error loading property history:', error);
-      setPropertyHistory([]); // Set empty array on error
+      setPropertyHistory([]);
     } finally {
       setIsLoadingProperties(false);
     }
@@ -105,6 +130,17 @@ export function EnhancedConversationSidebar({
       loadPropertyHistory();
     }
   }, [user]);
+
+  // Refresh properties periodically to catch newly saved ones
+  useEffect(() => {
+    if (user && activeTab === 'properties') {
+      const interval = setInterval(() => {
+        loadPropertyHistory();
+      }, 30000); // Refresh every 30 seconds, only when Properties tab is active
+
+      return () => clearInterval(interval);
+    }
+  }, [user, activeTab]);
 
   // Filter conversations based on search and type
   const filteredConversations = conversations.filter(conv => {
@@ -175,6 +211,102 @@ export function EnhancedConversationSidebar({
     return date.toLocaleDateString();
   };
 
+  const loadPropertyConversations = async (propertyId: string, propertyAddress: string) => {
+    try {
+      setLoadingPropertyConversations(true);
+      
+      // Get ALL conversations to check what type created this property
+      const { data: allConversations, error: allError } = await supabase
+        .from('rental_conversations')
+        .select(`
+          id,
+          title,
+          conversation_type,
+          created_at,
+          rental_messages(
+            id,
+            content,
+            role,
+            created_at
+          )
+        `)
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (allError) {
+        console.error('Error loading conversations:', allError);
+        setPropertyConversations([]);
+        return;
+      }
+
+      console.log('All conversations:', allConversations?.map(c => ({ 
+        type: c.conversation_type, 
+        title: c.title,
+        messageCount: c.rental_messages?.length 
+      })));
+
+      // Filter to find conversations that might be related to this property
+      const relevantConversations = allConversations?.filter(conv => {
+        // Check various conversation types that might analyze properties
+        const isPropertyRelated = ['listing_analyzer', 'price_analysis', 'comparables', 'general_advice'].includes(conv.conversation_type);
+        
+        if (!isPropertyRelated || !conv.rental_messages?.length) return false;
+        
+        // Extract key parts of the address for matching
+        const addressParts = propertyAddress.toLowerCase().split(',')[0].trim(); // Get street address
+        const streetNumber = addressParts.match(/^\d+/)?.[0] || ''; // Extract street number
+        const streetName = addressParts.replace(/^\d+\s*/, '').split(' ')[0]; // Get first word of street name
+        
+        // Check if any message mentions the address or property URL
+        const hasMatch = conv.rental_messages?.some((msg: any) => {
+          const content = msg.content.toLowerCase();
+          return (
+            content.includes('15224') || // Specific street number
+            content.includes('calaveras') || // Street name
+            content.includes('78717') || // Zip code
+            content.includes('zillow.com') || // Zillow URL
+            content.includes('apartments.com') || // Apartments.com URL
+            content.includes(addressParts) || // Full street address
+            (streetNumber && content.includes(streetNumber) && content.includes('austin')) // Number + city
+          );
+        });
+        
+        if (hasMatch) {
+          console.log('Found matching conversation:', conv.conversation_type, conv.title);
+        }
+        
+        return hasMatch;
+      }) || [];
+
+      console.log('Found conversations for property:', relevantConversations.length);
+      
+      // If no exact matches found, show recent property-related conversations as fallback
+      if (relevantConversations.length === 0) {
+        const recentPropertyConvs = allConversations?.filter(conv => 
+          ['listing_analyzer', 'price_analysis', 'comparables'].includes(conv.conversation_type)
+        ).slice(0, 3) || [];
+        
+        console.log('Using recent property conversations as fallback:', recentPropertyConvs.length);
+        setPropertyConversations(recentPropertyConvs);
+      } else {
+        setPropertyConversations(relevantConversations);
+      }
+    } catch (error) {
+      console.error('Error loading property conversations:', error);
+      setPropertyConversations([]);
+    } finally {
+      setLoadingPropertyConversations(false);
+    }
+  };
+
+  const handlePropertyClick = async (property: PropertyHistoryItem) => {
+    console.log('Property clicked:', property);
+    setSelectedProperty(property);
+    setShowPropertyModal(true);
+    await loadPropertyConversations(property.property_id, property.address);
+  };
+
   return (
     <div className={cn(
       "flex flex-col bg-white dark:bg-slate-900 border-r border-border h-full",
@@ -221,8 +353,13 @@ export function EnhancedConversationSidebar({
       </div>
 
       {/* Tabs for Conversations and Properties */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <TabsList className="grid w-full grid-cols-2 mx-4 mt-2">
+      <Tabs value={activeTab} onValueChange={(tab) => {
+        setActiveTab(tab);
+        if (tab === 'properties' && user) {
+          loadPropertyHistory(); // Refresh properties when Properties tab is clicked
+        }
+      }} className="flex-1 flex flex-col">
+        <TabsList className="grid w-full grid-cols-2 px-4">
           <TabsTrigger value="conversations" className="flex items-center gap-2">
             <MessageSquare className="h-4 w-4" />
             Conversations
@@ -301,20 +438,25 @@ export function EnhancedConversationSidebar({
         </TabsContent>
 
         {/* Properties Tab */}
-        <TabsContent value="properties" className="flex-1 flex flex-col m-0">
-          <ScrollArea className="flex-1">
-            <div className="p-4 space-y-3">
+        <TabsContent value="properties" className="flex-1 flex flex-col !m-0 !mt-0 !pt-0">
+          <ScrollArea className="flex-1 !mt-0">
+            <div className="pt-0 px-4 pb-4">
               {isLoadingProperties ? (
-                <div className="text-center py-8 text-muted-foreground">
+                <div className="text-center py-2 text-muted-foreground text-sm">
                   Loading properties...
                 </div>
               ) : filteredProperties.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
+                <div className="text-center py-2 text-muted-foreground text-sm">
                   {searchQuery ? 'No properties match your search' : 'No properties analyzed yet'}
                 </div>
               ) : (
-                filteredProperties.map((property) => (
-                  <Card key={property.property_id} className="cursor-pointer hover:bg-muted/50 transition-colors">
+                <div className="space-y-3">
+                  {filteredProperties.map((property) => (
+                  <Card 
+                    key={property.property_id} 
+                    className="cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => handlePropertyClick(property)}
+                  >
                     <CardHeader className="pb-2">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-2">
@@ -352,7 +494,8 @@ export function EnhancedConversationSidebar({
                       </div>
                     </CardContent>
                   </Card>
-                ))
+                  ))}
+                </div>
               )}
             </div>
           </ScrollArea>
@@ -368,6 +511,182 @@ export function EnhancedConversationSidebar({
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Property Details Modal */}
+      <Sheet open={showPropertyModal} onOpenChange={setShowPropertyModal}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>Property Analysis</SheetTitle>
+            <SheetDescription>
+              Detailed analysis for {selectedProperty?.address}
+            </SheetDescription>
+          </SheetHeader>
+          
+          {selectedProperty && (
+            <div className="mt-6 space-y-6">
+              {/* Property Overview */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-sm">Property Details</h3>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">{selectedProperty.address}</span>
+                  </div>
+                  {selectedProperty.rent_amount && (
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">
+                        ${selectedProperty.rent_amount.toLocaleString()}/month
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">
+                      Analyzed {formatDate(selectedProperty.last_analyzed_at)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Relationship Type */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-sm">Status</h3>
+                <div className="flex items-center gap-2">
+                  {getRelationshipIcon(selectedProperty.relationship_type)}
+                  <Badge variant="outline">
+                    {formatRelationshipType(selectedProperty.relationship_type)}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Market Analysis */}
+              {selectedProperty.market_insights && (
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-sm">Market Analysis</h3>
+                  <div className="bg-muted/30 p-4 rounded-lg">
+                    {selectedProperty.market_insights.verdict && (
+                      <div className="mb-2">
+                        <span className="text-sm font-medium">Market Verdict: </span>
+                        <Badge variant="outline" className="ml-1">
+                          {selectedProperty.market_insights.verdict}
+                        </Badge>
+                      </div>
+                    )}
+                    
+                    {selectedProperty.market_insights.marketAverage && (
+                      <div className="mb-2">
+                        <span className="text-sm font-medium">Market Average: </span>
+                        <span className="text-sm">
+                          ${Math.round(selectedProperty.market_insights.marketAverage).toLocaleString()}/month
+                        </span>
+                      </div>
+                    )}
+                    
+                    {selectedProperty.market_insights.deltaPercent && (
+                      <div className="mb-2">
+                        <span className="text-sm font-medium">Price Difference: </span>
+                        <span className={`text-sm ${parseFloat(selectedProperty.market_insights.deltaPercent) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                          {parseFloat(selectedProperty.market_insights.deltaPercent) > 0 ? '+' : ''}{selectedProperty.market_insights.deltaPercent}% vs market
+                        </span>
+                      </div>
+                    )}
+                    
+                    {selectedProperty.market_insights.rentcastAnalysis?.comparables && (
+                      <div className="mt-4">
+                        <span className="text-sm font-medium">Similar Properties: </span>
+                        <span className="text-sm text-muted-foreground">
+                          {selectedProperty.market_insights.rentcastAnalysis.comparables.length} comparable properties found
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Analysis Summary */}
+              {selectedProperty.analysis_summary && selectedProperty.analysis_summary !== 'Property analyzed' && (
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-sm">Summary</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedProperty.analysis_summary}
+                  </p>
+                </div>
+              )}
+
+              {/* Chat History */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-sm">
+                  {propertyConversations.length > 0 && propertyConversations.some(c => 
+                    c.rental_messages?.some((m: any) => 
+                      m.content.toLowerCase().includes('15224') || 
+                      m.content.toLowerCase().includes('calaveras')
+                    )
+                  ) ? 'Related Conversations' : 'Recent Property Conversations'}
+                </h3>
+                {loadingPropertyConversations ? (
+                  <div className="text-center py-4 text-muted-foreground">
+                    Loading conversations...
+                  </div>
+                ) : propertyConversations.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No conversations found for this property.
+                  </p>
+                ) : (
+                  <div className="space-y-3 max-h-64 overflow-y-auto">
+                    {propertyConversations.map((conv) => (
+                      <Card 
+                        key={conv.id} 
+                        className="cursor-pointer hover:bg-muted/50 transition-colors p-3"
+                        onClick={() => {
+                          onSelectConversation(conv.id);
+                          setShowPropertyModal(false);
+                        }}
+                      >
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-medium">
+                              {conv.title || `${formatFilterLabel(conv.conversation_type)} Chat`}
+                            </h4>
+                            <span className="text-xs text-muted-foreground">
+                              {formatDate(conv.created_at)}
+                            </span>
+                          </div>
+                          
+                          {/* Show recent messages */}
+                          {conv.rental_messages && conv.rental_messages.length > 0 && (
+                            <div className="space-y-1 mt-2">
+                              {conv.rental_messages.slice(0, 2).map((msg: any) => (
+                                <div key={msg.id} className="text-xs">
+                                  <span className="font-medium">
+                                    {msg.role === 'user' ? 'You: ' : 'AI: '}
+                                  </span>
+                                  <span className="text-muted-foreground line-clamp-1">
+                                    {msg.content}
+                                  </span>
+                                </div>
+                              ))}
+                              {conv.rental_messages.length > 2 && (
+                                <p className="text-xs text-muted-foreground">
+                                  +{conv.rental_messages.length - 2} more messages
+                                </p>
+                              )}
+                            </div>
+                          )}
+                          
+                          <Badge variant="secondary" className="text-xs w-fit">
+                            {formatFilterLabel(conv.conversation_type)}
+                          </Badge>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

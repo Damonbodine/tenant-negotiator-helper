@@ -33,9 +33,31 @@ serve(async (req: Request) => {
 
     // Handle email template generation mode
     if (mode === 'email_template') {
+      console.log('Email template mode detected');
+      console.log('Script data received:', script ? 'Present' : 'Missing');
+      console.log('Form data received:', formData ? 'Present' : 'Missing');
+      
       if (!script) {
+        console.error('No script provided for email template generation');
         return new Response(
           JSON.stringify({ error: 'Script is required for email template generation' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Validate script structure
+      if (typeof script !== 'object') {
+        console.error('Script is not an object:', typeof script);
+        return new Response(
+          JSON.stringify({ error: 'Script must be an object' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!script.mainPoints || !Array.isArray(script.mainPoints)) {
+        console.error('Script missing mainPoints array:', script);
+        return new Response(
+          JSON.stringify({ error: 'Script must contain mainPoints array' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -188,6 +210,8 @@ serve(async (req: Request) => {
 // Function to generate email template from script
 async function generateEmailTemplate(script: any, formData: any, openAIApiKey: string) {
   console.log('Generating email template with OpenAI');
+  console.log('OpenAI API Key available:', !!openAIApiKey);
+  console.log('OpenAI API Key length:', openAIApiKey?.length || 0);
   
   // If no OpenAI API key, return a simulated email template
   if (!openAIApiKey) {
@@ -250,6 +274,7 @@ Best regards,
   - Make the subject line clear and professional`;
 
   try {
+    console.log('Making OpenAI API call...');
     const openAIResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -283,6 +308,9 @@ Best regards,
         response_format: { type: "json_object" }
       })
     });
+    
+    console.log('OpenAI API response status:', openAIResponse.status);
+    console.log('OpenAI API response headers:', openAIResponse.headers);
 
     if (!openAIResponse.ok) {
       const errorData = await openAIResponse.text();
@@ -291,7 +319,10 @@ Best regards,
     }
 
     const openAIData = await openAIResponse.json();
+    console.log('OpenAI response data:', openAIData);
+    
     const emailTemplate = JSON.parse(openAIData.choices[0].message.content);
+    console.log('Parsed email template:', emailTemplate);
     
     return new Response(
       JSON.stringify(emailTemplate),

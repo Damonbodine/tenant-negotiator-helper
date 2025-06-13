@@ -27,6 +27,7 @@ const NegotiationChat = lazy(() => import("@/chat/components/NegotiationChat"));
 const PropertyComparison = lazy(() => import("@/propertyComparison/components/PropertyComparison"));
 const MarketInsights = lazy(() => import("@/listingAnalyzer/components/MarketInsights"));
 const PropertyAnalysis = lazy(() => import("@/pages/PropertyAnalysis"));
+const Debug = lazy(() => import("@/pages/Debug"));
 
 function AppRoutes() {
   return (
@@ -47,6 +48,7 @@ function AppRoutes() {
         <Route path="/script-builder" element={<ScriptBuilder />} />
         <Route path="/negotiation" element={<NegotiationChat />} />
         <Route path="/property-analysis" element={<PropertyAnalysis />} />
+        <Route path="/debug" element={<Debug />} />
         {/* Legacy routes - redirect to unified property analysis */}
         <Route path="/comparison" element={<PropertyAnalysis />} />
         <Route path="/market/:address?" element={<PropertyAnalysis />} />

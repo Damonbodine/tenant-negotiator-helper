@@ -14,7 +14,7 @@ export const chatClient = {
     return activePromptTemplateId;
   },
 
-  async sendMessageToGemini(message: string, history: ChatMessage[]): Promise<string> {
+  async sendMessageToGemini(message: string, history: ChatMessage[], conversationId?: string): Promise<{ text: string, conversationId?: string }> {
     try {
       // 🛡️ RATE LIMITING: Check if call is allowed to prevent excessive charges
       if (!apiRateLimiter.canMakeCall('chat-ai-enhanced')) {
@@ -84,7 +84,8 @@ export const chatClient = {
             context: {
               userId: userId,
               chatType: chatType,
-              propertyContext: propertyContext
+              propertyContext: propertyContext,
+              conversationId: conversationId
             }
           },
         });
@@ -145,7 +146,10 @@ export const chatClient = {
       console.log(`🚀 TOTAL CLIENT TIME: ${totalClientTime}ms (includes network + processing)`);
       console.log(`🎯 Overall Performance: ${totalClientTime < 3000 ? '✅ EXCELLENT' : totalClientTime < 8000 ? '⚠️ GOOD' : '❌ SLOW'}`);
 
-      return data.text;
+      return { 
+        text: data.text, 
+        conversationId: data.conversationId 
+      };
     } catch (error) {
       console.error('Error in sendMessageToGemini:', error);
       throw error;

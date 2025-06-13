@@ -19,8 +19,11 @@ export function ConversationList({
   isLoading 
 }: ConversationListProps) {
   // Safe date formatting function
-  const formatSafeDate = (dateString: string) => {
+  const formatSafeDate = (dateString: string | undefined | null) => {
     try {
+      if (!dateString) {
+        return 'No date';
+      }
       const date = new Date(dateString);
       if (isNaN(date.getTime())) {
         return 'Invalid date';
@@ -173,12 +176,16 @@ function groupConversationsByDate(conversations: ConversationSummary[]) {
   const groups: Record<string, ConversationSummary[]> = {};
   
   conversations.forEach(conversation => {
-    const date = new Date(conversation.created_at);
+    // Handle cases where created_at might be undefined or null
+    const dateString = conversation.created_at || new Date().toISOString();
+    const date = new Date(dateString);
     
     // Check if date is valid
     if (isNaN(date.getTime())) {
       console.warn('Invalid date found in conversation:', conversation.conversation_id, conversation.created_at);
-      return; // Skip this conversation
+      // Use current date as fallback
+      const fallbackDate = new Date();
+      conversation.created_at = fallbackDate.toISOString();
     }
     
     let groupKey: string;

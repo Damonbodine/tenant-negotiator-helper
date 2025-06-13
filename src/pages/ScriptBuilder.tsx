@@ -36,7 +36,6 @@ enum ScriptBuilderStep {
   Details = 1,
   Script = 2,
   Email = 3,
-  Practice = 4,
 }
 
 // Define the script structure returned by the AI
@@ -116,7 +115,7 @@ const ScriptBuilder = () => {
   console.log("Form errors:", form.formState.errors);
   const nextStep = () => {
     console.log("Next step clicked, current step:", currentStep);
-    if (currentStep < ScriptBuilderStep.Practice) {
+    if (currentStep < ScriptBuilderStep.Email) {
       console.log("Moving to next step:", currentStep + 1);
       setCurrentStep(prev => prev + 1 as ScriptBuilderStep);
     }
@@ -193,23 +192,32 @@ const ScriptBuilder = () => {
   };
 
   const generateEmailTemplate = async () => {
-    if (!editedScript) return;
+    if (!editedScript) {
+      console.error("No script available for email generation");
+      return;
+    }
     
     setIsGeneratingEmail(true);
     try {
-      console.log("Generating email template from script:", editedScript);
+      const requestPayload = {
+        mode: 'email_template',
+        script: editedScript,
+        formData: form.getValues()
+      };
+      
+      console.log("Generating email template with payload:", JSON.stringify(requestPayload, null, 2));
       
       const { data: response, error } = await supabase.functions.invoke('script-generator', {
-        body: {
-          mode: 'email_template',
-          script: editedScript,
-          formData: form.getValues()
-        }
+        body: requestPayload
       });
 
       if (error) {
-        console.error("Error generating email template:", error);
-        throw new Error(error.message);
+        console.error("Supabase function error:", error);
+        throw error;
+      }
+
+      if (!response) {
+        throw new Error("No response received from email template generator");
       }
 
       console.log("Generated email template:", response);
@@ -222,9 +230,18 @@ const ScriptBuilder = () => {
       });
     } catch (error) {
       console.error("Error generating email template:", error);
+      
+      // Provide more specific error messages
+      let errorMessage = "Failed to generate email template. Please try again.";
+      if (error.message?.includes('400')) {
+        errorMessage = "Invalid request data. Please check your form fields and try again.";
+      } else if (error.message?.includes('500')) {
+        errorMessage = "Server error. Please try again in a moment.";
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to generate email template. Please try again.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -626,18 +643,24 @@ const ScriptBuilder = () => {
                   <Tabs defaultValue="email" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger value="email">Email Template</TabsTrigger>
-                      <TabsTrigger value="components">Edit Components</TabsTrigger>
+                      <TabsTrigger value="components">Edit Email</TabsTrigger>
                     </TabsList>
                     
                     <TabsContent value="email" className="space-y-4">
-                      <Card className="bg-gray-50">
+                      <Card className="bg-slate-50 dark:bg-slate-800">
                         <CardHeader className="pb-3">
-                          <div className="text-sm text-gray-500">Preview:</div>
+                          <div className="text-sm font-medium text-slate-700 dark:text-slate-300">Email Preview:</div>
                         </CardHeader>
                         <CardContent>
-                          <div className="space-y-4 font-mono text-sm bg-white p-4 rounded border">
-                            <div><strong>Subject:</strong> {generatedEmail.subject}</div>
-                            <div className="border-t pt-4 whitespace-pre-wrap">{generatedEmail.fullEmail}</div>
+                          <div className="space-y-4 bg-white dark:bg-slate-900 p-6 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+                            <div className="text-base">
+                              <span className="font-semibold text-slate-900 dark:text-slate-100">Subject:</span> 
+                              <span className="ml-2 text-slate-800 dark:text-slate-200">{generatedEmail.subject}</span>
+                            </div>
+                            <hr className="border-slate-200 dark:border-slate-700" />
+                            <div className="whitespace-pre-wrap text-base leading-relaxed text-slate-800 dark:text-slate-200 font-sans">
+                              {generatedEmail.fullEmail}
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
@@ -714,68 +737,8 @@ const ScriptBuilder = () => {
               <Button variant="outline" onClick={prevStep}>
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back to Script
               </Button>
-              <Button onClick={() => setCurrentStep(ScriptBuilderStep.Practice)}>
-                Continue to Practice <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </CardFooter>
-          </Card>;
-      case ScriptBuilderStep.Practice:
-        return <Card className="w-full max-w-4xl mx-auto">
-            <CardHeader>
-              <CardTitle>Practice Your Negotiation</CardTitle>
-              <CardDescription>
-                Role-play your negotiation with our AI landlord to practice your script.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div className="flex items-center justify-center p-12">
-                  <p className="text-lg text-center">
-                    Practice mode coming soon! In the meantime, you can review and edit your script in the previous step.
-                  </p>
-                </div>
-                
-                <div className="border-t pt-4">
-                  <h3 className="font-bold text-lg mb-4">Saved Scripts</h3>
-                  
-                  {savedScripts.length === 0 ? <p className="text-center text-gray-500 py-4">
-                      No saved scripts yet. Save your script to access it later.
-                    </p> : <div className="space-y-2">
-                      {savedScripts.map(script => <div key={script.id} className="flex items-center justify-between p-3 border rounded-md">
-                          <span>{script.name}</span>
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm" onClick={() => {
-                        setEditedScript(script.script);
-                        setCurrentStep(ScriptBuilderStep.Script);
-                      }}>
-                              Edit
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => {
-                        setSavedScripts(prev => prev.filter(s => s.id !== script.id));
-                        toast({
-                          title: "Script deleted",
-                          description: `"${script.name}" has been removed`
-                        });
-                      }}>
-                              Delete
-                            </Button>
-                          </div>
-                        </div>)}
-                    </div>}
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button variant="outline" onClick={() => setCurrentStep(ScriptBuilderStep.Script)}>
-                <ArrowLeft className="mr-2 h-4 w-4" /> Back to Script
-              </Button>
-              <Button variant="default" onClick={() => {
-              setCurrentStep(ScriptBuilderStep.Goals);
-              form.reset();
-              setGeneratedScript(null);
-              setEditedScript(null);
-            }}>
-                <Check className="mr-2 h-4 w-4" /> Create New Script
+              <Button onClick={() => window.location.href = '/practice/voice'}>
+                Continue to Voice Practice <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </CardFooter>
           </Card>;
@@ -795,12 +758,11 @@ const ScriptBuilder = () => {
       </div>
       
       <div className="flex justify-center mb-8">
-        <ul className="steps steps-horizontal w-full max-w-3xl">
+        <ul className="steps steps-horizontal w-full max-w-2xl">
           <li className={`step ${currentStep >= ScriptBuilderStep.Goals ? "step-primary" : ""}`}>Goals</li>
           <li className={`step ${currentStep >= ScriptBuilderStep.Details ? "step-primary" : ""}`}>Details</li>
           <li className={`step ${currentStep >= ScriptBuilderStep.Script ? "step-primary" : ""}`}>Script</li>
           <li className={`step ${currentStep >= ScriptBuilderStep.Email ? "step-primary" : ""}`}>Email</li>
-          <li className={`step ${currentStep >= ScriptBuilderStep.Practice ? "step-primary" : ""}`}>Practice</li>
         </ul>
       </div>
       

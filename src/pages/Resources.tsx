@@ -48,22 +48,6 @@ const Resources = () => {
       type: "page"
     }]
   }, {
-    title: "Legal & Protection",
-    description: "Information on lease agreements, tenant rights, and rental insurance",
-    icon: <Shield className="h-5 w-5 text-red-500" />,
-    resources: [{
-      title: "Lease Agreement Red Flags",
-      description: "How to identify problematic clauses in your lease",
-      link: "/resources/lease-red-flags",
-      type: "page",
-      badge: "Essential"
-    }, {
-      title: "Renters Insurance 101",
-      description: "Everything you need to know about protecting your belongings",
-      link: "/resources/renters-insurance",
-      type: "page"
-    }]
-  }, {
     title: "Down Payment Assistance",
     description: "Programs to help first-time homebuyers with down payment and closing costs",
     icon: <DollarSign className="h-5 w-5 text-purple-500" />,

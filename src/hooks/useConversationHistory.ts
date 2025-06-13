@@ -49,16 +49,21 @@ export function useConversationHistory() {
         20 // Load last 20 conversations
       );
 
+      console.log('🔍 Raw RPC data:', recentConversations);
+
       // Transform the data to match our interface
-      const formattedConversations: ConversationSummary[] = recentConversations.map(conv => ({
-        conversation_id: conv.conversation_id,
-        conversation_type: conv.conversation_type,
-        title: conv.title || generateConversationTitle(conv.conversation_type),
-        created_at: conv.created_at,
-        message_count: conv.message_count || 0,
-        primary_property_address: conv.primary_property_address,
-        context_summary: conv.context_summary
-      }));
+      const formattedConversations: ConversationSummary[] = recentConversations.map(conv => {
+        console.log('🔍 Processing conversation:', conv);
+        return {
+          conversation_id: conv.conversation_id,
+          conversation_type: conv.conversation_type,
+          title: conv.title || generateConversationTitle(conv.conversation_type),
+          created_at: conv.created_at || new Date().toISOString(), // Fallback to current date
+          message_count: conv.message_count || 0,
+          primary_property_address: conv.primary_property_address,
+          context_summary: conv.context_summary
+        };
+      });
 
       setConversations(formattedConversations);
     } catch (err) {
@@ -74,31 +79,52 @@ export function useConversationHistory() {
     try {
       setIsLoading(true);
       setError(null);
+      console.log('🔍 loadConversation called for:', conversationId);
 
-      // Get conversation context with all messages
-      const context = await rentalMemoryService.getConversationContext(conversationId);
-      
-      if (!context || !context.conversation_info) {
+      // Get conversation info directly from table
+      const { data: conversationData, error: convError } = await supabase
+        .from('rental_conversations')
+        .select('id, conversation_type, title, created_at')
+        .eq('id', conversationId)
+        .single();
+
+      if (convError || !conversationData) {
+        console.error('❌ Failed to get conversation:', convError);
         throw new Error('Conversation not found');
       }
 
+      // Get messages directly from table
+      const { data: messagesData, error: msgError } = await supabase
+        .from('rental_messages')
+        .select('id, role, content, created_at')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true });
+
+      if (msgError) {
+        console.error('❌ Failed to get messages:', msgError);
+        throw new Error('Failed to load messages');
+      }
+
+      console.log('🔍 Raw conversation data:', conversationData);
+      console.log('🔍 Raw messages data:', messagesData);
+
       // Transform messages to ChatMessage format
-      const messages: ChatMessage[] = context.conversation_history.map(msg => ({
+      const messages: ChatMessage[] = (messagesData || []).map(msg => ({
         id: msg.id,
         type: msg.role === 'user' ? 'user' : 'agent',
         text: msg.content,
         timestamp: new Date(msg.created_at)
       }));
+      console.log('🔍 Transformed messages:', messages);
 
       const conversationHistory: ConversationHistory = {
-        conversationId: context.conversation_info.id,
+        conversationId: conversationData.id,
         messages,
         metadata: {
-          title: context.conversation_info.title || 
-                 generateConversationTitle(context.conversation_info.type),
-          type: context.conversation_info.type,
-          propertyContext: context.primary_property_details?.address,
-          createdAt: context.conversation_history[0]?.created_at || new Date().toISOString()
+          title: conversationData.title || 
+                 generateConversationTitle(conversationData.conversation_type),
+          type: conversationData.conversation_type,
+          createdAt: conversationData.created_at || new Date().toISOString()
         }
       };
 

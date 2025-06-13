@@ -11,6 +11,8 @@ import { supabase } from '@/integrations/supabase/client';
 export interface UnifiedPropertyData {
   // Basic property information
   address: string;
+  city?: string;
+  state?: string;
   propertyName?: string;
   rent: number;
   beds: number | string;
@@ -60,6 +62,32 @@ export interface PropertyExtractionOptions {
 }
 
 class UnifiedPropertyService {
+  /**
+   * Parse city and state from address string
+   */
+  private parseAddressComponents(address: string): { city: string; state: string } {
+    // Simple regex to extract city and state from addresses like "123 Main St, Austin, TX 78753"
+    const match = address.match(/,\s*([^,]+),\s*([A-Z]{2})\s*\d{5}/);
+    
+    if (match) {
+      return {
+        city: match[1].trim(),
+        state: match[2].trim()
+      };
+    }
+    
+    // Fallback: try to extract just city, state pattern
+    const simpleMatch = address.match(/,\s*([^,]+),\s*([A-Z]{2})/);
+    if (simpleMatch) {
+      return {
+        city: simpleMatch[1].trim(),
+        state: simpleMatch[2].trim()
+      };
+    }
+    
+    return { city: '', state: '' };
+  }
+
   /**
    * Analyze a property URL using enhanced scraping and market data
    */
@@ -127,8 +155,13 @@ class UnifiedPropertyService {
     try {
       console.log('🏠 Analyzing property details:', propertyDetails);
       
+      // Parse city and state from address if not provided
+      const { city, state } = this.parseAddressComponents(propertyDetails.address || '');
+      
       let result: UnifiedPropertyData = {
         address: propertyDetails.address || '',
+        city: propertyDetails.city || city,
+        state: propertyDetails.state || state,
         propertyName: propertyDetails.propertyName,
         rent: propertyDetails.rent || 0,
         beds: propertyDetails.beds || 0,
@@ -243,26 +276,27 @@ class UnifiedPropertyService {
     try {
       console.log('💾 Saving property to memory for user:', userId);
       
-      // Save to properties table - using any to bypass type checking temporarily
-      const { data: propertyData, error: propertyError } = await (supabase as any)
+      // Save to properties table - using correct column names for actual database schema
+      const { data: propertyData, error: propertyError } = await supabase
         .from('properties')
         .upsert({
           address: property.address,
-          property_name: property.propertyName,
+          city: property.city || 'Unknown',
+          state: property.state || 'Unknown', 
+          zip_code: property.zipcode,
           rent_amount: Math.round(property.rent * 100), // Store in cents
           bedrooms: typeof property.beds === 'number' ? property.beds : parseInt(property.beds?.toString() || '0'),
           bathrooms: typeof property.baths === 'number' ? property.baths : parseFloat(property.baths?.toString() || '0'),
-          square_footage: typeof property.sqft === 'number' ? property.sqft : parseInt(property.sqft?.toString() || '0'),
-          zip_code: property.zipcode,
-          source_url: property.sourceUrl,
-          unit_id: property.unitId,
-          market_verdict: property.verdict,
-          market_average_rent: property.marketAverage ? Math.round(property.marketAverage * 100) : null,
-          price_difference_percent: property.deltaPercent ? parseFloat(property.deltaPercent) : null,
-          rentcast_analysis: property.rentcastAnalysis
-        }, {
-          onConflict: 'address',
-          ignoreDuplicates: false
+          square_feet: typeof property.sqft === 'number' ? property.sqft : parseInt(property.sqft?.toString() || '0'),
+          listing_url: property.sourceUrl,
+          property_type: 'apartment', // Default type
+          property_source: 'listing_analyzer',
+          market_analysis: {
+            verdict: property.verdict,
+            marketAverage: property.marketAverage,
+            deltaPercent: property.deltaPercent,
+            rentcastAnalysis: property.rentcastAnalysis
+          }
         })
         .select()
         .single();
@@ -272,24 +306,35 @@ class UnifiedPropertyService {
         return;
       }
       
-      // Link to user - using any to bypass type checking temporarily
-      const { error: linkError } = await (supabase as any)
+      // Link to user - check if already exists first
+      const { data: existingLink } = await supabase
         .from('user_properties')
-        .upsert({
-          user_id: userId,
-          property_id: propertyData.id,
-          relationship_type: 'analyzed',
-          created_at: new Date().toISOString()
-        }, {
-          onConflict: 'user_id,property_id',
-          ignoreDuplicates: true
-        });
-      
-      if (linkError) {
-        console.error('Error linking property to user:', linkError);
+        .select('id')
+        .eq('user_id', userId)
+        .eq('property_id', propertyData.id)
+        .single();
+
+      if (!existingLink) {
+        const { error: linkError } = await supabase
+          .from('user_properties')
+          .insert({
+            user_id: userId,
+            property_id: propertyData.id,
+            relationship_type: 'analyzed',
+            status: 'active',
+            priority_level: 1
+          });
+        
+        if (linkError) {
+          console.error('Error linking property to user:', linkError);
+        } else {
+          console.log('✅ Property linked to user successfully');
+        }
       } else {
-        console.log('✅ Property saved to memory successfully');
+        console.log('✅ Property already linked to user');
       }
+      
+      console.log('✅ Property saved to memory successfully');
       
     } catch (error) {
       console.error('Error saving property to memory:', error);

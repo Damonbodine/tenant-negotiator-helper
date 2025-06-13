@@ -622,6 +622,7 @@ Use this context to provide the most relevant and helpful response possible.`;
     }
 
     // Store conversation in rental memory if userId is provided
+    let conversationId = null;
     if (userId && userMessage && text) {
       console.log('💾 Storing conversation in rental memory...');
       console.log('💾 Storage details:', {
@@ -629,71 +630,82 @@ Use this context to provide the most relevant and helpful response possible.`;
         messageLength: userMessage?.length,
         responseLength: text?.length,
         hasContext: !!context,
-        contextType: context?.chatType
+        contextType: context?.chatType,
+        existingConversationId: context?.conversationId
       });
       
       try {
-        // Test supabase connection first
-        console.log('🔗 Testing Supabase connection...');
-        const { data: testData, error: testError } = await supabaseAdmin
-          .from('rental_conversations')
-          .select('count')
-          .limit(1);
+        let conversation = null;
         
-        console.log('🔗 Connection test result:', { testData, testError });
-        
-        if (testError) {
-          console.error('❌ Supabase connection failed:', testError);
-          throw new Error(`Connection failed: ${testError.message}`);
+        // Check if we have an existing conversation ID
+        if (context?.conversationId) {
+          console.log('🔄 Using existing conversation:', context.conversationId);
+          
+          // Verify the conversation exists and belongs to this user
+          const { data: existingConv, error: convError } = await supabaseAdmin
+            .from('rental_conversations')
+            .select('*')
+            .eq('id', context.conversationId)
+            .eq('user_id', userId)
+            .single();
+          
+          if (!convError && existingConv) {
+            conversation = existingConv;
+            console.log('✅ Found existing conversation:', conversation.id);
+            
+            // Update conversation timestamp and status
+            await supabaseAdmin
+              .from('rental_conversations')
+              .update({ 
+                updated_at: new Date().toISOString(),
+                status: 'active'
+              })
+              .eq('id', conversation.id);
+          } else {
+            console.log('⚠️ Existing conversation not found or inaccessible:', convError?.message);
+          }
         }
         
-        // Check current row count before insert
-        const { count: beforeCount } = await supabaseAdmin
-          .from('rental_conversations')
-          .select('*', { count: 'exact', head: true });
-        console.log('📊 Conversations before insert:', beforeCount);
-        
-        // Create or get conversation using admin client to bypass RLS
-        const conversationType = context?.chatType || 'negotiation_help';
-        const insertData = {
-          user_id: userId,
-          conversation_type: conversationType,
-          conversation_intent: {
-            property_context: context?.propertyContext,
-            ai_model: data.model,
-            has_tools: toolCalls.length > 0,
-            created_via: 'chat-ai-enhanced'
-          },
-          context_properties: [],
-          key_insights: [],
-          action_items: [],
-          follow_up_needed: false
-        };
-        
-        console.log('📝 Inserting conversation with data:', insertData);
-        
-        const { data: conversation, error: convError } = await supabaseAdmin
-          .from('rental_conversations')
-          .insert(insertData)
-          .select()
-          .single();
-
-        console.log('📝 Conversation insert result:', { 
-          success: !convError,
-          error: convError?.message,
-          errorDetails: convError,
-          conversationId: conversation?.id,
-          conversationData: conversation
-        });
-
-        if (!convError && conversation) {
-          console.log('✅ Created rental conversation:', conversation.id);
+        // Create new conversation if none exists
+        if (!conversation) {
+          console.log('📝 Creating new conversation...');
+          const conversationType = context?.chatType || 'negotiation_help';
+          const insertData = {
+            user_id: userId,
+            conversation_type: conversationType,
+            conversation_intent: {
+              property_context: context?.propertyContext,
+              ai_model: data.model,
+              has_tools: toolCalls.length > 0,
+              created_via: 'chat-ai-enhanced'
+            },
+            context_properties: [],
+            key_insights: [],
+            action_items: [],
+            follow_up_needed: false,
+            status: 'active'
+          };
           
-          // Check row count after conversation insert
-          const { count: afterConvCount } = await supabaseAdmin
+          console.log('📝 Inserting conversation with data:', insertData);
+          
+          const { data: newConversation, error: convError } = await supabaseAdmin
             .from('rental_conversations')
-            .select('*', { count: 'exact', head: true });
-          console.log('📊 Conversations after insert:', afterConvCount);
+            .insert(insertData)
+            .select()
+            .single();
+          
+          if (convError) {
+            console.error('❌ Failed to create conversation:', convError);
+            throw new Error(`Failed to create conversation: ${convError.message}`);
+          }
+          
+          conversation = newConversation;
+          console.log('✅ Created new conversation:', conversation.id);
+        }
+
+        if (conversation) {
+          conversationId = conversation.id;
+          console.log('✅ Using conversation:', conversationId);
 
           // Store user message using admin client
           console.log('💬 Inserting user message...');
@@ -811,6 +823,7 @@ Use this context to provide the most relevant and helpful response possible.`;
       text,
       model: data.model,
       toolCalls: executedTools,
+      conversationId: conversationId,
       hasMemory: !!memoryContext,
       hasKnowledgeBase: !!knowledgeBaseContext,
       storedInMemory: !!(userId && userMessage && text),

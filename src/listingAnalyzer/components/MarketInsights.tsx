@@ -12,7 +12,7 @@ import { Alert, AlertTitle, AlertDescription } from "@/shared/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { analyzeListingUrl, analyzeAddress } from "@/listingAnalyzer/services/listingAnalyzerService";
 import { Link, useParams } from "react-router-dom";
-import { useMemory } from "@/shared/hooks/useMemory";
+import { useConversationHistory } from "@/hooks/useConversationHistory";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -35,13 +35,24 @@ const MarketInsights = ({ embedded = false, initialAddress }: MarketInsightsProp
   const [error, setError] = useState<string | null>(null);
   const [session, setSession] = useState<any>(null);
   const { 
-    memories, 
-    memoryEnabled, 
-    hasMemories, 
-    saveMemory, 
-    optOutOfMemory, 
-    getMemoryContext 
-  } = useMemory('market');
+    conversations,
+    currentConversation,
+    isLoading: conversationLoading,
+    startNewConversation,
+    addMessageToConversation,
+    clearCurrentConversation
+  } = useConversationHistory();
+
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [memoryEnabled, setMemoryEnabled] = useState(true);
+  const [hasMemories, setHasMemories] = useState(false);
+
+  const optOutOfMemory = async () => {
+    setMemoryEnabled(false);
+    setHasMemories(false);
+    // Could implement actual memory clearing here if needed
+    console.log('Memory opt-out requested');
+  };
 
   useEffect(() => {
     // Check if the user is authenticated
@@ -104,12 +115,38 @@ const MarketInsights = ({ embedded = false, initialAddress }: MarketInsightsProp
   const addAgentMessage = (msg: ChatMessage) => setMessages(prev => [...prev, msg]);
   
   const handleManualSave = async () => {
-    if (messages.length > 2 && session?.user && memoryEnabled) {
-      await saveMemory(messages);
-      toast({
-        title: "Conversation saved",
-        description: "Your conversation has been saved to memory.",
-      });
+    if (messages.length > 2 && session?.user) {
+      try {
+        // Create new conversation if none exists
+        if (!currentConversationId) {
+          const newConvId = await startNewConversation('listing_analyzer');
+          if (newConvId) {
+            setCurrentConversationId(newConvId);
+            
+            // Save all messages to the conversation
+            for (const msg of messages) {
+              if (msg.id !== 'welcome') { // Skip welcome message
+                await addMessageToConversation(
+                  newConvId, 
+                  msg.text, 
+                  msg.type === 'user' ? 'user' : 'assistant'
+                );
+              }
+            }
+          }
+        }
+        
+        toast({
+          title: "Conversation saved",
+          description: "Your conversation has been saved to memory.",
+        });
+      } catch (error) {
+        toast({
+          title: "Save failed",
+          description: "Failed to save conversation to memory.",
+          variant: "destructive",
+        });
+      }
     } else {
       toast({
         title: "Nothing to save",
@@ -206,6 +243,7 @@ const MarketInsights = ({ embedded = false, initialAddress }: MarketInsightsProp
                   id="memory-toggle"
                   checked={memoryEnabled}
                   onCheckedChange={(checked) => {
+                    setMemoryEnabled(checked);
                     if (!checked && hasMemories) {
                       optOutOfMemory();
                     }

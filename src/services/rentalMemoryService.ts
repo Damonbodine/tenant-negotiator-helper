@@ -238,9 +238,12 @@ class RentalMemoryService {
   // =============================================
 
   async createConversation(conversationData: Omit<RentalConversation, 'id' | 'created_at' | 'updated_at'>): Promise<RentalConversation> {
+    // Remove any potential created_at/updated_at from the data to let database defaults handle them
+    const { created_at, updated_at, ...cleanData } = conversationData as any;
+    
     const { data, error } = await this.supabase
       .from('rental_conversations')
-      .insert(conversationData)
+      .insert(cleanData)
       .select()
       .single();
 
@@ -249,9 +252,12 @@ class RentalMemoryService {
   }
 
   async addMessage(messageData: Omit<RentalMessage, 'id' | 'created_at'>): Promise<RentalMessage> {
+    // Remove any potential created_at from the data to let database defaults handle it
+    const { created_at, ...cleanData } = messageData as any;
+    
     const { data, error } = await this.supabase
       .from('rental_messages')
-      .insert(messageData)
+      .insert(cleanData)
       .select()
       .single();
 

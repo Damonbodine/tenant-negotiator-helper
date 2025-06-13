@@ -31,8 +31,8 @@ export const chatService = {
     promptService.deletePromptTemplate(templateId);
   },
 
-  async sendMessageToGemini(message: string, history: ChatMessage[]): Promise<string> {
+  async sendMessageToGemini(message: string, history: ChatMessage[], conversationId?: string): Promise<{ text: string, conversationId?: string }> {
     // Use the actual chatClient implementation instead of the placeholder
-    return chatClient.sendMessageToGemini(message, history);
+    return chatClient.sendMessageToGemini(message, history, conversationId);
   }
 };

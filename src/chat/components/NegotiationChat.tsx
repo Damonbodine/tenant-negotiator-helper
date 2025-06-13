@@ -17,26 +17,37 @@ import { VisualArtifact, MarketPositionIndicatorData, AffordabilityCalculatorDat
 import ReactMarkdown from "react-markdown";
 import { Link } from "react-router-dom";
 import { useConversationHistory } from "@/hooks/useConversationHistory";
+import { useConversationContext } from "@/contexts/ConversationContext";
 import { supabase } from "@/integrations/supabase/client";
 
 const NegotiationChat = () => {
   console.log("🔍 ORIGINAL NegotiationChat component is mounting...");
   
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { toast } = useToast();
   const { addArtifact } = useArtifactStore();
   
+  // Use conversation context to get current conversation and messages
   const {
     currentConversation,
-    startNewConversation,
-    loadConversation,
-    addMessageToConversation,
-    clearCurrentConversation
-  } = useConversationHistory();
+    isLoadingConversation,
+    createNewConversation,
+    addMessage,
+    updateMessages
+  } = useConversationContext();
+
+  // Get messages from current conversation or show welcome message
+  const messages = currentConversation?.messages || [{
+    id: "welcome",
+    type: "agent" as const,
+    text: "Welcome! I'm your negotiation coach. What rental situation would you like advice on?",
+    timestamp: new Date()
+  }];
+  const currentConversationId = currentConversation?.conversationId || null;
+
+  const { addMessageToConversation } = useConversationHistory();
 
   // Simplified: No complex triggering - users click tools directly
 
@@ -276,48 +287,7 @@ const NegotiationChat = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Load conversation when component mounts or conversation changes
-  useEffect(() => {
-    if (currentConversation) {
-      setMessages(currentConversation.messages);
-      setCurrentConversationId(currentConversation.conversationId);
-    } else if (messages.length === 0) {
-      // Start with welcome message if no conversation loaded
-      const welcomeMessage: ChatMessage = {
-        id: "welcome",
-        type: "agent",
-        text: "Welcome! I'm your negotiation coach. What rental situation would you like advice on?",
-        timestamp: new Date()
-      };
-      setMessages([welcomeMessage]);
-    }
-  }, [currentConversation]);
 
-  // Handle conversation selection
-  const handleSelectConversation = async (conversationId: string) => {
-    const conversation = await loadConversation(conversationId);
-    if (conversation) {
-      setMessages(conversation.messages);
-      setCurrentConversationId(conversationId);
-    }
-  };
-
-  // Handle new conversation
-  const handleNewConversation = async () => {
-    const conversationId = await startNewConversation('negotiation_help');
-    if (conversationId) {
-      clearCurrentConversation();
-      setCurrentConversationId(conversationId);
-      // Reset to welcome message
-      const welcomeMessage: ChatMessage = {
-        id: "welcome",
-        type: "agent",
-        text: "Welcome! I'm your negotiation coach. What rental situation would you like advice on?",
-        timestamp: new Date()
-      };
-      setMessages([welcomeMessage]);
-    }
-  };
 
   // Handle quick question clicks
   const handleQuickAction = (text: string) => {
@@ -337,25 +307,25 @@ const NegotiationChat = () => {
       timestamp: new Date()
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    // Add user message to conversation context
+    addMessage(userMessage);
     setInput("");
     setIsLoading(true);
 
     try {
-      // Only try to create/save conversation if user is authenticated
-      let conversationId = currentConversationId;
-      
       // Check if user is authenticated before attempting conversation operations
       const { data: { session } } = await supabase.auth.getSession();
       const isAuthenticated = !!session?.user;
       
+      let conversationId = currentConversationId;
+
+      // Create new conversation if none exists and user is authenticated
       if (isAuthenticated && !conversationId) {
         try {
-          conversationId = await startNewConversation('negotiation_help');
-          setCurrentConversationId(conversationId);
+          conversationId = await createNewConversation('negotiation_help');
+          console.log('✅ Created new conversation:', conversationId);
         } catch (error) {
-          console.warn("Could not create conversation (user may not be authenticated):", error);
-          // Continue without conversation persistence
+          console.warn("Could not create conversation:", error);
         }
       }
 
@@ -365,28 +335,30 @@ const NegotiationChat = () => {
           await addMessageToConversation(conversationId, messageText, 'user');
         } catch (error) {
           console.warn("Could not save user message to conversation:", error);
-          // Continue without saving
         }
       }
 
-      const response = await chatService.sendMessageToGemini(messageText, messages);
+      // Include the user message in the history for AI context
+      const messagesWithUser = [...messages, userMessage];
+      const response = await chatService.sendMessageToGemini(messageText, messagesWithUser, conversationId || undefined);
 
       const agentMessage: ChatMessage = {
         id: Date.now().toString(),
         type: 'agent',
-        text: response,
+        text: response.text,
         timestamp: new Date()
       };
 
-      setMessages(prev => [...prev, agentMessage]);
+      // Add agent message to conversation context
+      addMessage(agentMessage);
 
       // Save agent response to conversation if authenticated and conversation exists
-      if (isAuthenticated && conversationId) {
+      const activeConversationId = response.conversationId || conversationId;
+      if (isAuthenticated && activeConversationId) {
         try {
-          await addMessageToConversation(conversationId, response, 'assistant');
+          await addMessageToConversation(activeConversationId, response.text, 'assistant');
         } catch (error) {
           console.warn("Could not save agent response to conversation:", error);
-          // Continue without saving
         }
       }
     } catch (error) {
@@ -405,8 +377,6 @@ const NegotiationChat = () => {
     <ChatWithArtifacts
       showConversationHistory={isAuthenticated}
       currentConversationId={currentConversationId || undefined}
-      onSelectConversation={handleSelectConversation}
-      onNewConversation={handleNewConversation}
     >
       <main className="container py-8">
         <div className="w-full max-w-4xl mx-auto">

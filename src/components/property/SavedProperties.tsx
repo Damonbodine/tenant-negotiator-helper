@@ -9,16 +9,20 @@ import { toast } from '@/components/ui/use-toast';
 interface SavedProperty {
   id: string;
   address: string;
-  property_name?: string;
+  city?: string;
+  state?: string;
   rent_amount: number; // in cents
   bedrooms: number;
   bathrooms: number;
-  square_footage: number;
+  square_feet: number;
   zip_code?: string;
-  source_url?: string;
-  market_verdict?: 'under-priced' | 'over-priced' | 'priced right' | 'unknown';
-  market_average_rent?: number; // in cents
-  price_difference_percent?: number;
+  listing_url?: string;
+  market_analysis?: {
+    verdict?: 'under-priced' | 'over-priced' | 'priced right' | 'unknown';
+    marketAverage?: number;
+    deltaPercent?: string;
+    rentcastAnalysis?: any;
+  };
   created_at: string;
 }
 
@@ -68,21 +72,20 @@ export const SavedProperties: React.FC<SavedPropertiesProps> = ({
       setLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await (supabase as any)
+      const { data, error: fetchError } = await supabase
         .from('properties')
         .select(`
           id,
           address,
-          property_name,
+          city,
+          state,
           rent_amount,
           bedrooms,
           bathrooms,
-          square_footage,
+          square_feet,
           zip_code,
-          source_url,
-          market_verdict,
-          market_average_rent,
-          price_difference_percent,
+          listing_url,
+          market_analysis,
           created_at,
           user_properties!inner(user_id)
         `)
@@ -230,14 +233,12 @@ export const SavedProperties: React.FC<SavedPropertiesProps> = ({
                     {/* Property Name and Address */}
                     <div>
                       <h3 className="font-medium text-sm truncate">
-                        {property.property_name || property.address}
+                        {property.address}
                       </h3>
-                      {property.property_name && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          {property.address}
-                        </p>
-                      )}
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {property.city && property.state ? `${property.city}, ${property.state}` : ''}
+                      </p>
                     </div>
 
                     {/* Property Details */}
@@ -261,23 +262,23 @@ export const SavedProperties: React.FC<SavedPropertiesProps> = ({
                         </Badge>
                       )}
                       
-                      {property.square_footage > 0 && (
+                      {property.square_feet > 0 && (
                         <Badge variant="outline" className="text-xs">
                           <Square className="h-3 w-3 mr-1" />
-                          {property.square_footage.toLocaleString()} sqft
+                          {property.square_feet.toLocaleString()} sqft
                         </Badge>
                       )}
                     </div>
 
                     {/* Market Analysis */}
-                    {property.market_verdict && property.market_verdict !== 'unknown' && (
+                    {property.market_analysis?.verdict && property.market_analysis.verdict !== 'unknown' && (
                       <div className="flex items-center gap-2 text-xs">
-                        <Badge variant={getVerdictColor(property.market_verdict)} className="text-xs">
-                          {property.market_verdict}
+                        <Badge variant={getVerdictColor(property.market_analysis.verdict)} className="text-xs">
+                          {property.market_analysis.verdict}
                         </Badge>
-                        {property.price_difference_percent && (
+                        {property.market_analysis.deltaPercent && (
                           <span className="text-muted-foreground">
-                            {property.price_difference_percent > 0 ? '+' : ''}{property.price_difference_percent.toFixed(1)}% vs market
+                            {parseFloat(property.market_analysis.deltaPercent) > 0 ? '+' : ''}{property.market_analysis.deltaPercent}% vs market
                           </span>
                         )}
                       </div>
@@ -291,12 +292,12 @@ export const SavedProperties: React.FC<SavedPropertiesProps> = ({
 
                   {/* Actions */}
                   <div className="flex items-center gap-1">
-                    {property.source_url && (
+                    {property.listing_url && (
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
-                        onClick={() => window.open(property.source_url, '_blank')}
+                        onClick={() => window.open(property.listing_url, '_blank')}
                         title="View original listing"
                       >
                         <ExternalLink className="h-3 w-3" />
